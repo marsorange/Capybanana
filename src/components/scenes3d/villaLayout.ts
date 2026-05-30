@@ -33,8 +33,8 @@ export const SPOTS: Spot[] = [
   // ground floor — yard
   { id: "doorstep", pos: [0.95, 0, -0.3], face: 0.7, activity: "look", emote: "🌤️", dwell: [3, 5], floor: 0 },
   { id: "garden", pos: [2.6, 0, 1.2], face: 0.4, activity: "look", emote: "🌼", dwell: [4, 7], floor: 0 },
-  { id: "farm", pos: [1.5, 0, 2.9], face: 0.2, activity: "clean", emote: "🌱", dwell: [5, 9], floor: 0 },
-  { id: "tree", pos: [3.5, 0, 2.3], face: 1.0, activity: "idle", emote: "🌳", dwell: [4, 7], floor: 0 },
+  { id: "farm", pos: [0.7, 0, 2.0], face: 0.6, activity: "clean", emote: "🌱", dwell: [5, 9], floor: 0 },
+  { id: "tree", pos: [2.9, 0, 1.5], face: 1.0, activity: "idle", emote: "🌳", dwell: [4, 7], floor: 0 },
   // loft
   { id: "bed", pos: [-3.6, FLOOR_H, -3.5], face: 0.4, activity: "sleep", emote: "💤", dwell: [7, 11], floor: 1 },
   { id: "bath", pos: [-1.5, FLOOR_H, -3.8], face: 0.3, activity: "idle", emote: "♨️", dwell: [5, 8], floor: 1 },

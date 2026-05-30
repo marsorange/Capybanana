@@ -1,0 +1,13 @@
+task mode: create
+primary deck-profile: consumer-retail
+secondary gates: product-platform
+required proof objects: image-led hero, product loop, mobile product screens, future journey
+source/assets:
+- user-provided low-poly house reference: /Users/pengbo/Downloads/db5b5c56-212f-4448-9aca-5a9ff25a7dd3.png
+- user-provided app home screenshot: /Users/pengbo/Desktop/截屏2026-05-30 16.52.55.png
+- user-provided collection/status screenshot: /Users/pengbo/Desktop/截屏2026-05-30 16.53.11.png
+- user-provided collection/postcard screenshot: /Users/pengbo/Desktop/截屏2026-05-30 16.53.04.png
+- user-provided app/logo visual: /Users/pengbo/Desktop/卡皮巴啦啦/251325a9-df64-4cd5-899c-413c222a4547 (1).png
+brand authenticity constraints: use only user-provided visuals and product screenshots; do not redraw mascot or logo as final identity.
+profile-specific QA gates: warm consumer tone, strong image hierarchy, minimal copy, coherent thumbnail rhythm.
+known missing inputs: no formal brand guide or required company logo; deck uses a self-contained Capybanana visual system derived from existing UI colors.

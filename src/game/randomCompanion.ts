@@ -43,6 +43,23 @@ export function randomCompanion(): CompanionDraft {
   };
 }
 
+// The chonky/soft, most capybara-like types + soft colors + gentle accessories.
+// Used for new adoptions and the "换个样子" re-roll so a pet reads cute-capybara
+// by default (no boxy robot / spiky look).
+const CUTE_TYPES: CompanionType[] = ["animal", "dumpling", "mushroom"];
+const CUTE_ACCESSORIES: Accessory[] = ["none", "scarf", "flower", "bell"];
+const CUTE_COLORS = ["#E9A23B", "#E98AA8", "#8AA978", "#F2D06B", "#B98A64", "#6FA8C9"];
+
+export function randomCuteCompanion(): CompanionDraft {
+  return {
+    name: pick(NAMES),
+    type: pick(CUTE_TYPES),
+    primaryColor: pick(CUTE_COLORS),
+    personality: pick(PERSONALITIES).value,
+    accessory: pick(CUTE_ACCESSORIES),
+  };
+}
+
 const TYPE_SET = new Set<string>(COMPANION_TYPES.map((t) => t.type));
 const PERSONALITY_SET = new Set<string>(PERSONALITIES.map((p) => p.value));
 const ACCESSORY_SET = new Set<string>(ACCESSORIES.map((a) => a.value));

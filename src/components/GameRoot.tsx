@@ -11,6 +11,7 @@ import HomeScreen from "./screens/HomeScreen";
 import LoginScreen from "./screens/LoginScreen";
 import PackScreen from "./screens/PackScreen";
 import PostcardScreen from "./screens/PostcardScreen";
+import ProfileScreen from "./screens/ProfileScreen";
 import ResultScreen from "./screens/ResultScreen";
 import TravelingScreen from "./screens/TravelingScreen";
 import CapyLogo from "./screens/CapyLogo";
@@ -34,6 +35,8 @@ function renderScreen(screen: Screen) {
       return <CreateScreen />;
     case "connect":
       return <ConnectAgentScreen />;
+    case "profile":
+      return <ProfileScreen />;
     case "home":
       return <HomeScreen />;
     case "pack":

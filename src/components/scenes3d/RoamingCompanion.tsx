@@ -65,6 +65,7 @@ export default function RoamingCompanion({
   const faceTarget = useRef(start.face);
   const tmp = useRef(new THREE.Vector3());
   const command = useRef<(() => void) | null>(null);
+  const commandSay = useRef<string | null>(null);
 
   const [, setEmote] = useState<string>(start.emote);
   const [speech, setSpeech] = useState<string | null>(null);
@@ -77,15 +78,17 @@ export default function RoamingCompanion({
     if (commandBus.pending && command.current === null) {
       const cmd = commandBus.pending;
       commandBus.pending = null;
-      command.current = cmd.onArrive;
+      command.current = cmd.onArrive ?? null;
+      commandSay.current = cmd.say ?? null;
+      const cd = cmd.dwell ?? 0.2;
       const synthetic: Spot = {
         id: "__cmd",
         pos: cmd.target,
         floor: cmd.floor,
         face: 0,
-        activity: "idle",
+        activity: cmd.activity ?? "idle",
         emote: "",
-        dwell: [0.2, 0.2],
+        dwell: [cd, cd],
       };
       pendingSpot.current = synthetic;
       path.current = buildPath(floor.current, synthetic);
@@ -124,10 +127,16 @@ export default function RoamingCompanion({
           phase.current = "dwell";
           dwell.current = randRange(spot.dwell[0], spot.dwell[1]);
           setEmote(spot.emote);
-          if (spot.id === "__cmd" && command.current) {
-            const cb = command.current;
-            command.current = null;
-            cb();
+          if (spot.id === "__cmd") {
+            if (commandSay.current) {
+              sayText(commandSay.current);
+              commandSay.current = null;
+            }
+            if (command.current) {
+              const cb = command.current;
+              command.current = null;
+              cb();
+            }
           }
         }
       } else {
@@ -162,6 +171,12 @@ export default function RoamingCompanion({
     }
   });
 
+  const sayText = (text: string) => {
+    setSpeech(text);
+    window.clearTimeout(speechTimer.current);
+    speechTimer.current = window.setTimeout(() => setSpeech(null), 3400);
+  };
+
   const speak = () => {
     setSpeech(pick(clickLines));
     setEmote("");
@@ -173,7 +188,7 @@ export default function RoamingCompanion({
   };
 
   return (
-    <group ref={mover} scale={1.42}>
+    <group ref={mover} scale={1.28}>
       <group ref={inner}>
         <Companion3D
           type={type}

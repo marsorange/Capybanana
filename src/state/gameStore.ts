@@ -26,6 +26,7 @@ export type Screen =
   | "login"
   | "create"
   | "connect"
+  | "profile"
   | "home"
   | "pack"
   | "traveling"
@@ -416,7 +417,8 @@ export const useGameStore = create<GameState>()(
           });
           get().adoptSave(res.save);
           if (res.save.companion) {
-            set({ screen: "home" });
+            // Meet-your-pet card first, then the owner taps into the house.
+            set({ screen: "profile" });
             return;
           }
           // Legacy/edge case: account exists without a pet. Adopt one now so
@@ -440,7 +442,7 @@ export const useGameStore = create<GameState>()(
             randomCompanion(),
           );
           get().adoptSave(save);
-          set({ cloudBusy: false, screen: "home" });
+          set({ cloudBusy: false, screen: "profile" });
         } catch (e) {
           const err = e as Error & { status?: number };
           if (err.status === 401) return get().logout();
@@ -449,7 +451,7 @@ export const useGameStore = create<GameState>()(
             try {
               const { save } = await cloud.pet(s.cloud.bindToken);
               get().adoptSave(save);
-              set({ cloudBusy: false, screen: "home" });
+              set({ cloudBusy: false, screen: "profile" });
               return;
             } catch {
               /* fall through to surfacing the error below */

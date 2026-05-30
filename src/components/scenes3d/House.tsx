@@ -719,21 +719,18 @@ export default function House({
         )}
       </group>
 
-      {/* backpack (diegetic -> pack), marked with a soft pulsing ring */}
+      {/* backpack (diegetic -> pack); the labelled "打包" marker rings it */}
       {mode === "home" && (
-        <>
-          <group
-            position={[-1.5, 0, -0.7]}
-            scale={1.0}
-            onClick={(e: ThreeEvent<MouseEvent>) => {
-              e.stopPropagation();
-              goPack();
-            }}
-          >
-            <Backpack />
-          </group>
-          <Beacon pos={[-1.5, 0.16, -0.7]} />
-        </>
+        <group
+          position={[-1.5, 0, -0.7]}
+          scale={1.0}
+          onClick={(e: ThreeEvent<MouseEvent>) => {
+            e.stopPropagation();
+            goPack();
+          }}
+        >
+          <Backpack />
+        </group>
       )}
     </group>
   );

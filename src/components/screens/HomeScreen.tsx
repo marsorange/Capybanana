@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useGameStore } from "@/state/gameStore";
 import HomeScene from "../scenes3d/HomeScene";
+import InteractionLayer from "../scenes3d/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
+import DiaryPanel from "../ui/DiaryPanel";
 import MusicToggle from "../ui/MusicToggle";
 
 const IDLE_LINES = [
@@ -29,6 +31,7 @@ export default function HomeScreen() {
   const goTo = useGameStore((s) => s.goTo);
   const devRunTrip = useGameStore((s) => s.devRunTrip);
   const bound = useGameStore((s) => !!s.cloud);
+  const [showDiary, setShowDiary] = useState(false);
 
   const wallThemes = useMemo(
     () => postcards.slice(0, 3).map((p) => p.destinationTheme),
@@ -50,8 +53,8 @@ export default function HomeScreen() {
         controls="none"
         orthographic
         cameraPosition={[9, 8.4, 9]}
-        target={[-0.9, 1.6, -0.9]}
-        zoom={67}
+        target={[-1.0, 1.5, -1.0]}
+        zoom={54}
       >
         <HomeScene
           mode="home"
@@ -66,19 +69,26 @@ export default function HomeScreen() {
           seed={companion.id}
           clickLines={companionState === "ready" ? READY_LINES : IDLE_LINES}
         />
+        <InteractionLayer onDiary={() => setShowDiary(true)} />
       </SceneCanvas>
+
+      {showDiary && <DiaryPanel onClose={() => setShowDiary(false)} />}
 
       {/* top bar: name + simple state */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-5 pt-5">
-        <div>
+        <button
+          onClick={() => goTo("profile")}
+          className="pointer-events-auto text-left"
+        >
           <h1 className="font-hand text-2xl leading-none text-ink drop-shadow-[0_1px_0_rgba(255,247,236,0.9)]">
             {companion.name}
           </h1>
           <p className="mt-1 text-sm text-ink-soft">
             心情 {capy.mood} · 体力 {capy.energy}
             {capy.injury > 0 ? ` · 伤 ${capy.injury}` : ""}
+            <span className="ml-1 text-ink-soft/60">· 档案 ›</span>
           </p>
-        </div>
+        </button>
         <div className="flex flex-col items-end gap-1.5">
           <p className="text-sm text-ink-soft">
             {companionState === "ready" ? "今日包裹已备好" : "在家"}
