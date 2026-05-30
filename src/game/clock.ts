@@ -1,46 +1,36 @@
-import { generatePostcard } from "./generatePostcard";
 import { planTrip } from "./planTrip";
+import { resolveDay } from "./resolveDay";
 import type {
+  CapyState,
   Companion,
   CompanionState,
+  DayOutcome,
   PackedBag,
   Postcard,
   Trip,
 } from "./types";
 import { randRange, uid } from "./util";
 
-// Compressed timings (ms). Tuned so a session shows "it left on its own"
-// within a minute, while offline catch-up still resolves long absences.
-export const TIMING = {
-  departMin: 10_000,
-  departMax: 60_000,
-  stayHomeProb: 0.15,
-  reconsiderMin: 8_000,
-  reconsiderMax: 20_000,
-};
+// Compressed timing: after packing, the "day" plays out over a short window,
+// then resolves into one of the outcomes. Offline catch-up still resolves it.
+export const TIMING = { departMin: 8_000, departMax: 28_000 };
 
 export interface DepartureDecision {
   departAt: number;
   willGo: boolean;
 }
 
-/** Roll when (and whether) the companion intends to leave after packing. */
+/** When the prepared day starts to unfold. */
 export function scheduleDeparture(now: number): DepartureDecision {
   return {
     departAt: now + randRange(TIMING.departMin, TIMING.departMax),
-    willGo: Math.random() > TIMING.stayHomeProb,
-  };
-}
-
-function reconsider(from: number): DepartureDecision {
-  return {
-    departAt: from + randRange(TIMING.reconsiderMin, TIMING.reconsiderMax),
-    willGo: Math.random() > TIMING.stayHomeProb,
+    willGo: true,
   };
 }
 
 export interface LifecycleState {
   companion: Companion | null;
+  capy: CapyState;
   companionState: CompanionState;
   packedBag: PackedBag | null;
   activeTrip: Trip | null;
@@ -52,58 +42,43 @@ export interface AdvanceOutcome {
   packedBag: PackedBag | null;
   activeTrip: Trip | null;
   postcards: Postcard[];
-  departed: boolean;
-  stayedHome: boolean;
-  arrivedPostcardId: string | null;
+  started: boolean; // the day began unfolding
+  outcome: DayOutcome | null; // the resolved day, when it finishes
 }
 
 /**
- * Pure reducer that advances the companion's life one "moment" at a time until
- * stable: ready -> (leaves | stays home & re-rolls) -> traveling -> returns with
- * a postcard. Loops a few times so a long offline gap can resolve both the
- * departure and the return in a single call.
+ * ready -> (day unfolds) -> resolved into home/yard/travel. Loops so a long
+ * offline gap resolves both the start and the result in one call.
  */
 export function advanceLifecycle(
   input: LifecycleState,
   now: number,
 ): AdvanceOutcome {
-  const { companion } = input;
+  const { companion, capy } = input;
   let { companionState, packedBag, activeTrip, postcards } = input;
-  let departed = false;
-  let stayedHome = false;
-  let arrivedPostcardId: string | null = null;
+  let started = false;
+  let outcome: DayOutcome | null = null;
 
   if (companion) {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 4; i++) {
       if (companionState === "ready" && packedBag && now >= packedBag.departAt) {
-        if (packedBag.willGo) {
-          const plan = planTrip(packedBag.items, packedBag.message);
-          const startedAt = packedBag.departAt;
-          activeTrip = {
-            id: uid("trip"),
-            companionId: companion.id,
-            items: packedBag.items,
-            message: packedBag.message,
-            status: "traveling",
-            destination: plan.destination,
-            startedAt,
-            durationMs: plan.durationMs,
-            returnsAt: startedAt + plan.durationMs,
-          };
-          companionState = "traveling";
-          packedBag = null;
-          departed = true;
-          continue;
-        }
-        // Decided to stay home this time — re-roll a later attempt.
-        const next = reconsider(packedBag.departAt);
-        packedBag = {
-          ...packedBag,
-          packedAt: packedBag.departAt,
-          departAt: next.departAt,
-          willGo: next.willGo,
+        const plan = planTrip(packedBag.items, packedBag.message);
+        const startedAt = packedBag.departAt;
+        activeTrip = {
+          id: uid("trip"),
+          companionId: companion.id,
+          items: packedBag.items,
+          message: packedBag.message,
+          gesture: packedBag.gesture,
+          status: "traveling",
+          destination: plan.destination,
+          startedAt,
+          durationMs: plan.durationMs,
+          returnsAt: startedAt + plan.durationMs,
         };
-        stayedHome = true;
+        companionState = "traveling";
+        packedBag = null;
+        started = true;
         continue;
       }
 
@@ -112,11 +87,10 @@ export function advanceLifecycle(
         activeTrip &&
         now >= activeTrip.returnsAt
       ) {
-        const postcard = generatePostcard(companion, activeTrip);
-        postcards = [postcard, ...postcards];
+        outcome = resolveDay(companion, capy, activeTrip);
+        if (outcome.postcard) postcards = [outcome.postcard, ...postcards];
         activeTrip = { ...activeTrip, status: "returned" };
         companionState = "idle_home";
-        arrivedPostcardId = postcard.id;
         continue;
       }
 
@@ -129,13 +103,12 @@ export function advanceLifecycle(
     packedBag,
     activeTrip,
     postcards,
-    departed,
-    stayedHome,
-    arrivedPostcardId,
+    started,
+    outcome,
   };
 }
 
-/** Travel progress 0..1 for the waiting screen. */
+/** Day-unfolding progress 0..1 for the waiting screen. */
 export function tripProgress(trip: Trip | null, now: number): number {
   if (!trip) return 0;
   const p = (now - trip.startedAt) / trip.durationMs;

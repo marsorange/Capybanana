@@ -1,0 +1,63 @@
+// Shared, pure outcome → state merge. Lives here (not in the Zustand store) so
+// the client (gameStore.tick) and the server (engine.tickSave) fold a resolved
+// DayOutcome into the capybara's state identically — no drift between the two.
+import type { CapyState, DayOutcome } from "./types";
+
+export const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
+export function applyEffects(
+  capy: CapyState,
+  eff: DayOutcome["effects"],
+): CapyState {
+  return {
+    ...capy,
+    mood: clamp(capy.mood + (eff.mood ?? 0)),
+    energy: clamp(capy.energy + (eff.energy ?? 0)),
+    curiosity: clamp(capy.curiosity + (eff.curiosity ?? 0)),
+    bravery: clamp(capy.bravery + (eff.bravery ?? 0)),
+    injury: clamp(capy.injury + (eff.injury ?? 0)),
+    bond: clamp(capy.bond + (eff.bond ?? 0)),
+  };
+}
+
+export interface OutcomeAccumulator {
+  capy: CapyState;
+  souvenirs: string[];
+  misunderstandings: string[];
+}
+
+/**
+ * Fold a resolved day into the running state: stat effects, an optional memory,
+ * an optional picked-up trait, the head-pat bonus, and any souvenir /
+ * misunderstanding the day produced. Returns fresh objects (no mutation).
+ */
+export function applyOutcome(
+  prev: OutcomeAccumulator,
+  outcome: DayOutcome,
+  patted: boolean,
+): OutcomeAccumulator {
+  let capy = applyEffects(prev.capy, outcome.effects);
+
+  if (outcome.memory)
+    capy = { ...capy, memories: [outcome.memory, ...capy.memories].slice(0, 30) };
+
+  if (outcome.trait && !capy.traits.includes(outcome.trait))
+    capy = { ...capy, traits: [...capy.traits, outcome.trait] };
+
+  if (patted)
+    capy = {
+      ...capy,
+      bond: clamp(capy.bond + 3),
+      mood: clamp(capy.mood + 2),
+    };
+
+  return {
+    capy,
+    souvenirs: outcome.souvenir
+      ? [outcome.souvenir, ...prev.souvenirs]
+      : prev.souvenirs,
+    misunderstandings: outcome.misunderstanding
+      ? [outcome.misunderstanding, ...prev.misunderstandings]
+      : prev.misunderstandings,
+  };
+}

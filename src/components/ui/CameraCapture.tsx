@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { tagsFromHint } from "@/game/itemTags";
 import type { PackedItem } from "@/game/types";
 import { uid } from "@/game/util";
 import Button from "./Button";
@@ -103,6 +104,7 @@ export default function CameraCapture({
       hint: captured.hint,
       keyword: captured.keyword,
       color: captured.color,
+      tags: tagsFromHint(captured.hint),
     });
     stopStream();
     onClose();

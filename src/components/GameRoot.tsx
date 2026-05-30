@@ -5,10 +5,13 @@ import { useEffect } from "react";
 
 import { useGameStore, type Screen } from "@/state/gameStore";
 import AlbumScreen from "./screens/AlbumScreen";
+import ConnectAgentScreen from "./screens/ConnectAgentScreen";
 import CreateScreen from "./screens/CreateScreen";
 import HomeScreen from "./screens/HomeScreen";
+import LoginScreen from "./screens/LoginScreen";
 import PackScreen from "./screens/PackScreen";
 import PostcardScreen from "./screens/PostcardScreen";
+import ResultScreen from "./screens/ResultScreen";
 import TravelingScreen from "./screens/TravelingScreen";
 import ErrorBoundary from "./ui/ErrorBoundary";
 import PortraitFrame from "./ui/PortraitFrame";
@@ -22,38 +25,14 @@ function Splash() {
   );
 }
 
-function NoticeToast() {
-  const notice = useGameStore((s) => s.notice);
-  const clearNotice = useGameStore((s) => s.clearNotice);
-
-  useEffect(() => {
-    if (!notice) return;
-    const id = setTimeout(clearNotice, 3600);
-    return () => clearTimeout(id);
-  }, [notice, clearNotice]);
-
-  return (
-    <AnimatePresence>
-      {notice && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 12 }}
-          className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-6"
-        >
-          <div className="rounded-full border-2 border-ink/15 bg-paper px-4 py-2 text-sm text-ink shadow-[0_3px_0_rgba(58,46,42,0.12)]">
-            {notice}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
 function renderScreen(screen: Screen) {
   switch (screen) {
+    case "login":
+      return <LoginScreen />;
     case "create":
       return <CreateScreen />;
+    case "connect":
+      return <ConnectAgentScreen />;
     case "home":
       return <HomeScreen />;
     case "pack":
@@ -64,6 +43,8 @@ function renderScreen(screen: Screen) {
       return <AlbumScreen />;
     case "postcard":
       return <PostcardScreen />;
+    case "result":
+      return <ResultScreen />;
   }
 }
 
@@ -73,20 +54,25 @@ export default function GameRoot() {
   const companionState = useGameStore((s) => s.companionState);
   const screen = useGameStore((s) => s.screen);
   const selectedPostcardId = useGameStore((s) => s.selectedPostcardId);
+  const lastResult = useGameStore((s) => s.lastResult);
   const tick = useGameStore((s) => s.tick);
+  const cloudPull = useGameStore((s) => s.cloudPull);
+  const bound = useGameStore((s) => !!s.cloud);
 
   // Hydrate from localStorage on the client only (avoids SSR mismatch).
   useEffect(() => {
+    if (hasHydrated) return;
     void useGameStore.persist.rehydrate();
-  }, []);
+  }, [hasHydrated]);
 
-  // Global lifecycle clock: drives autonomous departure + return, and catches
-  // up after the tab was hidden.
+  // Global lifecycle clock. Guests tick locally every second; bound accounts
+  // poll the server (which resolves the lifecycle) on a slower cadence.
   useEffect(() => {
     if (!hasHydrated) return;
-    tick();
-    const id = setInterval(() => tick(), 1000);
-    const onWake = () => tick();
+    const run = bound ? cloudPull : tick;
+    run();
+    const id = setInterval(() => run(), bound ? 5000 : 1000);
+    const onWake = () => run();
     window.addEventListener("focus", onWake);
     document.addEventListener("visibilitychange", onWake);
     return () => {
@@ -94,7 +80,7 @@ export default function GameRoot() {
       window.removeEventListener("focus", onWake);
       document.removeEventListener("visibilitychange", onWake);
     };
-  }, [hasHydrated, tick]);
+  }, [hasHydrated, bound, tick, cloudPull]);
 
   if (!hasHydrated) {
     return (
@@ -105,14 +91,23 @@ export default function GameRoot() {
   }
 
   let effective: Screen = screen;
-  if (!companion) effective = "create";
-  else if (screen === "create") effective = "home";
-  else if (
+  if (!companion) {
+    // No pet yet: bound accounts go straight to the (random) create flow;
+    // guests see login unless they chose to skip into create.
+    if (bound) effective = "create";
+    else effective = screen === "create" ? "create" : "login";
+  } else if (screen === "login" || screen === "create") {
+    effective = "home";
+  } else if (
     companionState === "traveling" &&
     (screen === "home" || screen === "pack" || screen === "traveling")
-  )
+  ) {
     effective = "traveling";
-  else if (screen === "postcard" && !selectedPostcardId) effective = "album";
+  } else if (screen === "postcard" && !selectedPostcardId) {
+    effective = "album";
+  } else if (screen === "result" && !lastResult) {
+    effective = "home";
+  }
 
   return (
     <PortraitFrame>
@@ -129,7 +124,6 @@ export default function GameRoot() {
             <ErrorBoundary>{renderScreen(effective)}</ErrorBoundary>
           </motion.div>
         </AnimatePresence>
-        <NoticeToast />
       </div>
     </PortraitFrame>
   );

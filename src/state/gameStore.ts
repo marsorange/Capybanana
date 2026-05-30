@@ -5,9 +5,12 @@ import { advanceLifecycle, scheduleDeparture } from "@/game/clock";
 import { planTrip } from "@/game/planTrip";
 import type {
   Accessory,
+  CapyState,
   Companion,
   CompanionState,
   CompanionType,
+  DayOutcome,
+  Gesture,
   PackedBag,
   PackedItem,
   Personality,
@@ -15,20 +18,19 @@ import type {
   Trip,
 } from "@/game/types";
 import { pick, uid } from "@/game/util";
+import { cloud } from "@/lib/cloudClient";
+import type { CloudSave } from "@/server/types";
 
 export type Screen =
+  | "login"
   | "create"
+  | "connect"
   | "home"
   | "pack"
   | "traveling"
   | "album"
-  | "postcard";
-
-const STAY_NOTICES = [
-  "它今天好像还想在家待着…",
-  "它在门口蹭了蹭，又把背包放下了。",
-  "它打了个哈欠，决定再赖一会儿。",
-];
+  | "postcard"
+  | "result";
 
 export interface CreateCompanionInput {
   name: string;
@@ -38,29 +40,94 @@ export interface CreateCompanionInput {
   accessory: Accessory;
 }
 
+// When bound to an account, the web client is just another holder of the bind
+// token, talking to the same /api/agent/* endpoints an external agent uses.
+export interface CloudAuth {
+  userId: string;
+  phone: string;
+  bindToken: string;
+  rev: number;
+}
+
+const DEFAULT_CAPY: CapyState = {
+  mood: 62,
+  energy: 70,
+  curiosity: 50,
+  bravery: 42,
+  injury: 0,
+  bond: 30,
+  traits: [],
+  memories: [],
+};
+
+const SECRET_THRESHOLD = 3;
+const SECRET_REVEALS = [
+  "原来它一直在攒东西，给你堆了一个小小的「礼物角」。",
+  "那串脚印是它新交的小伙伴留下的，今天它把对方带回来了一会儿。",
+  "它偷偷学会了一个小本事，神气地表演给你看。",
+];
+
+const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
+function applyEffects(capy: CapyState, eff: DayOutcome["effects"]): CapyState {
+  return {
+    ...capy,
+    mood: clamp(capy.mood + (eff.mood ?? 0)),
+    energy: clamp(capy.energy + (eff.energy ?? 0)),
+    curiosity: clamp(capy.curiosity + (eff.curiosity ?? 0)),
+    bravery: clamp(capy.bravery + (eff.bravery ?? 0)),
+    injury: clamp(capy.injury + (eff.injury ?? 0)),
+    bond: clamp(capy.bond + (eff.bond ?? 0)),
+  };
+}
+
 interface GameState {
   hasHydrated: boolean;
   companion: Companion | null;
+  capyState: CapyState;
   companionState: CompanionState;
   packedBag: PackedBag | null;
   activeTrip: Trip | null;
   postcards: Postcard[];
+  souvenirs: string[];
+  misunderstandings: string[];
+  secretProgress: number;
+  lastResult: DayOutcome | null;
   screen: Screen;
   selectedPostcardId: string | null;
   pendingPostcardId: string | null;
-  notice: string | null;
+
+  // cloud / account
+  cloud: CloudAuth | null;
+  connectUrl: string | null;
+  cloudBusy: boolean;
+  cloudError: string | null;
 
   setHasHydrated: (v: boolean) => void;
   createCompanion: (input: CreateCompanionInput) => void;
   goTo: (screen: Screen) => void;
-  clearNotice: () => void;
-  prepareBag: (items: PackedItem[], message: string) => void;
+  prepareBag: (
+    items: PackedItem[],
+    message: string,
+    gesture?: Gesture,
+  ) => void;
   openPostcard: (id: string) => void;
+  setPostcardImage: (
+    id: string,
+    url: string | undefined,
+    status: "ready" | "error",
+  ) => void;
   collectPostcard: () => void;
   tick: (now?: number) => void;
   devFastForward: () => void;
   devRunTrip: () => void;
   reset: () => void;
+
+  // cloud actions
+  login: (phone: string) => Promise<void>;
+  logout: () => void;
+  cloudPull: () => Promise<void>;
+  adoptSave: (save: CloudSave) => void;
 }
 
 export const useGameStore = create<GameState>()(
@@ -68,21 +135,46 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       hasHydrated: false,
       companion: null,
+      capyState: DEFAULT_CAPY,
       companionState: "idle_home",
       packedBag: null,
       activeTrip: null,
       postcards: [],
-      screen: "create",
+      souvenirs: [],
+      misunderstandings: [],
+      secretProgress: 0,
+      lastResult: null,
+      screen: "login",
       selectedPostcardId: null,
       pendingPostcardId: null,
-      notice: null,
+
+      cloud: null,
+      connectUrl: null,
+      cloudBusy: false,
+      cloudError: null,
 
       setHasHydrated: (v) => set({ hasHydrated: v }),
 
       createCompanion: (input) => {
+        const s = get();
+        if (s.cloud) {
+          // Cloud: create the pet on the server, then show the connect card.
+          set({ cloudBusy: true, cloudError: null });
+          cloud
+            .create(s.cloud.bindToken, input)
+            .then(({ save }) => {
+              get().adoptSave(save);
+              set({ cloudBusy: false, screen: "connect" });
+            })
+            .catch((e: Error) =>
+              set({ cloudBusy: false, cloudError: e.message }),
+            );
+          return;
+        }
+
         const companion: Companion = {
           id: uid("cmp"),
-          name: input.name.trim() || "旅行伙伴",
+          name: input.name.trim() || "卡皮巴拉",
           type: input.type,
           primaryColor: input.primaryColor,
           personality: input.personality,
@@ -91,54 +183,85 @@ export const useGameStore = create<GameState>()(
         };
         set({
           companion,
+          capyState: DEFAULT_CAPY,
           companionState: "idle_home",
           packedBag: null,
           activeTrip: null,
+          lastResult: null,
           screen: "home",
-          notice: null,
         });
       },
 
-      goTo: (screen) => set({ screen, notice: null }),
+      goTo: (screen) => set({ screen }),
 
-      clearNotice: () => set({ notice: null }),
+      prepareBag: (items, message, gesture) => {
+        const s = get();
+        if (s.cloud) {
+          set({ cloudBusy: true, cloudError: null, screen: "home" });
+          cloud
+            .pack(s.cloud.bindToken, items, message, gesture)
+            .then(({ save }) => {
+              get().adoptSave(save);
+              set({ cloudBusy: false });
+            })
+            .catch((e: Error) =>
+              set({ cloudBusy: false, cloudError: e.message }),
+            );
+          return;
+        }
 
-      prepareBag: (items, message) => {
         const now = Date.now();
         const decision = scheduleDeparture(now);
-        const packedBag: PackedBag = {
-          items,
-          message,
-          packedAt: now,
-          departAt: decision.departAt,
-          willGo: decision.willGo,
-        };
         set({
-          packedBag,
+          packedBag: {
+            items,
+            message,
+            gesture,
+            packedAt: now,
+            departAt: decision.departAt,
+            willGo: decision.willGo,
+          },
           companionState: "ready",
           screen: "home",
-          notice: null,
         });
       },
 
-      openPostcard: (id) =>
-        set({ selectedPostcardId: id, screen: "postcard" }),
+      openPostcard: (id) => set({ selectedPostcardId: id, screen: "postcard" }),
+
+      // Persist a generated postcard image so it is only generated once.
+      setPostcardImage: (id, url, status) =>
+        set((s) => ({
+          postcards: s.postcards.map((p) =>
+            p.id === id
+              ? { ...p, imageUrl: url ?? p.imageUrl, imageStatus: status }
+              : p,
+          ),
+        })),
 
       collectPostcard: () => {
+        const s = get();
+        if (s.cloud) {
+          cloud
+            .collect(s.cloud.bindToken)
+            .then(({ save }) => get().adoptSave(save))
+            .catch(() => {});
+        }
         set({
           pendingPostcardId: null,
           selectedPostcardId: null,
           screen: "home",
-          notice: null,
         });
       },
 
       tick: (now = Date.now()) => {
         const s = get();
+        // Cloud pets resolve server-side; GameRoot polls cloudPull instead.
+        if (s.cloud) return;
         if (!s.companion) return;
         const out = advanceLifecycle(
           {
             companion: s.companion,
+            capy: s.capyState,
             companionState: s.companionState,
             packedBag: s.packedBag,
             activeTrip: s.activeTrip,
@@ -152,9 +275,8 @@ export const useGameStore = create<GameState>()(
           out.packedBag === s.packedBag &&
           out.activeTrip === s.activeTrip &&
           out.postcards === s.postcards &&
-          !out.departed &&
-          !out.stayedHome &&
-          !out.arrivedPostcardId;
+          !out.started &&
+          !out.outcome;
         if (unchanged) return;
 
         const patch: Partial<GameState> = {
@@ -164,21 +286,63 @@ export const useGameStore = create<GameState>()(
           postcards: out.postcards,
         };
 
-        if (out.arrivedPostcardId) {
-          patch.pendingPostcardId = out.arrivedPostcardId;
-          patch.notice = null;
-          // Surface the arrival unless the player is already browsing cards.
-          if (s.screen === "home" || s.screen === "traveling") {
-            patch.selectedPostcardId = out.arrivedPostcardId;
-            patch.screen = "postcard";
+        if (out.outcome) {
+          let o = out.outcome;
+          // Secret events build over several days, then pay off.
+          if (o.kind === "secret") {
+            const next = s.secretProgress + 1;
+            if (next >= SECRET_THRESHOLD) {
+              const reveal = pick(SECRET_REVEALS);
+              o = {
+                ...o,
+                title: "秘密揭晓了！",
+                story: `攒了好几天的小古怪，今天终于有了答案——${reveal}`,
+                memory: `【揭晓】${reveal}`,
+                trait: "藏着小秘密",
+                effects: { ...o.effects, mood: 10, bond: 8, curiosity: 4 },
+              };
+              patch.secretProgress = 0;
+            } else {
+              o = {
+                ...o,
+                story: `${o.story}（这已经是第 ${next} 个奇怪的迹象了…）`,
+              };
+              patch.secretProgress = next;
+            }
           }
-        } else if (out.departed) {
-          patch.notice = null;
+          let capyNext = applyEffects(s.capyState, o.effects);
+          if (o.memory)
+            capyNext = {
+              ...capyNext,
+              memories: [o.memory, ...capyNext.memories].slice(0, 30),
+            };
+          if (o.trait && !capyNext.traits.includes(o.trait))
+            capyNext = { ...capyNext, traits: [...capyNext.traits, o.trait] };
+          if (out.activeTrip?.gesture === "pat")
+            capyNext = {
+              ...capyNext,
+              bond: clamp(capyNext.bond + 3),
+              mood: clamp(capyNext.mood + 2),
+            };
+          patch.capyState = capyNext;
+          patch.lastResult = o;
+          if (o.souvenir) patch.souvenirs = [o.souvenir, ...s.souvenirs];
+          if (o.misunderstanding)
+            patch.misunderstandings = [o.misunderstanding, ...s.misunderstandings];
+
+          if (o.postcard) {
+            patch.pendingPostcardId = o.postcard.id;
+            if (s.screen === "home" || s.screen === "traveling") {
+              patch.selectedPostcardId = o.postcard.id;
+              patch.screen = "postcard";
+            }
+          } else if (s.screen === "home" || s.screen === "traveling") {
+            patch.screen = "result";
+          }
+        } else if (out.started) {
           if (s.screen === "home" || s.screen === "pack") {
             patch.screen = "traveling";
           }
-        } else if (out.stayedHome) {
-          patch.notice = pick(STAY_NOTICES);
         }
 
         set(patch);
@@ -186,20 +350,20 @@ export const useGameStore = create<GameState>()(
 
       devFastForward: () => {
         const s = get();
+        if (s.cloud) return;
         const now = Date.now();
         if (s.companionState === "ready" && s.packedBag) {
-          set({
-            packedBag: { ...s.packedBag, departAt: now, willGo: true },
-          });
+          set({ packedBag: { ...s.packedBag, departAt: now, willGo: true } });
         } else if (s.companionState === "traveling" && s.activeTrip) {
           set({ activeTrip: { ...s.activeTrip, returnsAt: now } });
         }
         get().tick(now);
       },
 
-      // Instant out-and-back: leaves now and returns now, producing a postcard.
+      // Instant: start a day and resolve it right away (guest/dev only).
       devRunTrip: () => {
         const s = get();
+        if (s.cloud) return;
         if (!s.companion) return;
         const now = Date.now();
         if (s.companionState === "traveling" && s.activeTrip) {
@@ -215,6 +379,7 @@ export const useGameStore = create<GameState>()(
           companionId: s.companion.id,
           items,
           message,
+          gesture: s.packedBag?.gesture,
           status: "traveling",
           destination: plan.destination,
           startedAt: now - 1,
@@ -228,15 +393,117 @@ export const useGameStore = create<GameState>()(
       reset: () =>
         set({
           companion: null,
+          capyState: DEFAULT_CAPY,
           companionState: "idle_home",
           packedBag: null,
           activeTrip: null,
           postcards: [],
-          screen: "create",
+          souvenirs: [],
+          misunderstandings: [],
+          lastResult: null,
+          screen: "login",
           selectedPostcardId: null,
           pendingPostcardId: null,
-          notice: null,
+          cloud: null,
+          connectUrl: null,
+          cloudError: null,
         }),
+
+      // ---- cloud ----
+
+      login: async (phone) => {
+        set({ cloudBusy: true, cloudError: null });
+        try {
+          const res = await cloud.login(phone);
+          set({
+            cloud: {
+              userId: res.user.id,
+              phone: res.user.phone,
+              bindToken: res.bindToken,
+              rev: res.save.rev,
+            },
+            connectUrl: res.connectUrl,
+            cloudBusy: false,
+          });
+          get().adoptSave(res.save);
+          // No pet yet → make one (random); otherwise go home.
+          set({ screen: res.save.companion ? "home" : "create" });
+        } catch (e) {
+          set({ cloudBusy: false, cloudError: (e as Error).message });
+        }
+      },
+
+      logout: () =>
+        set({
+          companion: null,
+          capyState: DEFAULT_CAPY,
+          companionState: "idle_home",
+          packedBag: null,
+          activeTrip: null,
+          postcards: [],
+          souvenirs: [],
+          misunderstandings: [],
+          lastResult: null,
+          selectedPostcardId: null,
+          pendingPostcardId: null,
+          cloud: null,
+          connectUrl: null,
+          cloudError: null,
+          screen: "login",
+        }),
+
+      cloudPull: async () => {
+        const s = get();
+        if (!s.cloud) return;
+        try {
+          const { save } = await cloud.pet(s.cloud.bindToken);
+          if (save.rev === s.cloud.rev) return; // nothing new
+          const prevPending = s.pendingPostcardId;
+          const prevResult = s.lastResult;
+          get().adoptSave(save);
+          set((cur) => {
+            const patch: Partial<GameState> = {};
+            let screen = cur.screen;
+            const arrivedPostcard =
+              !!save.pendingPostcardId && save.pendingPostcardId !== prevPending;
+            if (
+              save.companionState === "traveling" &&
+              (screen === "home" || screen === "pack")
+            )
+              screen = "traveling";
+            if (arrivedPostcard && (screen === "home" || screen === "traveling")) {
+              patch.selectedPostcardId = save.pendingPostcardId;
+              screen = "postcard";
+            } else if (
+              save.lastResult &&
+              save.lastResult !== prevResult &&
+              !save.pendingPostcardId &&
+              (screen === "home" || screen === "traveling")
+            ) {
+              screen = "result";
+            }
+            patch.screen = screen;
+            return patch;
+          });
+        } catch {
+          /* offline / transient — keep showing the last known state */
+        }
+      },
+
+      adoptSave: (save) =>
+        set((s) => ({
+          companion: save.companion,
+          capyState: save.capyState,
+          companionState: save.companionState,
+          packedBag: save.packedBag,
+          activeTrip: save.activeTrip,
+          postcards: save.postcards,
+          souvenirs: save.souvenirs,
+          misunderstandings: save.misunderstandings,
+          lastResult: save.lastResult,
+          pendingPostcardId: save.pendingPostcardId,
+          cloud: s.cloud ? { ...s.cloud, rev: save.rev } : s.cloud,
+        })),
     }),
     {
       name: "capybanana-save-v1",
@@ -252,13 +519,20 @@ export const useGameStore = create<GameState>()(
       ),
       partialize: (s) => ({
         companion: s.companion,
+        capyState: s.capyState,
         companionState: s.companionState,
         packedBag: s.packedBag,
         activeTrip: s.activeTrip,
         postcards: s.postcards,
+        souvenirs: s.souvenirs,
+        misunderstandings: s.misunderstandings,
+        secretProgress: s.secretProgress,
+        lastResult: s.lastResult,
         screen: s.screen,
         selectedPostcardId: s.selectedPostcardId,
         pendingPostcardId: s.pendingPostcardId,
+        cloud: s.cloud,
+        connectUrl: s.connectUrl,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

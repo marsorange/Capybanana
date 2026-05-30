@@ -7,6 +7,7 @@ import {
   PERSONALITY_LINES,
 } from "./destinations";
 import { photoItemsOf, presetsOf } from "./packing";
+import { buildPostcardImagePrompt } from "./postcardPrompt";
 import type { Companion, DestinationTheme, Postcard, Trip } from "./types";
 import { pick, uid } from "./util";
 
@@ -63,16 +64,23 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
 
   const reason = [reasonMain, itemsPhrase].filter(Boolean).join("，") + "。";
 
+  const locationName = pick(meta.locationNames);
+
   return {
     id: uid("pc"),
     tripId: trip.id,
     companionId: companion.id,
-    locationName: pick(meta.locationNames),
+    locationName,
     destinationTheme: trip.destination,
     title: pick(meta.titles),
     message,
     reason,
     imageKey: trip.destination,
     sentAt: new Date().toISOString(),
+    // Prompt for the AI postcard art; image itself is generated client-side.
+    imagePrompt: buildPostcardImagePrompt(companion, trip, {
+      locationName,
+      scene,
+    }),
   };
 }

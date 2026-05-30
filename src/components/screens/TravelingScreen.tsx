@@ -17,10 +17,10 @@ const WEATHERS = [
 ];
 
 function statusLine(p: number): string {
-  if (p < 0.34) return "刚出门，脚步还很轻快。";
-  if (p < 0.7) return "走到了没见过的地方，正东张西望。";
-  if (p < 0.98) return "好像在往回走了，再等等它。";
-  return "快到家门口啦！";
+  if (p < 0.34) return "今天才刚开始，它还在琢磨你的包裹。";
+  if (p < 0.7) return "它正捣鼓着你给的东西，不知道在干嘛。";
+  if (p < 0.98) return "好像有点眉目了，再等等。";
+  return "今天的结果马上揭晓！";
 }
 
 export default function TravelingScreen() {
@@ -48,22 +48,16 @@ export default function TravelingScreen() {
       {/* empty room */}
       <div className="relative h-[42%] shrink-0 overflow-hidden bg-gradient-to-b from-cream-soft to-cream-deep">
         <SceneCanvas
-          controls="orbit"
+          controls="none"
           orthographic
-          enableZoom
           cameraPosition={[9, 9, 9]}
           target={[-1.3, 1.5, -1.3]}
           zoom={40}
-          minZoom={24}
-          maxZoom={100}
-          azimuth={0.85}
-          minPolar={0.7}
-          maxPolar={1.2}
         >
           <HomeScene mode="away" postcardThemes={wallThemes} />
         </SceneCanvas>
         <div className="pointer-events-none absolute inset-x-0 top-0 px-5 pt-5">
-          <h1 className="font-hand text-2xl text-ink">{companion.name} 出门了</h1>
+          <h1 className="font-hand text-2xl text-ink">{companion.name} 的今天</h1>
           <p className="mt-0.5 text-sm text-ink-soft">{weather}</p>
         </div>
       </div>
@@ -90,7 +84,7 @@ export default function TravelingScreen() {
         </div>
 
         <p className="mt-auto pt-4 text-center text-xs text-ink-soft/70">
-          它会自己挑落脚的地方，回来时带一张明信片给你。
+          今天它会把你的包裹玩成什么呢？回来看看就知道。
         </p>
 
         <button

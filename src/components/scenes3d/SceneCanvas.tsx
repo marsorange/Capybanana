@@ -1,9 +1,9 @@
 "use client";
 
-import { ContactShadows, OrbitControls } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import * as THREE from "three";
 import { zoomBus } from "./zoomBus";
 
@@ -38,6 +38,55 @@ function ZoomApplier({ min, max }: { min: number; max: number }) {
   return null;
 }
 
+function WebGLContextGuard() {
+  const gl = useThree((s) => s.gl);
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onLost = (e: Event) => {
+      if (
+        canvas.isConnected &&
+        canvas.clientWidth > 0 &&
+        canvas.clientHeight > 0
+      ) {
+        e.preventDefault();
+      }
+    };
+    const onRestored = () => {
+      const p = canvas.parentElement;
+      if (p) {
+        gl.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+        gl.setSize(p.clientWidth, p.clientHeight, false);
+      }
+      window.dispatchEvent(new Event("resize"));
+    };
+
+    canvas.addEventListener("webglcontextlost", onLost, false);
+    canvas.addEventListener("webglcontextrestored", onRestored, false);
+    return () => {
+      canvas.removeEventListener("webglcontextlost", onLost, false);
+      canvas.removeEventListener("webglcontextrestored", onRestored, false);
+    };
+  }, [gl]);
+
+  return null;
+}
+
+function GroundShadow() {
+  return (
+    <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <circleGeometry args={[4.8, 40]} />
+      <meshBasicMaterial
+        color="#5a4636"
+        transparent
+        opacity={0.12}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
 export default function SceneCanvas({
   children,
   controls = "none",
@@ -62,19 +111,12 @@ export default function SceneCanvas({
       className={className}
       orthographic={orthographic}
       shadows={false}
-      dpr={[1, 1.5]}
+      dpr={[1, 1.25]}
       gl={{ alpha: true, antialias: true, powerPreference: "default" }}
       camera={camera}
       style={{ touchAction: "none" }}
-      onCreated={({ gl }) => {
-        // Allow the browser to restore a lost context instead of going blank.
-        gl.domElement.addEventListener(
-          "webglcontextlost",
-          (e) => e.preventDefault(),
-          false,
-        );
-      }}
     >
+      <WebGLContextGuard />
       <hemisphereLight args={["#fff3da", "#d6c199", 1.05]} />
       <ambientLight intensity={0.35} color="#fff1da" />
       <directionalLight position={[7, 12, 6]} intensity={1.7} color="#fff2dd" />
@@ -83,16 +125,7 @@ export default function SceneCanvas({
 
       {orthographic && (
         <>
-          <ContactShadows
-            position={[0, 0.04, 0]}
-            scale={11}
-            opacity={0.4}
-            blur={2.8}
-            far={4}
-            resolution={256}
-            frames={1}
-            color="#5a4636"
-          />
+          <GroundShadow />
           <ZoomApplier min={minZoom} max={maxZoom} />
         </>
       )}
