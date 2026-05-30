@@ -1,7 +1,7 @@
 // Passwordless phone login (no code — phone is the identity, an MVP tradeoff).
 // Finds or creates the account + its bind token, catches the pet's lifecycle
 // up, and returns the save + the agent connect link.
-import { coerceCompanionDraft } from "@/game/randomCompanion";
+import { randomCuteCompanion } from "@/game/randomCompanion";
 import { KV_PERSISTENT } from "@/lib/kv";
 import { baseUrl, jsonError } from "@/server/api";
 import { createPet, summarizePet, tickSave } from "@/server/engine";
@@ -38,11 +38,12 @@ export async function POST(req: Request): Promise<Response> {
   const now = Date.now();
   // The owner should be able to play immediately. If the account has no pet
   // yet (a brand-new account, or one left petless before auto-adoption), adopt
-  // a random capybara on the server so login returns a ready-to-play save.
-  // Attaching an AI agent later is optional.
+  // a capybara-cute companion on the server so login returns a ready-to-play
+  // save. The look can be re-rolled later from the profile. Attaching an AI
+  // agent stays optional.
   const seeded = save.companion
     ? save
-    : createPet(save, coerceCompanionDraft(undefined), now);
+    : createPet(save, randomCuteCompanion(), now);
   const ticked = tickSave(seeded, now);
   if (ticked.rev !== save.rev) await savePet(user.petId, ticked);
 

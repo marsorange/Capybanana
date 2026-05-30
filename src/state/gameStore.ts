@@ -18,7 +18,7 @@ import type {
   Trip,
 } from "@/game/types";
 import { pick, uid } from "@/game/util";
-import { randomCompanion } from "@/game/randomCompanion";
+import { randomCuteCompanion } from "@/game/randomCompanion";
 import { cloud } from "@/lib/cloudClient";
 import type { CloudSave } from "@/server/types";
 
@@ -124,6 +124,7 @@ interface GameState {
   login: (phone: string) => Promise<void>;
   logout: () => void;
   ensureCloudPet: () => Promise<void>;
+  restyle: () => void;
   cloudPull: () => Promise<void>;
   adoptSave: (save: CloudSave) => void;
 }
@@ -439,7 +440,7 @@ export const useGameStore = create<GameState>()(
         try {
           const { save } = await cloud.create(
             s.cloud.bindToken,
-            randomCompanion(),
+            randomCuteCompanion(),
           );
           get().adoptSave(save);
           set({ cloudBusy: false, screen: "profile" });
@@ -459,6 +460,24 @@ export const useGameStore = create<GameState>()(
           }
           set({ cloudBusy: false, cloudError: err.message });
         }
+      },
+
+      // Re-roll the pet's look (cloud-only). The server keeps name/stats; we just
+      // adopt the new save and the spinning portrait updates in place.
+      restyle: () => {
+        const s = get();
+        if (!s.cloud || s.cloudBusy) return;
+        set({ cloudBusy: true, cloudError: null });
+        cloud
+          .restyle(s.cloud.bindToken, { random: true })
+          .then(({ save }) => {
+            get().adoptSave(save);
+            set({ cloudBusy: false });
+          })
+          .catch((e: Error & { status?: number }) => {
+            if (e.status === 401) return get().logout();
+            set({ cloudBusy: false, cloudError: e.message });
+          });
       },
 
       logout: () =>

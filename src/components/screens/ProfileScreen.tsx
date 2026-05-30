@@ -78,6 +78,9 @@ export default function ProfileScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const capy = useGameStore((s) => s.capyState);
   const goTo = useGameStore((s) => s.goTo);
+  const restyle = useGameStore((s) => s.restyle);
+  const cloudBusy = useGameStore((s) => s.cloudBusy);
+  const bound = useGameStore((s) => !!s.cloud);
 
   const typeInfo = COMPANION_TYPES.find((t) => t.type === companion.type);
   const persInfo = PERSONALITIES.find(
@@ -205,7 +208,18 @@ export default function ProfileScreen() {
         )}
       </div>
 
-      <div className="shrink-0 border-t-2 border-ink/8 bg-cream/80 px-5 py-4 backdrop-blur">
+      <div className="shrink-0 space-y-2.5 border-t-2 border-ink/8 bg-cream/80 px-5 py-4 backdrop-blur">
+        {bound && (
+          <Button
+            variant="soft"
+            size="lg"
+            className="w-full"
+            disabled={cloudBusy}
+            onClick={() => restyle()}
+          >
+            {cloudBusy ? "换造型中…" : "🎲 换个样子"}
+          </Button>
+        )}
         <Button size="lg" className="w-full" onClick={() => goTo("home")}>
           进入小屋 →
         </Button>

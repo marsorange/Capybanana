@@ -81,6 +81,11 @@ export const cloud = {
     call<MutationResult>("POST", "/api/agent/stay", token, { mode, note }),
   collect: (token: string) =>
     call<MutationResult>("POST", "/api/agent/collect", token),
+  // Re-roll / set the pet's look (type/color/accessory). Empty opts → random.
+  restyle: (
+    token: string,
+    opts?: { random?: boolean; type?: string; primaryColor?: string; accessory?: string },
+  ) => call<MutationResult>("POST", "/api/agent/restyle", token, opts ?? { random: true }),
   // The pet's daily diary (agent writes it in the pet's voice).
   writeDiary: (token: string, text: string) =>
     call<MutationResult>("POST", "/api/agent/diary", token, { text }),

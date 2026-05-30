@@ -7,7 +7,12 @@ import { applyOutcome, clamp } from "@/game/applyOutcome";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { DESTINATIONS } from "@/game/destinations";
 import { planTrip } from "@/game/planTrip";
-import type { CompanionDraft } from "@/game/randomCompanion";
+import {
+  coerceAppearance,
+  randomCuteCompanion,
+  type Appearance,
+  type CompanionDraft,
+} from "@/game/randomCompanion";
 import { resolveDay } from "@/game/resolveDay";
 import type {
   Companion,
@@ -202,6 +207,41 @@ export function createPet(
   return bump(base, now, {
     type: "created",
     text: `${companion.name} 住进了小屋。`,
+  });
+}
+
+/**
+ * Change only the pet's look (type/color/accessory) — name, stats, history all
+ * stay. `random: true` rolls a fresh capybara-cute look; `appearance` forces
+ * specific fields. A no-op (and no rev bump) when nothing actually changes.
+ */
+export function restyleCompanion(
+  save: CloudSave,
+  opts: { appearance?: unknown; random?: boolean },
+  now: number,
+): CloudSave {
+  if (!save.companion) return save;
+  const c = save.companion;
+  let target: Appearance = {
+    type: c.type,
+    primaryColor: c.primaryColor,
+    accessory: c.accessory,
+  };
+  if (opts.random) {
+    const r = randomCuteCompanion();
+    target = { type: r.type, primaryColor: r.primaryColor, accessory: r.accessory };
+  }
+  target = coerceAppearance(opts.appearance, target);
+  if (
+    target.type === c.type &&
+    target.primaryColor === c.primaryColor &&
+    target.accessory === c.accessory
+  )
+    return save; // nothing changed
+  const companion: Companion = { ...c, ...target };
+  return bump({ ...save, companion }, now, {
+    type: "restyled",
+    text: `${c.name} 换了个新造型。`,
   });
 }
 

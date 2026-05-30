@@ -25,7 +25,8 @@ export type AgentEventType =
   | "postcard"
   | "pat"
   | "said"
-  | "diary";
+  | "diary"
+  | "restyled";
 
 // A daily diary entry the agent writes in the pet's voice (<= 200 chars).
 // At most one per calendar day — writing again the same day updates it.

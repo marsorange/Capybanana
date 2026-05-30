@@ -260,18 +260,18 @@ export default function Companion3D({
 
         {/* eyes set high on the head, with a glossy alive highlight */}
         <mesh ref={leftEye} position={[-0.2, 0.82, 0.46]}>
-          <sphereGeometry args={[0.085, 12, 10]} />
+          <sphereGeometry args={[0.1, 14, 12]} />
           {m(INK)}
-          <mesh position={[0.028, 0.035, 0.055]}>
-            <sphereGeometry args={[0.028, 8, 8]} />
+          <mesh position={[0.032, 0.04, 0.058]}>
+            <sphereGeometry args={[0.034, 8, 8]} />
             <meshBasicMaterial color="#fffdf8" />
           </mesh>
         </mesh>
         <mesh ref={rightEye} position={[0.2, 0.82, 0.46]}>
-          <sphereGeometry args={[0.085, 12, 10]} />
+          <sphereGeometry args={[0.1, 14, 12]} />
           {m(INK)}
-          <mesh position={[0.028, 0.035, 0.055]}>
-            <sphereGeometry args={[0.028, 8, 8]} />
+          <mesh position={[0.032, 0.04, 0.058]}>
+            <sphereGeometry args={[0.034, 8, 8]} />
             <meshBasicMaterial color="#fffdf8" />
           </mesh>
         </mesh>

@@ -48,13 +48,18 @@ export default function HomeScreen() {
             "radial-gradient(125% 95% at 50% 20%, #f7eedb 0%, #efe2c8 58%, #e6d6b8 100%)",
         }}
       />
-      {/* fixed immersive isometric view (no orbit / no zoom) */}
+      {/* free-orbit isometric view, centered on the island */}
       <SceneCanvas
-        controls="none"
+        controls="orbit"
         orthographic
         cameraPosition={[9, 8.4, 9]}
-        target={[-1.0, 1.5, -1.0]}
+        target={[-0.6, 2.0, -0.6]}
         zoom={54}
+        enableZoom
+        minZoom={40}
+        maxZoom={95}
+        minPolar={0.6}
+        maxPolar={1.32}
       >
         <HomeScene
           mode="home"

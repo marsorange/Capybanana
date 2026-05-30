@@ -94,3 +94,31 @@ export function coerceCompanionDraft(input: unknown): CompanionDraft {
         : base.accessory,
   };
 }
+
+// Just the look (no name/personality) — used to restyle an existing pet.
+export interface Appearance {
+  type: CompanionType;
+  primaryColor: string;
+  accessory: Accessory;
+}
+
+// Validate a partial appearance, keeping the fallback for any missing/invalid
+// field (so an explicit restyle only changes what it specifies).
+export function coerceAppearance(input: unknown, fallback: Appearance): Appearance {
+  if (!input || typeof input !== "object") return fallback;
+  const o = input as Record<string, unknown>;
+  return {
+    type:
+      typeof o.type === "string" && TYPE_SET.has(o.type)
+        ? (o.type as CompanionType)
+        : fallback.type,
+    primaryColor:
+      typeof o.primaryColor === "string" && COLOR_SET.has(o.primaryColor)
+        ? o.primaryColor
+        : fallback.primaryColor,
+    accessory:
+      typeof o.accessory === "string" && ACCESSORY_SET.has(o.accessory)
+        ? (o.accessory as Accessory)
+        : fallback.accessory,
+  };
+}
