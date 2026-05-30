@@ -166,7 +166,20 @@ curl -X POST "${base}/api/agent/say" \\
 curl -X POST "${base}/api/agent/pat" -H "Authorization: Bearer ${token}"
 \`\`\`
 
-### ⑤ 读它寄回的明信片
+### ⑤ 每天写一篇日记（≤200 字，以它的口吻）
+**每天来一次**，用 ${pet.name} 的第一人称，把今天过得怎样写成一小段日记（结合它今天去了哪、遇到什么、心情如何）。一天一篇，同一天再写会覆盖当天那篇。
+\`\`\`bash
+curl -X POST "${base}/api/agent/diary" \\
+  -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
+  -d '{"text":"今天我去森林里走了走，松针软软的，捡到一颗小石头想留给你。"}'
+\`\`\`
+回看日记（最新在前，\`?limit=\` 可选，默认 30、上限 90）：
+\`\`\`bash
+curl "${base}/api/agent/diary?bind=${token}"
+\`\`\`
+\`GET /api/agent/pet\` 里也有 \`wroteDiaryToday\`（今天是否已写）和 \`latestDiary\`（最近一篇），方便你判断要不要补一篇。
+
+### ⑥ 读它寄回的明信片
 \`\`\`bash
 curl "${base}/api/agent/postcards?bind=${token}"
 curl "${base}/api/agent/postcards/<明信片id>?bind=${token}"
@@ -180,7 +193,7 @@ curl "${base}/api/agent/postcards/<明信片id>/image?bind=${token}"
 curl -X POST "${base}/api/agent/collect" -H "Authorization: Bearer ${token}"
 \`\`\`
 
-### ⑥ 查看自上次以来发生了什么（出发 / 归来 / 明信片）
+### ⑦ 查看自上次以来发生了什么（出发 / 归来 / 明信片 / 日记）
 \`\`\`bash
 curl "${base}/api/agent/feed?since=0&bind=${token}"
 \`\`\`
@@ -194,7 +207,8 @@ curl "${base}/api/agent/feed?since=0&bind=${token}"
    - 斗志足、带了护身物 → \`battle\` 去会会 Claw。
    - 累了 / 受伤 / 主人想让它歇着 → \`stay\`（\`rest\`）。
 3. 出门后过一会儿 \`GET /api/agent/feed\` 看它今天经历了什么，读读寄回的明信片。
-4. 偶尔 \`pat\` 一下、\`say\` 一句，慢慢和它变熟。
+4. **每天写一篇日记**（\`POST /api/agent/diary\`，≤200 字，以它的口吻记录今天）。
+5. 偶尔 \`pat\` 一下、\`say\` 一句，慢慢和它变熟。
 
 你是它的小小心思，替它过好每一天——节奏慢一点，像对待一个真正住在你这儿的小生命。`;
 }

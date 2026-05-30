@@ -7,24 +7,91 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
 import type { Accessory, CompanionType } from "@/game/types";
-import { lightenColor } from "./materials";
+import { darkenColor, lightenColor } from "./materials";
 
 interface Companion3DProps {
   type: CompanionType;
   color: string;
   accessory: Accessory;
+  // Stable seed for the per-pet random markings (capybara id, or a draft hash).
+  // Same seed → same freckles/cowlick/tail, so a pet always looks like itself.
+  seed?: string;
   onPointerDown?: (e: { stopPropagation: () => void }) => void;
 }
 
 const INK = "#3a2e2a";
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} />
+  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
 );
+
+// Tiny deterministic PRNG so the random features are stable per pet (no flicker
+// across re-renders, identical on every device) yet varied between pets.
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(a: number): () => number {
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+interface Spot {
+  x: number;
+  y: number;
+  z: number;
+  s: number;
+}
+interface Features {
+  spots: Spot[];
+  cowlick: boolean;
+  tail: boolean;
+  brows: boolean;
+  earSize: number;
+  chonk: number;
+  snoutPale: number;
+}
+
+function rollFeatures(
+  seed: string | undefined,
+  type: CompanionType,
+  color: string,
+  accessory: Accessory,
+): Features {
+  const rnd = mulberry32(hashStr(seed ?? `${type}|${color}|${accessory}`));
+  const spotCount = Math.floor(rnd() * 5); // 0..4 fur freckles
+  const spots: Spot[] = Array.from({ length: spotCount }, () => ({
+    x: (rnd() - 0.5) * 0.62,
+    y: 0.74 + rnd() * 0.3,
+    z: -0.12 - rnd() * 0.32,
+    s: 0.045 + rnd() * 0.035,
+  }));
+  // Small animals get perkier ears; the capybara base ears stay modest.
+  const earSize = (type === "animal" ? 1.35 : 1) * (0.9 + rnd() * 0.3);
+  return {
+    spots,
+    cowlick: rnd() < 0.55,
+    tail: rnd() < 0.65,
+    brows: rnd() < 0.4,
+    earSize,
+    chonk: 0.96 + rnd() * 0.16,
+    snoutPale: 0.26 + rnd() * 0.16,
+  };
+}
 
 export default function Companion3D({
   type,
   color,
   accessory,
+  seed,
   onPointerDown,
 }: Companion3DProps) {
   const entrance = useRef<THREE.Group>(null);
@@ -36,6 +103,19 @@ export default function Companion3D({
 
   const belly = useMemo(() => lightenColor(color, 0.5), [color]);
   const bodyColor = type === "mushroom" ? "#f6ecdc" : color;
+  const feat = useMemo(
+    () => rollFeatures(seed, type, color, accessory),
+    [seed, type, color, accessory],
+  );
+  const snoutColor = useMemo(
+    () => lightenColor(color, feat.snoutPale),
+    [color, feat.snoutPale],
+  );
+  const earInner = useMemo(() => lightenColor(color, 0.45), [color]);
+  const spotColor = useMemo(() => darkenColor(color, 0.22), [color]);
+  // A cowlick would poke through a hat or a mushroom cap, so skip it there.
+  const showCowlick =
+    feat.cowlick && accessory !== "hat" && type !== "mushroom";
 
   useEffect(() => {
     nextBlink.current = 2 + Math.random() * 3;
@@ -74,7 +154,7 @@ export default function Companion3D({
     <group ref={entrance}>
       {/* soft grounding shadow that follows the companion */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.55, 24]} />
+        <circleGeometry args={[0.58, 24]} />
         <meshBasicMaterial color="#3a2e2a" transparent opacity={0.16} />
       </mesh>
       <group
@@ -83,204 +163,288 @@ export default function Companion3D({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "auto")}
       >
-        {/* feet */}
-      <mesh position={[-0.22, 0.08, 0.34]}>
-        <sphereGeometry args={[0.13, 10, 8]} />
-        {m(belly)}
-      </mesh>
-      <mesh position={[0.22, 0.08, 0.34]}>
-        <sphereGeometry args={[0.13, 10, 8]} />
-        {m(belly)}
-      </mesh>
-
-      {/* body */}
-      {type === "robot" ? (
-        <RoundedBox args={[0.92, 0.96, 0.82]} radius={0.16} smoothness={2} position={[0, 0.62, 0]}>
-          {m(bodyColor)}
-        </RoundedBox>
-      ) : (
-        <mesh position={[0, 0.6, 0]} scale={type === "dumpling" ? [1.05, 0.86, 1.05] : [1, 1, 1]}>
-          <sphereGeometry args={[0.58, 16, 12]} />
-          {m(bodyColor)}
+        {/* stubby capybara feet — two front paws + two little hind ones */}
+        <mesh position={[-0.24, 0.08, 0.3]}>
+          <sphereGeometry args={[0.14, 8, 6]} />
+          {m(belly)}
         </mesh>
-      )}
-
-      {/* belly patch */}
-      <mesh position={[0, 0.5, 0.46]} scale={[0.8, 0.92, 0.4]}>
-        <sphereGeometry args={[0.4, 14, 12]} />
-        {m(belly)}
-      </mesh>
-
-      {/* eyes (with a glossy highlight for a cuter, alive look) */}
-      <mesh ref={leftEye} position={[-0.19, 0.75, 0.52]}>
-        <sphereGeometry args={[0.088, 12, 10]} />
-        {m(INK)}
-        <mesh position={[0.03, 0.035, 0.055]}>
-          <sphereGeometry args={[0.03, 8, 8]} />
-          <meshBasicMaterial color="#fffdf8" />
+        <mesh position={[0.24, 0.08, 0.3]}>
+          <sphereGeometry args={[0.14, 8, 6]} />
+          {m(belly)}
         </mesh>
-      </mesh>
-      <mesh ref={rightEye} position={[0.19, 0.75, 0.52]}>
-        <sphereGeometry args={[0.088, 12, 10]} />
-        {m(INK)}
-        <mesh position={[0.03, 0.035, 0.055]}>
-          <sphereGeometry args={[0.03, 8, 8]} />
-          <meshBasicMaterial color="#fffdf8" />
+        <mesh position={[-0.26, 0.07, -0.26]}>
+          <sphereGeometry args={[0.11, 8, 6]} />
+          {m(belly)}
         </mesh>
-      </mesh>
+        <mesh position={[0.26, 0.07, -0.26]}>
+          <sphereGeometry args={[0.11, 8, 6]} />
+          {m(belly)}
+        </mesh>
 
-      {/* tiny snout for a friendlier face */}
-      <mesh position={[0, 0.62, 0.56]} scale={[1.25, 0.85, 0.7]}>
-        <sphereGeometry args={[0.07, 10, 8]} />
-        {m(lightenColor(color, 0.32))}
-      </mesh>
-
-      {/* cheeks */}
-      <mesh position={[-0.3, 0.62, 0.46]} scale={[1, 0.7, 0.4]}>
-        <sphereGeometry args={[0.07, 8, 8]} />
-        {m("#f1a6ad")}
-      </mesh>
-      <mesh position={[0.3, 0.62, 0.46]} scale={[1, 0.7, 0.4]}>
-        <sphereGeometry args={[0.07, 8, 8]} />
-        {m("#f1a6ad")}
-      </mesh>
-
-      {type === "animal" && (
-        <>
-          <mesh position={[-0.3, 1.12, 0]} rotation={[0, 0, 0.3]}>
-            <coneGeometry args={[0.18, 0.34, 12]} />
-            {m(color)}
+        {/* body — a rounded capybara loaf (robots keep their boxy chassis) */}
+        {type === "robot" ? (
+          <RoundedBox
+            args={[0.92, 0.96, 0.82]}
+            radius={0.16}
+            smoothness={2}
+            position={[0, 0.62, 0]}
+          >
+            {m(bodyColor)}
+          </RoundedBox>
+        ) : (
+          <mesh
+            position={[0, 0.6, 0]}
+            scale={
+              type === "dumpling"
+                ? [1.08 * feat.chonk, 0.84, 1.04]
+                : [1.04 * feat.chonk, 0.92, 1.06]
+            }
+          >
+            <sphereGeometry args={[0.58, 14, 10]} />
+            {m(bodyColor)}
           </mesh>
-          <mesh position={[0.3, 1.12, 0]} rotation={[0, 0, -0.3]}>
-            <coneGeometry args={[0.18, 0.34, 12]} />
-            {m(color)}
-          </mesh>
-        </>
-      )}
+        )}
 
-      {type === "mushroom" && (
-        <>
-          <mesh position={[0, 1.04, 0]} scale={[1, 0.62, 1]}>
-            <sphereGeometry args={[0.62, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            {m(color)}
+        {/* lighter belly patch */}
+        <mesh position={[0, 0.5, 0.46]} scale={[0.8, 0.92, 0.4]}>
+          <sphereGeometry args={[0.4, 12, 9]} />
+          {m(belly)}
+        </mesh>
+
+        {/* fur freckles scattered over the back */}
+        {feat.spots.map((sp, i) => (
+          <mesh key={i} position={[sp.x, sp.y, sp.z]} scale={[1, 1, 0.4]}>
+            <sphereGeometry args={[sp.s, 6, 5]} />
+            {m(spotColor)}
           </mesh>
-          {[
-            [-0.26, 1.06, 0.18],
-            [0.22, 1.12, -0.1],
-            [0.04, 1.2, 0.3],
-          ].map((p, i) => (
-            <mesh key={i} position={p as [number, number, number]}>
-              <sphereGeometry args={[0.07, 8, 8]} />
-              {m("#fcf3e3")}
+        ))}
+
+        {/* blunt rectangular capybara muzzle — the signature feature */}
+        <group position={[0, 0.6, 0.46]}>
+          <RoundedBox args={[0.42, 0.36, 0.32]} radius={0.13} smoothness={2}>
+            {m(snoutColor)}
+          </RoundedBox>
+          {/* nostrils */}
+          <mesh position={[-0.09, 0.08, 0.17]}>
+            <sphereGeometry args={[0.03, 8, 6]} />
+            {m(INK)}
+          </mesh>
+          <mesh position={[0.09, 0.08, 0.17]}>
+            <sphereGeometry args={[0.03, 8, 6]} />
+            {m(INK)}
+          </mesh>
+          {/* soft mouth line + a hint of buck teeth */}
+          <mesh position={[0, -0.09, 0.16]}>
+            <boxGeometry args={[0.16, 0.022, 0.02]} />
+            {m(INK)}
+          </mesh>
+          <mesh position={[0, -0.13, 0.15]}>
+            <boxGeometry args={[0.075, 0.06, 0.03]} />
+            {m("#fffdf4")}
+          </mesh>
+        </group>
+
+        {/* small rounded ears, set high and wide */}
+        {[-1, 1].map((s) => (
+          <group key={s} position={[s * 0.34, 0.96, -0.04]}>
+            <mesh scale={[1, 1.15, 0.7]}>
+              <sphereGeometry args={[0.12 * feat.earSize, 8, 6]} />
+              {m(bodyColor)}
+            </mesh>
+            <mesh position={[0, -0.01, 0.05]} scale={[1, 1.05, 0.5]}>
+              <sphereGeometry args={[0.07 * feat.earSize, 8, 6]} />
+              {m(earInner)}
+            </mesh>
+          </group>
+        ))}
+
+        {/* eyes set high on the head, with a glossy alive highlight */}
+        <mesh ref={leftEye} position={[-0.2, 0.82, 0.46]}>
+          <sphereGeometry args={[0.085, 12, 10]} />
+          {m(INK)}
+          <mesh position={[0.028, 0.035, 0.055]}>
+            <sphereGeometry args={[0.028, 8, 8]} />
+            <meshBasicMaterial color="#fffdf8" />
+          </mesh>
+        </mesh>
+        <mesh ref={rightEye} position={[0.2, 0.82, 0.46]}>
+          <sphereGeometry args={[0.085, 12, 10]} />
+          {m(INK)}
+          <mesh position={[0.028, 0.035, 0.055]}>
+            <sphereGeometry args={[0.028, 8, 8]} />
+            <meshBasicMaterial color="#fffdf8" />
+          </mesh>
+        </mesh>
+
+        {/* optional little eyebrow tufts */}
+        {feat.brows &&
+          [-1, 1].map((s) => (
+            <mesh
+              key={s}
+              position={[s * 0.2, 0.95, 0.42]}
+              rotation={[0, 0, s * -0.3]}
+            >
+              <boxGeometry args={[0.1, 0.02, 0.02]} />
+              {m(spotColor)}
             </mesh>
           ))}
-        </>
-      )}
 
-      {type === "sprite" && (
-        <>
-          <mesh position={[0, 1.32, 0]}>
-            <sphereGeometry args={[0.05, 8, 8]} />
-            {m("#f4d35e")}
-          </mesh>
-          <mesh position={[0, 1.14, 0]}>
-            <cylinderGeometry args={[0.012, 0.012, 0.22, 6]} />
-            {m(INK)}
-          </mesh>
-          <mesh position={[-0.6, 0.7, -0.1]} rotation={[0, 0.5, 0.4]}>
-            <coneGeometry args={[0.16, 0.5, 4]} />
-            {m(lightenColor(color, 0.4))}
-          </mesh>
-          <mesh position={[0.6, 0.7, -0.1]} rotation={[0, -0.5, -0.4]}>
-            <coneGeometry args={[0.16, 0.5, 4]} />
-            {m(lightenColor(color, 0.4))}
-          </mesh>
-        </>
-      )}
-
-      {type === "robot" && (
-        <>
-          <mesh position={[0, 1.22, 0]}>
-            <cylinderGeometry args={[0.02, 0.02, 0.2, 6]} />
-            {m(INK)}
-          </mesh>
-          <mesh position={[0, 1.34, 0]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
-            {m("#f4d35e")}
-          </mesh>
-        </>
-      )}
-
-      {type === "dumpling" && (
-        <mesh position={[0, 1.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.22, 0.07, 8, 16]} />
-          {m(lightenColor(color, 0.18))}
+        {/* cheeks */}
+        <mesh position={[-0.33, 0.62, 0.36]} scale={[1, 0.7, 0.4]}>
+          <sphereGeometry args={[0.07, 8, 6]} />
+          {m("#f1a6ad")}
         </mesh>
-      )}
-
-      {accessory === "scarf" && (
-        <mesh position={[0, 0.34, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.5, 0.1, 8, 18]} />
-          {m("#d95f59")}
+        <mesh position={[0.33, 0.62, 0.36]} scale={[1, 0.7, 0.4]}>
+          <sphereGeometry args={[0.07, 8, 6]} />
+          {m("#f1a6ad")}
         </mesh>
-      )}
-      {accessory === "hat" && (
-        <group position={[0, 1.02, 0]}>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.5, 0.5, 0.04, 18]} />
-            {m("#5b6b8a")}
+
+        {/* a cowlick tuft of fur on the crown */}
+        {showCowlick && (
+          <mesh position={[0.05, 1.04, 0]} rotation={[0.2, 0, 0.35]}>
+            <coneGeometry args={[0.06, 0.18, 6]} />
+            {m(darkenColor(color, 0.1))}
           </mesh>
-          <mesh position={[0, 0.18, 0]}>
-            <cylinderGeometry args={[0.3, 0.32, 0.34, 16]} />
-            {m("#5b6b8a")}
+        )}
+
+        {/* a stubby little tail at the back */}
+        {feat.tail && (
+          <mesh position={[0, 0.46, -0.56]}>
+            <sphereGeometry args={[0.08, 8, 6]} />
+            {m(belly)}
           </mesh>
-        </group>
-      )}
-      {accessory === "glasses" && (
-        <group position={[0, 0.74, 0.5]}>
-          <mesh position={[-0.18, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.12, 0.022, 8, 16]} />
-            {m(INK)}
-          </mesh>
-          <mesh position={[0.18, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.12, 0.022, 8, 16]} />
-            {m(INK)}
-          </mesh>
-          <mesh>
-            <boxGeometry args={[0.14, 0.02, 0.02]} />
-            {m(INK)}
-          </mesh>
-        </group>
-      )}
-      {accessory === "flower" && (
-        <group position={[0.34, 1.0, 0.16]}>
-          {[0, 1, 2, 3, 4].map((i) => {
-            const a = (i / 5) * Math.PI * 2;
-            return (
-              <mesh key={i} position={[Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0]}>
-                <sphereGeometry args={[0.06, 8, 8]} />
-                {m("#f1a6ad")}
+        )}
+
+        {/* ---- type-specific toppers, on the capybara base ---- */}
+        {type === "mushroom" && (
+          <>
+            <mesh position={[0, 1.04, 0]} scale={[1, 0.62, 1]}>
+              <sphereGeometry
+                args={[0.62, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]}
+              />
+              {m(color)}
+            </mesh>
+            {[
+              [-0.26, 1.06, 0.18],
+              [0.22, 1.12, -0.1],
+              [0.04, 1.2, 0.3],
+            ].map((p, i) => (
+              <mesh key={i} position={p as [number, number, number]}>
+                <sphereGeometry args={[0.07, 8, 6]} />
+                {m("#fcf3e3")}
               </mesh>
-            );
-          })}
-          <mesh>
-            <sphereGeometry args={[0.06, 8, 8]} />
-            {m("#f4d35e")}
+            ))}
+          </>
+        )}
+
+        {type === "sprite" && (
+          <>
+            <mesh position={[0, 1.32, 0]}>
+              <sphereGeometry args={[0.05, 8, 6]} />
+              {m("#f4d35e")}
+            </mesh>
+            <mesh position={[0, 1.14, 0]}>
+              <cylinderGeometry args={[0.012, 0.012, 0.22, 6]} />
+              {m(INK)}
+            </mesh>
+            <mesh position={[-0.6, 0.7, -0.1]} rotation={[0, 0.5, 0.4]}>
+              <coneGeometry args={[0.16, 0.5, 4]} />
+              {m(lightenColor(color, 0.4))}
+            </mesh>
+            <mesh position={[0.6, 0.7, -0.1]} rotation={[0, -0.5, -0.4]}>
+              <coneGeometry args={[0.16, 0.5, 4]} />
+              {m(lightenColor(color, 0.4))}
+            </mesh>
+          </>
+        )}
+
+        {type === "robot" && (
+          <>
+            <mesh position={[0, 1.22, 0]}>
+              <cylinderGeometry args={[0.02, 0.02, 0.2, 6]} />
+              {m(INK)}
+            </mesh>
+            <mesh position={[0, 1.34, 0]}>
+              <sphereGeometry args={[0.06, 8, 6]} />
+              {m("#f4d35e")}
+            </mesh>
+          </>
+        )}
+
+        {type === "dumpling" && (
+          <mesh position={[0, 1.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.22, 0.07, 8, 16]} />
+            {m(lightenColor(color, 0.18))}
           </mesh>
-        </group>
-      )}
-      {accessory === "bell" && (
-        <>
-          <mesh position={[0, 0.32, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.5, 0.05, 8, 18]} />
-            {m("#caa25a")}
+        )}
+
+        {/* ---- accessories ---- */}
+        {accessory === "scarf" && (
+          <mesh position={[0, 0.34, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.5, 0.1, 8, 18]} />
+            {m("#d95f59")}
           </mesh>
-          <mesh position={[0, 0.28, 0.48]}>
-            <sphereGeometry args={[0.1, 10, 8]} />
-            {m("#f4d35e")}
-          </mesh>
-        </>
-      )}
+        )}
+        {accessory === "hat" && (
+          <group position={[0, 1.02, 0]}>
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.5, 0.5, 0.04, 18]} />
+              {m("#5b6b8a")}
+            </mesh>
+            <mesh position={[0, 0.18, 0]}>
+              <cylinderGeometry args={[0.3, 0.32, 0.34, 16]} />
+              {m("#5b6b8a")}
+            </mesh>
+          </group>
+        )}
+        {accessory === "glasses" && (
+          <group position={[0, 0.82, 0.46]}>
+            <mesh position={[-0.2, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.12, 0.022, 8, 16]} />
+              {m(INK)}
+            </mesh>
+            <mesh position={[0.2, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.12, 0.022, 8, 16]} />
+              {m(INK)}
+            </mesh>
+            <mesh>
+              <boxGeometry args={[0.16, 0.02, 0.02]} />
+              {m(INK)}
+            </mesh>
+          </group>
+        )}
+        {accessory === "flower" && (
+          <group position={[0.34, 1.0, 0.16]}>
+            {[0, 1, 2, 3, 4].map((i) => {
+              const a = (i / 5) * Math.PI * 2;
+              return (
+                <mesh
+                  key={i}
+                  position={[Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0]}
+                >
+                  <sphereGeometry args={[0.06, 8, 6]} />
+                  {m("#f1a6ad")}
+                </mesh>
+              );
+            })}
+            <mesh>
+              <sphereGeometry args={[0.06, 8, 6]} />
+              {m("#f4d35e")}
+            </mesh>
+          </group>
+        )}
+        {accessory === "bell" && (
+          <>
+            <mesh position={[0, 0.32, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.5, 0.05, 8, 18]} />
+              {m("#caa25a")}
+            </mesh>
+            <mesh position={[0, 0.28, 0.48]}>
+              <sphereGeometry args={[0.1, 8, 6]} />
+              {m("#f4d35e")}
+            </mesh>
+          </>
+        )}
       </group>
     </group>
   );

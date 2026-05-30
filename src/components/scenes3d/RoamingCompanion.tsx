@@ -38,6 +38,7 @@ interface Props {
   type: CompanionType;
   color: string;
   accessory: Accessory;
+  seed?: string;
   clickLines: string[];
 }
 
@@ -45,6 +46,7 @@ export default function RoamingCompanion({
   type,
   color,
   accessory,
+  seed,
   clickLines,
 }: Props) {
   const mover = useRef<THREE.Group>(null);
@@ -177,6 +179,7 @@ export default function RoamingCompanion({
           type={type}
           color={color}
           accessory={accessory}
+          seed={seed}
           onPointerDown={(e) => {
             e.stopPropagation();
             speak();
@@ -195,15 +198,9 @@ export default function RoamingCompanion({
         </group>
       </group>
 
-      {(speech || emote) && (
-        <Html position={[0, 1.95, 0]} center zIndexRange={[30, 0]}>
-          {speech ? (
-            <SpeechBubble className="w-max">{speech}</SpeechBubble>
-          ) : (
-            <div className="rounded-full border-2 border-ink bg-paper px-2 py-1 text-base shadow-[0_2px_0_rgba(58,46,42,0.15)]">
-              {emote}
-            </div>
-          )}
+      {speech && (
+        <Html position={[0, 1.7, 0]} center zIndexRange={[30, 0]}>
+          <SpeechBubble className="w-max">{speech}</SpeechBubble>
         </Html>
       )}
     </group>

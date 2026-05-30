@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 import { getDestination } from "@/game/destinations";
+import { MOCK_POSTCARDS } from "@/game/mockPostcards";
 import type { Postcard } from "@/game/types";
 import { cloud } from "@/lib/cloudClient";
 import { useGameStore } from "@/state/gameStore";
@@ -95,7 +96,9 @@ export default function PostcardScreen() {
 
   const bindToken = useGameStore((s) => s.cloud?.bindToken ?? null);
 
-  const card = postcards.find((p) => p.id === selectedId) ?? postcards[0];
+  // Include the shared demo cards so a tapped mock resolves here too.
+  const allCards = [...postcards, ...MOCK_POSTCARDS];
+  const card = allCards.find((p) => p.id === selectedId) ?? allCards[0];
   const isFresh = pendingId != null && card?.id === pendingId;
   const [flipped, setFlipped] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -105,6 +108,11 @@ export default function PostcardScreen() {
   // Guests / no prompt / no API key → stay on SVG.
   useEffect(() => {
     setImageUrl(null);
+    // Mock/demo cards carry the image inline — use it directly, no fetch.
+    if (card?.imageUrl) {
+      setImageUrl(card.imageUrl);
+      return;
+    }
     const id = card?.id;
     if (!id || !bindToken || !card?.imagePrompt) return;
     let alive = true;
@@ -130,7 +138,7 @@ export default function PostcardScreen() {
       alive = false;
       clearTimeout(timer);
     };
-  }, [card?.id, card?.imagePrompt, bindToken]);
+  }, [card?.id, card?.imageUrl, card?.imagePrompt, bindToken]);
 
   if (!card) {
     return (

@@ -5,10 +5,10 @@ import { useRef } from "react";
 import * as THREE from "three";
 
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} />
+  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
 );
 const glow = (c: string, e: string, i = 0.85) => (
-  <meshStandardMaterial color={c} emissive={e} emissiveIntensity={i} roughness={1} metalness={0} />
+  <meshStandardMaterial color={c} emissive={e} emissiveIntensity={i} roughness={1} metalness={0} flatShading />
 );
 
 const WOOD = "#b9844f";
@@ -345,14 +345,47 @@ export default function Yard() {
             {m("#b6854f")}
           </mesh>
         ))}
-        {/* sprouts in tidy rows */}
-        {[-0.5, 0, 0.5].map((x) =>
-          [-0.4, 0.2].map((z, j) => (
-            <mesh key={`${x}-${j}`} position={[x, 0.26, z]}>
-              <coneGeometry args={[0.07, 0.2, 6]} />
-              {m(LEAF_LT)}
-            </mesh>
-          )),
+        {/* rows of carrots + cabbages */}
+        {[-0.55, 0.0, 0.55].map((x, col) =>
+          [-0.45, 0.25].map((z, row) => {
+            const carrot = (col + row) % 2 === 0;
+            return (
+              <group key={`${col}-${row}`} position={[x, 0.24, z]}>
+                {carrot ? (
+                  <>
+                    <mesh position={[0, 0.04, 0]}>
+                      <coneGeometry args={[0.08, 0.18, 7]} />
+                      {m("#e88a3c")}
+                    </mesh>
+                    {[0, 1, 2].map((k) => {
+                      const a = (k / 3) * Math.PI * 2;
+                      return (
+                        <mesh
+                          key={k}
+                          position={[Math.cos(a) * 0.05, 0.18, Math.sin(a) * 0.05]}
+                          rotation={[Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4]}
+                        >
+                          <coneGeometry args={[0.025, 0.18, 4]} />
+                          {m(LEAF_LT)}
+                        </mesh>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <mesh position={[0, 0.06, 0]}>
+                      <icosahedronGeometry args={[0.14, 0]} />
+                      {m(LEAF)}
+                    </mesh>
+                    <mesh position={[0, 0.11, 0]}>
+                      <icosahedronGeometry args={[0.09, 0]} />
+                      {m(LEAF_LT)}
+                    </mesh>
+                  </>
+                )}
+              </group>
+            );
+          }),
         )}
         {/* watering can */}
         <group position={[0.55, 0, -0.55]}>
@@ -402,6 +435,71 @@ export default function Yard() {
           </mesh>
         </group>
       ))}
+
+      {/* crate of oranges by the garden */}
+      <group position={[2.6, 0, 3.7]}>
+        <mesh position={[0, 0.16, 0]}>
+          <boxGeometry args={[0.42, 0.3, 0.42]} />
+          {m("#bd8a52")}
+        </mesh>
+        <mesh position={[0, 0.2, 0]}>
+          <boxGeometry args={[0.45, 0.06, 0.45]} />
+          {m("#a9774b")}
+        </mesh>
+        {([
+          [-0.1, -0.08],
+          [0.1, 0.0],
+          [-0.02, 0.12],
+          [0.12, -0.12],
+        ] as const).map(([x, z], i) => (
+          <mesh key={i} position={[x, 0.38, z]}>
+            <icosahedronGeometry args={[0.09, 0]} />
+            {m("#e88a3c")}
+          </mesh>
+        ))}
+      </group>
+
+      {/* covered porch awning over the entrance + lantern */}
+      <group position={[1.05, 0, -0.4]}>
+        {[-0.5, 0.5].map((z, i) => (
+          <mesh key={i} position={[0.0, 0.6, z]}>
+            <cylinderGeometry args={[0.05, 0.06, 1.2, 7]} />
+            {m(WOOD_DK)}
+          </mesh>
+        ))}
+        {([-1, 1] as const).map((side) => (
+          <mesh key={side} position={[side * 0.2, 1.4, 0]} rotation={[0, 0, side * -0.62]}>
+            <boxGeometry args={[0.46, 0.1, 1.3]} />
+            {m("#eeba4e")}
+          </mesh>
+        ))}
+        <mesh position={[0, 1.58, 0]}>
+          <boxGeometry args={[0.12, 0.1, 1.32]} />
+          {m("#9a6a32")}
+        </mesh>
+        <mesh position={[0, 1.02, 0.52]}>
+          <boxGeometry args={[0.12, 0.18, 0.12]} />
+          {glow("#ffe9a8", "#ffce63", 0.95)}
+        </mesh>
+      </group>
+
+      {/* arched garden gate at the island edge */}
+      <group position={[1.3, 0, 4.9]}>
+        {[-0.5, 0.5].map((x, i) => (
+          <mesh key={i} position={[x, 0.45, 0]}>
+            <cylinderGeometry args={[0.06, 0.07, 0.9, 7]} />
+            {m(WOOD)}
+          </mesh>
+        ))}
+        <mesh position={[0, 0.9, 0]}>
+          <torusGeometry args={[0.5, 0.06, 6, 14, Math.PI]} />
+          {m(WOOD)}
+        </mesh>
+        <mesh position={[0, 0.32, 0]}>
+          <boxGeometry args={[0.84, 0.06, 0.04]} />
+          {m("#e6d6b6")}
+        </mesh>
+      </group>
 
       {/* bushes */}
       <Bush pos={[4.6, 0, 3.0]} scale={1.1} />

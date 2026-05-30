@@ -45,6 +45,7 @@ export default function CreateScreen() {
             type={draft.type}
             color={draft.primaryColor}
             accessory={draft.accessory}
+            seed={`${draft.name}|${draft.type}|${draft.primaryColor}|${draft.accessory}`}
           />
         </SceneCanvas>
         <div className="pointer-events-none absolute inset-x-0 top-0 px-5 pt-5">

@@ -4,7 +4,7 @@ import { RoundedBox } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} />
+  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
 );
 
 export default function Backpack({

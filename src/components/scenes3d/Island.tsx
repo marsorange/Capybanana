@@ -1,132 +1,83 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
-import * as THREE from "three";
-
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} />
+  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
 );
 
-const GRASS = "#a8d182";
-const GRASS_LO = "#90bd6a";
-const SOIL_1 = "#cda06b";
-const SOIL_2 = "#b5824f";
-const SOIL_3 = "#9a6a40";
+const GRASS = "#9ec56f";
+const GRASS_LO = "#8bb35d";
+const SOIL_1 = "#cba271";
+const SOIL_2 = "#b3824f";
+const SOIL_3 = "#9a6e41";
 
-// Little clover tufts + pebbles scattered on the lawn (kept off the house side
-// and the pet's walking lanes) for a hand-decorated, cozy feel.
+const N = 11; // polygon sides — gives the clean faceted low-poly silhouette
+
+// Scattered clover tufts (kept off the house side and walking lanes).
 const CLOVERS: [number, number][] = [
   [2.9, -1.4],
-  [4.1, 1.1],
-  [4.4, 3.0],
-  [0.2, 4.6],
-  [-1.6, 4.5],
-  [3.0, 4.5],
+  [4.2, 1.1],
+  [4.5, 3.0],
+  [0.1, 4.7],
+  [-1.7, 4.4],
+  [3.1, 4.6],
 ];
-const PEBBLES: [number, number, string][] = [
-  [4.7, -0.4, "#d8cdbb"],
-  [-0.4, 5.0, "#cfc4b0"],
-  [4.9, 2.0, "#ded3c1"],
+const ROCKS: [number, number, number][] = [
+  [-1.2, 4.9, 0.34],
+  [4.9, -0.2, 0.4],
+  [3.0, 5.0, 0.28],
 ];
 
-// A gently domed grass island that floats on a chunky rounded boulder, with a
-// couple of tiny rocks drifting underneath for a storybook "sky island" feel.
+// A solid faceted floating island: a flat-shaded n-gon lawn on a chamfered
+// soil base. Pure three.js low-poly — the facets are the whole look.
 export default function Island() {
-  const floaters = useRef<THREE.Group>(null);
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    if (floaters.current) {
-      floaters.current.children.forEach((c, i) => {
-        c.position.y = c.userData.baseY + Math.sin(t * 0.7 + i * 2) * 0.18;
-        c.rotation.y = t * 0.15 + i;
-      });
-    }
-  });
-
   return (
     <group>
-      {/* gentle grass dome: a shallow sphere cap (curved ground) */}
-      <mesh position={[0, -59.78, 0]}>
-        <sphereGeometry args={[60, 64, 8, 0, Math.PI * 2, 0, 0.1]} />
+      {/* grass top (faceted n-gon disc) */}
+      <mesh position={[0, -0.12, 0]}>
+        <cylinderGeometry args={[5.8, 5.65, 0.36, N]} />
         {m(GRASS)}
       </mesh>
-
-      {/* soft darker grass rim around the edge */}
-      <mesh position={[0, 0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[5.55, 6.05, 64]} />
-        <meshStandardMaterial color={GRASS_LO} roughness={1} metalness={0} />
+      {/* bright rim lip */}
+      <mesh position={[0, 0.045, 0]}>
+        <cylinderGeometry args={[5.85, 5.85, 0.08, N]} />
+        {m(GRASS_LO)}
       </mesh>
 
-      {/* rounded soil underside (chunky floating rock) */}
-      <mesh position={[0, -0.05, 0]} scale={[1, 0.66, 1]}>
-        <sphereGeometry
-          args={[6.05, 48, 24, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2]}
-        />
+      {/* shallow chamfered soil body, tapering to a soft point */}
+      <mesh position={[0, -0.75, 0]}>
+        <cylinderGeometry args={[5.65, 4.4, 1.0, N]} />
         {m(SOIL_1)}
       </mesh>
-      <mesh position={[0, -1.65, 0]} scale={[1, 0.62, 1]}>
-        <sphereGeometry
-          args={[4.7, 40, 20, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2]}
-        />
+      <mesh position={[0, -1.55, 0]}>
+        <cylinderGeometry args={[4.4, 3.2, 0.6, N]} />
         {m(SOIL_2)}
       </mesh>
-      <mesh position={[0, -3.05, 0]} scale={[1, 0.66, 1]}>
-        <sphereGeometry
-          args={[2.9, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2]}
-        />
-        {m(SOIL_3)}
-      </mesh>
-      {/* dangling roots / drip at the very bottom */}
-      <mesh position={[0, -4.2, 0]}>
-        <coneGeometry args={[0.6, 1.3, 8]} />
+      <mesh position={[0, -2.1, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[3.2, 0.9, N]} />
         {m(SOIL_3)}
       </mesh>
 
-      {/* tiny rocks drifting beneath the island */}
-      <group ref={floaters}>
-        {([
-          [3.0, -2.6, 1.4, 0.5],
-          [-2.8, -3.4, -1.0, 0.36],
-          [1.2, -4.0, -2.4, 0.28],
-        ] as const).map(([x, y, z, r], i) => (
-          <group key={i} position={[x, y, z]} userData={{ baseY: y }}>
-            <mesh>
-              <icosahedronGeometry args={[r, 0]} />
-              {m(SOIL_2)}
-            </mesh>
-            <mesh position={[0, r * 0.55, 0]} scale={[1, 0.5, 1]}>
-              <icosahedronGeometry args={[r * 0.92, 0]} />
-              {m(GRASS)}
-            </mesh>
-          </group>
-        ))}
-      </group>
+      {/* grey rocks dotted on the lawn */}
+      {ROCKS.map(([x, z, r], i) => (
+        <mesh key={`r${i}`} position={[x, 0.06 + r * 0.4, z]} scale={[1, 0.78, 1]}>
+          <icosahedronGeometry args={[r, 0]} />
+          {m(i % 2 ? "#bfb8a8" : "#cbc4b4")}
+        </mesh>
+      ))}
 
-      {/* clover tufts on the lawn */}
+      {/* clover tufts */}
       {CLOVERS.map(([x, z], i) => (
-        <group key={`c${i}`} position={[x, 0.17, z]}>
+        <group key={`c${i}`} position={[x, 0.08, z]}>
           {[0, 1, 2].map((j) => {
             const a = (j / 3) * Math.PI * 2;
             return (
-              <mesh
-                key={j}
-                position={[Math.cos(a) * 0.07, 0, Math.sin(a) * 0.07]}
-              >
-                <sphereGeometry args={[0.06, 8, 6]} />
+              <mesh key={j} position={[Math.cos(a) * 0.07, 0, Math.sin(a) * 0.07]}>
+                <icosahedronGeometry args={[0.07, 0]} />
                 {m(j % 2 ? "#9ec872" : "#86b35f")}
               </mesh>
             );
           })}
         </group>
-      ))}
-
-      {/* small pebbles */}
-      {PEBBLES.map(([x, z, c], i) => (
-        <mesh key={`p${i}`} position={[x, 0.12, z]} scale={[1, 0.6, 1]}>
-          <icosahedronGeometry args={[0.16, 0]} />
-          {m(c)}
-        </mesh>
       ))}
     </group>
   );

@@ -1,8 +1,9 @@
 "use client";
 
-import { Html, RoundedBox } from "@react-three/drei";
-import type { ThreeEvent } from "@react-three/fiber";
-import { useState } from "react";
+import { RoundedBox } from "@react-three/drei";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import { useRef } from "react";
+import * as THREE from "three";
 import { getDestination } from "@/game/destinations";
 import type { DestinationTheme } from "@/game/types";
 import Backpack from "./Backpack";
@@ -207,30 +208,92 @@ function Books({
   );
 }
 
-function Hint({
-  pos,
-  icon,
-  label,
-  onClick,
-}: {
-  pos: [number, number, number];
-  icon: string;
-  label: string;
-  onClick?: () => void;
-}) {
-  const [hover, setHover] = useState(false);
+// A little stoppered preserve jar for the pantry shelves.
+function Jar({ pos, color }: { pos: [number, number, number]; color: string }) {
   return (
-    <Html position={pos} center zIndexRange={[20, 0]}>
-      <button
-        onClick={onClick}
-        onPointerOver={() => setHover(true)}
-        onPointerOut={() => setHover(false)}
-        className="flex -translate-y-1 animate-float-soft items-center gap-1 whitespace-nowrap rounded-full border-2 border-ink bg-paper/95 px-2 py-1 text-sm text-ink shadow-[0_2px_0_rgba(58,46,42,0.2)]"
-      >
-        <span>{icon}</span>
-        {hover && <span className="pr-0.5 text-xs">{label}</span>}
-      </button>
-    </Html>
+    <group position={pos}>
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.06, 0.06, 0.16, 8]} />
+        <meshStandardMaterial color={color} roughness={1} metalness={0} flatShading transparent opacity={0.92} />
+      </mesh>
+      <mesh position={[0, 0.18, 0]}>
+        <cylinderGeometry args={[0.055, 0.055, 0.04, 8]} />
+        {m(WOOD_DK)}
+      </mesh>
+    </group>
+  );
+}
+
+// A slumped burlap sack of grain.
+function Sack({ pos }: { pos: [number, number, number] }) {
+  return (
+    <group position={pos}>
+      <mesh position={[0, 0.12, 0]}>
+        <cylinderGeometry args={[0.1, 0.13, 0.24, 7]} />
+        {m("#d8c39a")}
+      </mesh>
+      <mesh position={[0, 0.26, 0]}>
+        <coneGeometry args={[0.07, 0.08, 7]} />
+        {m("#c8b186")}
+      </mesh>
+    </group>
+  );
+}
+
+// A woven basket, optionally holding round produce.
+function Basket({ pos, fruit = "#e88a3c" }: { pos: [number, number, number]; fruit?: string }) {
+  return (
+    <group position={pos}>
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.12, 0.1, 0.16, 9]} />
+        {m("#b27f44")}
+      </mesh>
+      {[[-0.05, 0.04], [0.05, -0.03], [0.0, 0.06]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.18, z]}>
+          <icosahedronGeometry args={[0.05, 0]} />
+          {m(fruit)}
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// A tiny faceted capybara figurine — a cozy easter egg on the shelf.
+function MiniCapy({ pos }: { pos: [number, number, number] }) {
+  return (
+    <group position={pos} scale={0.8}>
+      <mesh position={[0, 0.1, 0]} scale={[1.25, 0.85, 1]}>
+        <icosahedronGeometry args={[0.12, 0]} />
+        {m("#c79a5e")}
+      </mesh>
+      <mesh position={[0.12, 0.14, 0]}>
+        <icosahedronGeometry args={[0.085, 0]} />
+        {m("#c79a5e")}
+      </mesh>
+      <mesh position={[0.2, 0.13, 0]} scale={[0.9, 0.7, 0.7]}>
+        <icosahedronGeometry args={[0.05, 0]} />
+        {m("#d8b27e")}
+      </mesh>
+    </group>
+  );
+}
+
+// A subtle pulsing ground ring that marks an interactive spot (no emoji).
+function Beacon({ pos, color = "#e8b85c" }: { pos: [number, number, number]; color?: string }) {
+  const ring = useRef<THREE.Mesh>(null);
+  useFrame((s) => {
+    const k = (Math.sin(s.clock.elapsedTime * 2) + 1) / 2;
+    if (ring.current) {
+      const sc = 0.8 + k * 0.55;
+      ring.current.scale.set(sc, sc, sc);
+      (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.5 - k * 0.4;
+    }
+  });
+  return (
+    <mesh ref={ring} position={pos} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.34, 0.44, 28]} />
+      <meshBasicMaterial color={color} transparent opacity={0.4} depthWrite={false} />
+    </mesh>
   );
 }
 
@@ -422,15 +485,28 @@ export default function House({
           {glow("#c8f08a", "#9be05a", 0.6)}
         </mesh>
       </group>
-      {/* bookshelf against -x wall */}
-      <group position={[-4.2, 0, -3.0]}>
-        <RB args={[0.4, 1.7, 1.1]} pos={[0, 0.85, 0]} color={WOOD} radius={0.04} />
-        {[0.5, 1.0, 1.45].map((y, i) => (
-          <Box key={i} args={[0.36, 0.05, 1.04]} pos={[0, y, 0]} color={WOOD_DK} />
+      {/* pantry larder against -x wall — jars, sacks, baskets, books */}
+      <group position={[-4.22, 0, -2.95]}>
+        <RB args={[0.44, 2.05, 1.3]} pos={[0, 1.02, 0]} color={WOOD} radius={0.04} />
+        <Box args={[0.5, 2.1, 0.1]} pos={[0.02, 1.02, 0.6]} color={WOOD_DK} />
+        <Box args={[0.5, 2.1, 0.1]} pos={[0.02, 1.02, -0.6]} color={WOOD_DK} />
+        {[0.42, 0.86, 1.3, 1.74].map((y, i) => (
+          <Box key={i} args={[0.4, 0.05, 1.2]} pos={[0, y, 0]} color="#a9774b" />
         ))}
-        <Books pos={[0.04, 0.5, 0]} count={6} len={0.95} />
-        <Books pos={[0.04, 1.0, 0]} count={5} len={0.95} />
-        <Plant pos={[0.04, 1.48, 0.2]} scale={0.7} />
+        {/* bottom: books + a sack */}
+        <Books pos={[0.04, 0.44, -0.2]} count={5} len={0.7} />
+        <Sack pos={[0.02, 0.46, 0.34]} />
+        {/* shelf 2: jars */}
+        {(["#cf6f63", "#e6b85c", "#7fae9b", "#9a86b8"] as const).map((c, i) => (
+          <Jar key={i} pos={[0.06, 0.9, -0.42 + i * 0.28]} color={c} />
+        ))}
+        {/* shelf 3: baskets + crate */}
+        <Basket pos={[0.05, 1.34, -0.28]} fruit="#e88a3c" />
+        <Basket pos={[0.05, 1.34, 0.06]} fruit="#cf6f63" />
+        <Box args={[0.26, 0.22, 0.26]} pos={[0.04, 1.45, 0.36]} color="#bd8a52" />
+        {/* top: a plant + the capybara figurine */}
+        <Plant pos={[0.04, 1.78, -0.3]} scale={0.7} />
+        <MiniCapy pos={[0.06, 1.78, 0.28]} />
       </group>
       {/* floor lamp */}
       <group position={[-1.55, 0, -0.55]}>
@@ -497,9 +573,11 @@ export default function House({
           {m("#dcd2c0")}
         </mesh>
       </group>
-      {/* fridge */}
-      <RB args={[0.62, 1.5, 0.52]} pos={[-1.4, 0.76, -4.05]} color="#eef0ea" radius={0.06} />
-      <Box args={[0.04, 0.5, 0.06]} pos={[-1.1, 1.0, -3.82]} color={WOOD_DK} />
+      {/* sage-green fridge with a freezer seam + handles */}
+      <RB args={[0.64, 1.5, 0.54]} pos={[-1.4, 0.76, -4.05]} color={SAGE} radius={0.07} />
+      <Box args={[0.66, 0.04, 0.05]} pos={[-1.1, 1.02, -3.79]} color="#86a877" />
+      <Box args={[0.04, 0.34, 0.06]} pos={[-1.12, 1.3, -3.78]} color={WOOD_DK} />
+      <Box args={[0.04, 0.42, 0.06]} pos={[-1.12, 0.72, -3.78]} color={WOOD_DK} />
 
       {/* ===== DINING ===== */}
       <group position={[-2.5, 0, -3.05]}>
@@ -626,9 +704,8 @@ export default function House({
           ),
         )}
       </group>
-      <Hint pos={[-4.5, 2.35, -3.8]} icon="📮" label="明信片" onClick={goAlbum} />
 
-      {/* backpack (diegetic -> pack) */}
+      {/* backpack (diegetic -> pack), marked with a soft pulsing ring */}
       {mode === "home" && (
         <>
           <group
@@ -641,7 +718,7 @@ export default function House({
           >
             <Backpack />
           </group>
-          <Hint pos={[-1.5, 1.15, -0.7]} icon="🧳" label="打包行李" onClick={goPack} />
+          <Beacon pos={[-1.5, 0.16, -0.7]} />
         </>
       )}
     </group>

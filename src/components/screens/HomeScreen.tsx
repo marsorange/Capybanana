@@ -6,7 +6,7 @@ import { useGameStore } from "@/state/gameStore";
 import HomeScene from "../scenes3d/HomeScene";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
-import Sky from "../scenes3d/Sky";
+import MusicToggle from "../ui/MusicToggle";
 
 const IDLE_LINES = [
   "今天也想和你待在一起。",
@@ -37,12 +37,12 @@ export default function HomeScreen() {
 
   return (
     <div className="relative h-full overflow-hidden">
-      {/* soft pastel sky behind the floating diorama */}
+      {/* clean warm-cream studio backdrop, letting the diorama pop */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, #fde9d6 0%, #fbdcc8 32%, #f6d0cf 64%, #e8c9e0 100%)",
+            "radial-gradient(125% 95% at 50% 20%, #f7eedb 0%, #efe2c8 58%, #e6d6b8 100%)",
         }}
       />
       {/* fixed immersive isometric view (no orbit / no zoom) */}
@@ -50,10 +50,9 @@ export default function HomeScreen() {
         controls="none"
         orthographic
         cameraPosition={[9, 8.4, 9]}
-        target={[-0.9, 1.9, -0.9]}
-        zoom={62}
+        target={[-0.9, 1.6, -0.9]}
+        zoom={67}
       >
-        <Sky />
         <HomeScene
           mode="home"
           postcardThemes={wallThemes}
@@ -64,6 +63,7 @@ export default function HomeScreen() {
           type={companion.type}
           color={companion.primaryColor}
           accessory={companion.accessory}
+          seed={companion.id}
           clickLines={companionState === "ready" ? READY_LINES : IDLE_LINES}
         />
       </SceneCanvas>
@@ -75,26 +75,27 @@ export default function HomeScreen() {
             {companion.name}
           </h1>
           <p className="mt-1 text-sm text-ink-soft">
-            😊 {capy.mood} · ⚡ {capy.energy}
-            {capy.injury > 0 ? ` · 🤕 ${capy.injury}` : ""}
+            心情 {capy.mood} · 体力 {capy.energy}
+            {capy.injury > 0 ? ` · 伤 ${capy.injury}` : ""}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <p className="text-sm text-ink-soft">
-            {companionState === "ready" ? "🎒 今日包裹已备好" : "🏡 在家"}
+            {companionState === "ready" ? "今日包裹已备好" : "在家"}
           </p>
+          <MusicToggle />
           <button
             onClick={() => goTo("album")}
             className="pointer-events-auto rounded-full border-2 border-ink/12 bg-cream-soft/90 px-3 py-1 text-sm text-ink-soft shadow-[0_2px_0_rgba(58,46,42,0.08)]"
           >
-            📮 {postcards.length}
+            明信片 {postcards.length}
           </button>
           {bound && (
             <button
               onClick={() => goTo("connect")}
               className="pointer-events-auto rounded-full border-2 border-ink/12 bg-cream-soft/90 px-3 py-1 text-sm text-ink-soft shadow-[0_2px_0_rgba(58,46,42,0.08)]"
             >
-              🔗 Agent
+              Agent
             </button>
           )}
         </div>

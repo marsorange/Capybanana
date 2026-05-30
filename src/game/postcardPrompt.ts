@@ -48,8 +48,11 @@ export function buildPostcardImagePrompt(
     "一张治愈系旅行明信片插画。",
     `画面主角是一只圆滚滚、可爱的低多边形（low-poly）3D ${flavor}卡皮巴拉，`,
     `${color}的身体，${accPart}`,
-    `站在「${opts.landmark}」前面，`,
-    `背景是${bg}${opts.scene ? `，${opts.scene}` : ""}。`,
+    `站在标志性地标「${opts.landmark}」前面。`,
+    // Foreground the recognizable landmark as the main backdrop so it actually
+    // reads as that place; the theme scenery is only soft atmosphere.
+    `画面以清晰可辨、一眼能认出的「${opts.landmark}」为背景主体，`,
+    `周围是${bg}的氛围${opts.scene ? `，${opts.scene}` : ""}。`,
     "柔和的卡通渲染，暖色调，轻微景深，竖构图 3:4，画面干净、不要任何文字。",
   ].join("");
 }

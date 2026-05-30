@@ -73,20 +73,6 @@ function WebGLContextGuard() {
   return null;
 }
 
-function GroundShadow() {
-  return (
-    <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <circleGeometry args={[4.4, 40]} />
-      <meshBasicMaterial
-        color="#5f7a42"
-        transparent
-        opacity={0.1}
-        depthWrite={false}
-      />
-    </mesh>
-  );
-}
-
 export default function SceneCanvas({
   children,
   controls = "none",
@@ -117,21 +103,17 @@ export default function SceneCanvas({
       style={{ touchAction: "none" }}
     >
       <WebGLContextGuard />
-      {/* warm cozy key + soft sky fill + a gentle cool rim for soft depth */}
-      <hemisphereLight args={["#fff4e2", "#e8d4bf", 0.95]} />
-      <ambientLight intensity={0.42} color="#fff3e4" />
-      <directionalLight position={[6, 11, 7]} intensity={1.55} color="#fff0d6" />
-      <directionalLight position={[-7, 5, -4]} intensity={0.4} color="#cfd8f0" />
-      <directionalLight position={[2, 4, -9]} intensity={0.35} color="#ffd9c6" />
+      {/* low-poly cartoon lighting: a strong warm key sculpts the facets,
+          a soft cool fill keeps shadows from going muddy, warm back rim. */}
+      <hemisphereLight args={["#fff4e6", "#dfcbb0", 0.66]} />
+      <ambientLight intensity={0.28} color="#fff3e4" />
+      <directionalLight position={[7, 12, 8]} intensity={2.0} color="#fff1d8" />
+      <directionalLight position={[-8, 6, -3]} intensity={0.5} color="#cdd8f2" />
+      <directionalLight position={[1, 3, -9]} intensity={0.35} color="#ffd6c0" />
 
       <Suspense fallback={null}>{children}</Suspense>
 
-      {orthographic && (
-        <>
-          <GroundShadow />
-          <ZoomApplier min={minZoom} max={maxZoom} />
-        </>
-      )}
+      {orthographic && <ZoomApplier min={minZoom} max={maxZoom} />}
 
       {controls !== "none" && (
         <OrbitControls

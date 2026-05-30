@@ -521,6 +521,8 @@ export function summarizePet(save: CloudSave): PetSummary | null {
           sentAt: latest.sentAt,
         }
       : null,
+    latestDiary,
+    wroteDiaryToday: latestDiary?.day === today,
     rev: save.rev,
   };
 }

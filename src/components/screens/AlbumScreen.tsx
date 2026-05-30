@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { getDestination } from "@/game/destinations";
+import { MOCK_POSTCARDS } from "@/game/mockPostcards";
 import { useGameStore } from "@/state/gameStore";
 import Button from "../ui/Button";
 import { cn } from "../ui/cn";
@@ -48,6 +49,9 @@ export default function AlbumScreen() {
 
   const [tab, setTab] = useState<Tab>("cards");
 
+  // The user's own postcards (newest first) followed by the shared demo cards.
+  const cards = [...postcards, ...MOCK_POSTCARDS];
+
   return (
     <div className="flex h-full flex-col">
       {/* header */}
@@ -83,18 +87,27 @@ export default function AlbumScreen() {
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-4">
         {tab === "cards" &&
-          (postcards.length === 0 ? (
+          (cards.length === 0 ? (
             <Empty text="还没有明信片，等它哪天真的出门吧。" />
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {postcards.map((card) => (
+              {cards.map((card) => (
                 <button
                   key={card.id}
                   onClick={() => openPostcard(card.id)}
                   className="relative overflow-hidden rounded-sticker border-2 border-ink/15 bg-paper text-left shadow-[0_2px_0_rgba(58,46,42,0.08)] active:translate-y-0.5"
                 >
                   <div className="relative aspect-[4/3] w-full">
-                    <PostcardArt theme={card.destinationTheme} rounded={false} />
+                    {card.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={card.imageUrl}
+                        alt={card.locationName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <PostcardArt theme={card.destinationTheme} rounded={false} />
+                    )}
                     {card.id === pendingId && (
                       <span className="absolute right-1.5 top-1.5 rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-paper">
                         new
