@@ -178,6 +178,26 @@ export function getDestination(theme: DestinationTheme): DestinationMeta {
   return BY_THEME.get(theme) ?? DESTINATIONS[0];
 }
 
+// Real, recognizable landmarks per theme. Used as the postcard's shown location
+// (e.g. 埃菲尔铁塔) and woven into the AI image prompt as the background scenery.
+export const LANDMARKS: Record<DestinationTheme, string[]> = {
+  seaside: ["圣托里尼", "马尔代夫海滩", "尼斯蔚蓝海岸", "巴厘岛海滩"],
+  harbor: ["悉尼歌剧院", "威尼斯运河", "香港维多利亚港", "阿马尔菲海岸"],
+  forest: ["德国黑森林", "屋久岛原始森林", "加州红杉林", "亚马逊雨林"],
+  snow: ["瑞士少女峰", "北海道雪原", "阿尔卑斯雪山", "加拿大班夫"],
+  hotspring: ["日本箱根温泉", "冰岛蓝湖", "别府温泉", "黄石大棱镜温泉"],
+  mountain: ["富士山", "马特洪峰", "黄山", "马丘比丘"],
+  flowerfield: ["普罗旺斯薰衣草田", "北海道富良野花海", "荷兰郁金香花田", "英国湖区"],
+  raincity: ["雨中的伦敦塔桥", "西雅图太空针塔", "雨中的京都清水寺", "重庆洪崖洞"],
+  town: ["巴黎埃菲尔铁塔", "布拉格老城广场", "摩洛哥舍夫沙万蓝城", "意大利五渔村"],
+  nightstation: ["东京新宿夜景", "香港旺角霓虹街", "上海外滩夜景", "巴黎北站"],
+};
+
+export function pickLandmark(theme: DestinationTheme): string {
+  const list = LANDMARKS[theme] ?? LANDMARKS.town;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 // Keyword rules: message text -> boosted themes + how to phrase it back.
 export interface KeywordRule {
   test: string[];

@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { getDestination } from "@/game/destinations";
 import type { Postcard } from "@/game/types";
+import { cloud } from "@/lib/cloudClient";
 import { useGameStore } from "@/state/gameStore";
 import Button from "../ui/Button";
 import PostcardArt from "../ui/PostcardArt";
@@ -17,13 +18,24 @@ function fmtDate(iso: string): string {
 
 function Front({
   card,
+  imageUrl,
 }: {
   card: Postcard;
+  imageUrl?: string | null;
 }) {
   return (
     <div className="absolute inset-0 overflow-hidden rounded-2xl border-2 border-ink bg-paper shadow-[0_6px_0_rgba(58,46,42,0.18)] [backface-visibility:hidden]">
       <div className="absolute inset-0">
-        <PostcardArt theme={card.destinationTheme} rounded={false} />
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={card.locationName}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <PostcardArt theme={card.destinationTheme} rounded={false} />
+        )}
       </div>
       {/* stamp */}
       <div className="absolute right-3 top-3 flex h-14 w-12 flex-col items-center justify-center rounded-[4px] border-2 border-dashed border-ink/70 bg-paper/90 text-center">
@@ -81,9 +93,30 @@ export default function PostcardScreen() {
   const collectPostcard = useGameStore((s) => s.collectPostcard);
   const goTo = useGameStore((s) => s.goTo);
 
+  const bindToken = useGameStore((s) => s.cloud?.bindToken ?? null);
+
   const card = postcards.find((p) => p.id === selectedId) ?? postcards[0];
   const isFresh = pendingId != null && card?.id === pendingId;
   const [flipped, setFlipped] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  // Cloud pets: fetch the AI art (generated once, server-side). Guests / no
+  // prompt → keep imageUrl null and fall back to the procedural SVG.
+  useEffect(() => {
+    setImageUrl(null);
+    const id = card?.id;
+    if (!id || !bindToken || !card?.imagePrompt) return;
+    let alive = true;
+    cloud
+      .postcardImage(bindToken, id)
+      .then((r) => {
+        if (alive) setImageUrl(r.url);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [card?.id, card?.imagePrompt, bindToken]);
 
   if (!card) {
     return (
@@ -130,7 +163,7 @@ export default function PostcardScreen() {
             animate={{ rotateY: flipped ? 180 : 0 }}
             transition={{ type: "spring", stiffness: 140, damping: 17 }}
           >
-            <Front card={card} />
+            <Front card={card} imageUrl={imageUrl} />
             <Back card={card} companionName={companion.name} />
           </motion.div>
         </div>

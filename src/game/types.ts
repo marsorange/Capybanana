@@ -132,13 +132,20 @@ export interface Postcard {
   id: string;
   tripId: string;
   companionId: string;
-  locationName: string;
+  locationName: string; // a real famous landmark (e.g. 埃菲尔铁塔)
   destinationTheme: DestinationTheme;
   title: string;
   message: string;
   reason: string;
   imageKey: string; // === destinationTheme
   sentAt: string;
+  // AI postcard art: a prompt combining the companion's look + the landmark
+  // scenery, generated on demand (server-side, MiniMax) and cached. Falls back
+  // to procedural SVG art when generation is unavailable.
+  landmark?: string;
+  imagePrompt?: string;
+  imageStatus?: "pending" | "ready" | "error";
+  imageUrl?: string;
 }
 
 // Bag prepared by the player; the companion decides on its own when to leave.

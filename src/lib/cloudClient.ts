@@ -71,4 +71,10 @@ export const cloud = {
   pat: (token: string) => call<MutationResult>("POST", "/api/agent/pat", token),
   collect: (token: string) =>
     call<MutationResult>("POST", "/api/agent/collect", token),
+  postcardImage: (token: string, id: string) =>
+    call<{ ok: boolean; status: string; url: string | null }>(
+      "GET",
+      `/api/agent/postcards/${id}/image`,
+      token,
+    ),
 };

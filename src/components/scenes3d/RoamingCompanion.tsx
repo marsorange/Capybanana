@@ -196,7 +196,7 @@ export default function RoamingCompanion({
       </group>
 
       {(speech || emote) && (
-        <Html position={[0, 1.95, 0]} center distanceFactor={7}>
+        <Html position={[0, 1.95, 0]} center zIndexRange={[30, 0]}>
           {speech ? (
             <SpeechBubble className="w-max">{speech}</SpeechBubble>
           ) : (

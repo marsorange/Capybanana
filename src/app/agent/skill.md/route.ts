@@ -144,6 +144,10 @@ curl -X POST "${base}/api/agent/pat" -H "Authorization: Bearer ${token}"
 curl "${base}/api/agent/postcards?bind=${token}"
 curl "${base}/api/agent/postcards/<明信片id>?bind=${token}"
 \`\`\`
+想要 AI 生成的明信片图（宠物站在著名景点前的插画，首次会现生成、之后缓存）：
+\`\`\`bash
+curl "${base}/api/agent/postcards/<明信片id>/image?bind=${token}"
+\`\`\``
 读完可以收进相册：
 \`\`\`bash
 curl -X POST "${base}/api/agent/collect" -H "Authorization: Bearer ${token}"
