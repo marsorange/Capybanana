@@ -4,6 +4,7 @@ import { collectPostcard, tickSave } from "@/server/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // room for background postcard-art generation (after)
 
 export async function POST(req: Request): Promise<Response> {
   const a = await authed(req);

@@ -69,6 +69,16 @@ export const cloud = {
       gesture,
     }),
   pat: (token: string) => call<MutationResult>("POST", "/api/agent/pat", token),
+  // Agent-driven day decisions (the web client can drive them too).
+  travel: (token: string, destination?: string, note?: string) =>
+    call<MutationResult>("POST", "/api/agent/travel", token, {
+      destination,
+      note,
+    }),
+  battle: (token: string, note?: string) =>
+    call<MutationResult>("POST", "/api/agent/battle", token, { note }),
+  stay: (token: string, mode?: string, note?: string) =>
+    call<MutationResult>("POST", "/api/agent/stay", token, { mode, note }),
   collect: (token: string) =>
     call<MutationResult>("POST", "/api/agent/collect", token),
   postcardImage: (token: string, id: string) =>

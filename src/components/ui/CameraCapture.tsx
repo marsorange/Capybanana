@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { tagsFromHint } from "@/game/itemTags";
-import type { PackedItem } from "@/game/types";
+import type { ItemTag, PackedItem } from "@/game/types";
 import { uid } from "@/game/util";
 import Button from "./Button";
 import { extractElement } from "./photoExtract";
@@ -12,9 +12,10 @@ type Phase = "live" | "review" | "error";
 
 interface Captured {
   photo: string;
-  hint: string;
-  keyword: string;
+  hint: string; // 展示用：识别出的物体名，识别失败时退回取色描述
+  keyword: string; // planTrip 偏好词
   color: string;
+  tags: ItemTag[]; // 故事种子标签，按取色“氛围”得出，识别不改它
 }
 
 export default function CameraCapture({
@@ -26,8 +27,10 @@ export default function CameraCapture({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const reqId = useRef(0); // 让过期的识别结果不覆盖最新一张
   const [phase, setPhase] = useState<Phase>("live");
   const [captured, setCaptured] = useState<Captured | null>(null);
+  const [recognizing, setRecognizing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,8 +93,39 @@ export default function CameraCapture({
     const data = sctx.getImageData(0, 0, 24, 24).data;
     const ex = extractElement(data);
 
-    setCaptured({ photo, ...ex });
+    const id = ++reqId.current;
+    setCaptured({ photo, ...ex, tags: tagsFromHint(ex.hint) });
     setPhase("review");
+    recognize(photo, id);
+  };
+
+  // 拍完即调用 MiniMax 视觉理解，把“这是什么”填进 hint / keyword。
+  // 失败或没配 key 时保留取色启发式，不打断流程。
+  const recognize = async (photo: string, id: number) => {
+    setRecognizing(true);
+    try {
+      const res = await fetch("/api/recognize", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ photo }),
+      });
+      const out = (await res.json()) as { ok: boolean; name?: string };
+      if (id !== reqId.current) return; // 已被重拍/新拍替换
+      if (out.ok && out.name)
+        setCaptured((c) =>
+          c ? { ...c, hint: out.name!, keyword: out.name! } : c,
+        );
+    } catch {
+      /* 保留取色启发式 */
+    } finally {
+      if (id === reqId.current) setRecognizing(false);
+    }
+  };
+
+  const retake = () => {
+    reqId.current++; // 作废仍在飞行中的识别请求
+    setRecognizing(false);
+    setPhase("live");
   };
 
   const confirm = () => {
@@ -100,11 +134,11 @@ export default function CameraCapture({
       id: uid("pi"),
       kind: "photo",
       photo: captured.photo,
-      label: "你拍的东西",
+      label: captured.hint || "你拍的东西",
       hint: captured.hint,
       keyword: captured.keyword,
       color: captured.color,
-      tags: tagsFromHint(captured.hint),
+      tags: captured.tags,
     });
     stopStream();
     onClose();
@@ -148,14 +182,19 @@ export default function CameraCapture({
               <p className="text-sm opacity-90">
                 这台设备或当前页面拿不到摄像头。
                 <br />
-                可以先放几样预设小物带上。
+                可以先写一句话带上它。
               </p>
             </div>
           )}
           {phase === "review" && captured && (
             <div className="absolute inset-x-0 bottom-0 bg-ink/55 px-3 py-2 text-center text-sm text-paper">
-              它看出来：<b>{captured.hint}</b>
-              {captured.keyword && <span className="opacity-80"> · 像「{captured.keyword}」</span>}
+              {recognizing ? (
+                <span className="opacity-90">识别中…</span>
+              ) : (
+                <>
+                  它看出来：<b>{captured.hint}</b>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -173,10 +212,12 @@ export default function CameraCapture({
         )}
         {phase === "review" && (
           <>
-            <Button variant="soft" onClick={() => setPhase("live")}>
+            <Button variant="soft" onClick={retake}>
               重拍
             </Button>
-            <Button onClick={confirm}>带上它 →</Button>
+            <Button onClick={confirm} disabled={recognizing}>
+              {recognizing ? "识别中…" : "带上它 →"}
+            </Button>
           </>
         )}
         {phase === "error" && (

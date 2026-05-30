@@ -29,6 +29,7 @@ export function emptySave(): CloudSave {
     lastResult: null,
     pendingPostcardId: null,
     pendingMessage: null,
+    diary: [],
     rev: 0,
     updatedAt: new Date().toISOString(),
     events: [],
@@ -78,4 +79,9 @@ export async function resolveBind(
 
 export async function savePet(petId: string, save: CloudSave): Promise<void> {
   await kv.setJSON(`pet:${petId}`, save);
+}
+
+/** Load a pet's save by id (used by background postcard-image generation). */
+export async function loadPet(petId: string): Promise<CloudSave | null> {
+  return await kv.getJSON<CloudSave>(`pet:${petId}`);
 }

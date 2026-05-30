@@ -75,12 +75,12 @@ function WebGLContextGuard() {
 
 function GroundShadow() {
   return (
-    <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <circleGeometry args={[4.8, 40]} />
+    <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <circleGeometry args={[4.4, 40]} />
       <meshBasicMaterial
-        color="#5a4636"
+        color="#5f7a42"
         transparent
-        opacity={0.12}
+        opacity={0.1}
         depthWrite={false}
       />
     </mesh>
@@ -117,9 +117,12 @@ export default function SceneCanvas({
       style={{ touchAction: "none" }}
     >
       <WebGLContextGuard />
-      <hemisphereLight args={["#fff3da", "#d6c199", 1.05]} />
-      <ambientLight intensity={0.35} color="#fff1da" />
-      <directionalLight position={[7, 12, 6]} intensity={1.7} color="#fff2dd" />
+      {/* warm cozy key + soft sky fill + a gentle cool rim for soft depth */}
+      <hemisphereLight args={["#fff4e2", "#e8d4bf", 0.95]} />
+      <ambientLight intensity={0.42} color="#fff3e4" />
+      <directionalLight position={[6, 11, 7]} intensity={1.55} color="#fff0d6" />
+      <directionalLight position={[-7, 5, -4]} intensity={0.4} color="#cfd8f0" />
+      <directionalLight position={[2, 4, -9]} intensity={0.35} color="#ffd9c6" />
 
       <Suspense fallback={null}>{children}</Suspense>
 

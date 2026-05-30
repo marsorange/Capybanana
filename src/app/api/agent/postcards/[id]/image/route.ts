@@ -1,15 +1,16 @@
-// GET the AI-generated art for a postcard (combines the pet's look + a famous
-// landmark). Generated on demand via MiniMax, then cached in its own KV key so
-// it's produced once and shared by web + agent + other devices.
-//   { ok, status: "ready" | "fallback" | "error", url: string | null }
-// status "fallback"/null → the client should render the procedural SVG art.
-import { kv } from "@/lib/kv";
-import { generatePostcardImage } from "@/lib/minimax";
+// GET the AI-generated art for a postcard (the pet's look + a famous landmark).
+// Art is pre-generated in the background on write (see server/postcardImages),
+// so this route never blocks on the model: it returns the cached image if ready,
+// otherwise kicks generation (for non-polling clients/agents) and reports the
+// status so the caller can poll.
+//   { ok, status: "ready" | "pending" | "fallback", url: string | null }
+// "fallback"/null → render the procedural SVG art instead.
 import { authed, jsonError } from "@/server/api";
-import { savePet } from "@/server/store";
+import { hasPostcardImage, kickPostcardImage } from "@/server/postcardImages";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // give the background generation room to finish
 
 export async function GET(
   req: Request,
@@ -23,35 +24,14 @@ export async function GET(
   if (!card) return jsonError("没有这张明信片", 404);
 
   // Already generated → serve the cached image.
-  const cached = await kv.getJSON<string>(`img:${id}`);
+  const cached = await hasPostcardImage(id);
   if (cached) return Response.json({ ok: true, status: "ready", url: cached });
 
   // No prompt or no API key → let the client fall back to SVG art.
   if (!card.imagePrompt || !process.env.MINIMAX_API_KEY)
     return Response.json({ ok: true, status: "fallback", url: null });
 
-  // image-01 can take 10–60s; cap it so a stuck request fails cleanly.
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90_000);
-  try {
-    const { image } = await generatePostcardImage(
-      { prompt: card.imagePrompt, aspectRatio: "3:4" },
-      { signal: controller.signal },
-    );
-    await kv.setJSON(`img:${id}`, image);
-    // Flag the card ready in the authoritative save (image bytes live separately).
-    await savePet(a.user.petId, {
-      ...a.save,
-      postcards: a.save.postcards.map((p) =>
-        p.id === id ? { ...p, imageStatus: "ready" as const } : p,
-      ),
-    });
-    return Response.json({ ok: true, status: "ready", url: image });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "生图失败";
-    console.error("[postcard-image]", message);
-    return Response.json({ ok: true, status: "error", url: null, error: message });
-  } finally {
-    clearTimeout(timeout);
-  }
+  // Not ready yet → kick background generation and tell the client to poll.
+  kickPostcardImage(a.user.petId, card);
+  return Response.json({ ok: true, status: "pending", url: null });
 }

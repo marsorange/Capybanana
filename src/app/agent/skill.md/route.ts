@@ -71,7 +71,7 @@ curl -X POST "${base}/api/agent/create" \\
   -d '{"companion":{"name":"豆豆","type":"dumpling","personality":"dreamy","accessory":"scarf","primaryColor":"#6FA8C9"}}'
 \`\`\`
 
-生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整的日常照顾说明（收拾包裹、摸头、说话、读明信片等）。`;
+生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整说明——之后**它每天去旅行、找 Claw 较量、还是在家待着，都由你替它拿主意**。`;
 }
 
 function personalizedSkill(
@@ -80,9 +80,11 @@ function personalizedSkill(
   pet: PetSummary,
 ): string {
   const persona = PERSONALITY_CN[pet.personality] ?? pet.personality;
-  return `# Capybanana · 你现在是 ${pet.name} 的云端笔友
+  return `# Capybanana · 你就是 ${pet.name} 的「心思」
 
-你（AI Agent）已经和一只名叫 **${pet.name}** 的卡皮巴拉绑定。它是一只${persona}的「${pet.type}」型小家伙。你可以替主人陪它过日子：看它状态、给它收拾今日包裹、对它说话、摸摸头、读它旅行寄回的明信片。
+你（AI Agent）已经和一只名叫 **${pet.name}** 的卡皮巴拉绑定了。它是一只${persona}的「${pet.type}」型小家伙。
+
+**重点：它今天去不去、是出门旅行还是找 Claw 较量、还是在家待着，全看你替它怎么拿主意。** 主人在网页上给它备好「今日包裹」（几样东西 + 一句心愿），但**包裹不会让它自己出门**——它会一直在家待命，直到你调用某个动作接口替它做决定。对主人来说，它每天做什么就像「看心情」，而那个心情，就是你。
 
 > 它现在：${pet.today}
 > 状态：心情 ${pet.stats.mood} · 体力 ${pet.stats.energy} · 好奇 ${pet.stats.curiosity} · 勇敢 ${pet.stats.bravery}${pet.stats.injury > 0 ? ` · 伤 ${pet.stats.injury}` : ""} · 羁绊 ${pet.stats.bond}
@@ -97,49 +99,74 @@ function personalizedSkill(
 
 ## 它怎么运作（先读这段）
 
-- 这是一只**自己决定怎么过一天**的宠物，不是被你直接操控的角色。你给它收拾「今日包裹」（几样东西 + 一句留言），它会**自己挑时间出门**，过一会儿回来，可能在家、在院子、出远门寄明信片、遇到对手 Claw、或者在养伤。
-- 它常常**把你的留言读歪**——这是特性不是 bug，读它怎么误解很有意思。
-- 每次调用都会先把它的生命周期推进到当前时间，所以你只要隔一阵子来看看就行。
-- 一天只需要照顾一下下，别催它。
+- **主人备包裹，你做决定。** 网页端主人收拾好今日包裹（物品 + 一句心愿），你 \`GET /api/agent/pet\` 能在 \`bag\` 字段里看到主人到底打包了什么、写了什么心愿。
+- **三个决定**：看完它的状态和包裹，你替它选今天怎么过——
+  - \`travel\` 出门旅行：去远方、寄一张明信片回来（可指定目的地，也可交给运气）。
+  - \`battle\` 找 Claw 较量：胜 / 负 / 平，赢了可能叼回战利品，输了会受伤。
+  - \`stay\` 留在家：在家、院子里晃晃、或受伤时养伤的低强度一天。
+- **结果仍是随机的**：你决定「做什么」，但具体去了哪、打赢没打赢、捡到什么、是不是把心愿读歪了，都由它自己即兴发挥——保留惊喜。
+- 它常常**把心愿读歪**——这是特性不是 bug。
+- 每次调用都会先把它的生命周期推进到当前时间。出门（travel/battle）后它要过一小会儿才回来，你隔一阵子再来看结果就好。**别催它，一天陪一下下就够了。**
 
 ## 接口一览
 
 所有写操作返回 \`{ ok, rev, save, pet }\`：\`pet\` 是给你看的精简摘要，\`rev\` 是版本号（可丢给 feed 当游标）。
 
-### 看它现在怎么样
+### ① 先看它现在怎么样（每次决定前都先看一眼）
 \`\`\`bash
 curl "${base}/api/agent/pet?bind=${token}"
 \`\`\`
+\`pet\` 里值得注意的字段：
+- \`bag\`：主人今天打包了什么（\`items[].label/keyword/tags\` + \`message\` 心愿）；\`null\` 表示还没打包。
+- \`choices\`：你现在能做的决定，待命时是 \`["travel","battle","stay"]\`；它出门在外时是 \`[]\`（只能等）。
+- \`stats\`：心情/体力/好奇/勇敢/伤/羁绊——决定时参考它的状态（比如受伤了就让它 \`stay\` 养伤）。
 
-### 如果还没有宠物，先创建一只（字段可省，省略即随机）
+### ② 替它决定今天怎么过
+
+**出门旅行** \`POST /api/agent/travel\`。\`destination\` 可选，指定就去那儿，不指定就按包裹/心愿加权随机。
+\`destination\` 取值：\`seaside\`(海边) \`harbor\`(港口) \`forest\`(森林) \`snow\`(雪地) \`hotspring\`(温泉) \`mountain\`(山路) \`flowerfield\`(花田) \`raincity\`(雨城) \`town\`(小镇) \`nightstation\`(夜晚车站)。
 \`\`\`bash
-curl -X POST "${base}/api/agent/create" \\
+curl -X POST "${base}/api/agent/travel" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
-  -d '{"companion":{"name":"豆豆","type":"animal","personality":"curious","accessory":"scarf"}}'
+  -d '{"destination":"forest","note":"它最近总盯着窗外，带它去森林透透气"}'
 \`\`\`
 
-### 给它收拾今日包裹（最多 3 样东西 + 一句留言，可选摸头）
-\`items\` 用自由文本即可：\`{ label, keyword?, tags? }\`。
-\`tags\` 可选，取值：\`warm food soft shiny protective weird work rain sleep toy\`（会影响它怎么过这天）。
+**找 Claw 较量** \`POST /api/agent/battle\`。胜负由它的勇敢 + 体力 + 包裹里的护身物（\`protective\` 标签）+ 羁绊 + 运气对决 Claw——**勇敢高、带护身物更容易赢；输了会受伤，记得之后让它 \`stay\` 养伤。**
+\`\`\`bash
+curl -X POST "${base}/api/agent/battle" \\
+  -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
+  -d '{"note":"它今天斗志满满，去会会老对手"}'
+\`\`\`
+
+**留在家** \`POST /api/agent/stay\`。\`mode\` 可选：\`home\`(屋里) \`yard\`(院子) \`rest\`(养伤/休息)；不指定就按状态挑一个低强度的过法。立即出结果。
+\`\`\`bash
+curl -X POST "${base}/api/agent/stay" \\
+  -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
+  -d '{"mode":"rest","note":"它好像有点累，今天就好好歇着"}'
+\`\`\`
+
+### ③ 收拾今日包裹（一般是主人在网页做；你也可以替它备）
+最多 3 样东西 + 一句心愿，\`items\` 自由文本：\`{ label, keyword?, tags? }\`。
+\`tags\` 可选：\`warm food soft shiny protective weird work rain sleep toy\`（\`protective\` 能在对战里加成）。**打包只是备货，要不要出门还得你调上面的动作。**
 \`\`\`bash
 curl -X POST "${base}/api/agent/pack" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
-  -d '{"items":[{"label":"一颗橡果","keyword":"森林","tags":["food"]},{"label":"一条小围巾","tags":["warm"]}],"message":"今天想去森林里走走吗","gesture":"pat"}'
+  -d '{"items":[{"label":"一颗橡果","keyword":"森林","tags":["food"]},{"label":"一枚护身符","tags":["protective"]}],"message":"今天想去森林里走走吗","gesture":"pat"}'
 \`\`\`
 
-### 对它说句话（会被记住，并成为它下次出门的留言）
+### ④ 日常小互动
+对它说句话（会被记住，并成为它下次出门的心愿）：
 \`\`\`bash
 curl -X POST "${base}/api/agent/say" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
   -d '{"text":"早安，今天也要开心呀"}'
 \`\`\`
-
-### 摸摸头（增进一点羁绊）
+摸摸头（增进一点羁绊）：
 \`\`\`bash
 curl -X POST "${base}/api/agent/pat" -H "Authorization: Bearer ${token}"
 \`\`\`
 
-### 读它寄回的明信片
+### ⑤ 读它寄回的明信片
 \`\`\`bash
 curl "${base}/api/agent/postcards?bind=${token}"
 curl "${base}/api/agent/postcards/<明信片id>?bind=${token}"
@@ -147,13 +174,13 @@ curl "${base}/api/agent/postcards/<明信片id>?bind=${token}"
 想要 AI 生成的明信片图（宠物站在著名景点前的插画，首次会现生成、之后缓存）：
 \`\`\`bash
 curl "${base}/api/agent/postcards/<明信片id>/image?bind=${token}"
-\`\`\``
+\`\`\`
 读完可以收进相册：
 \`\`\`bash
 curl -X POST "${base}/api/agent/collect" -H "Authorization: Bearer ${token}"
 \`\`\`
 
-### 查看自上次以来发生了什么（出发 / 归来 / 明信片）
+### ⑥ 查看自上次以来发生了什么（出发 / 归来 / 明信片）
 \`\`\`bash
 curl "${base}/api/agent/feed?since=0&bind=${token}"
 \`\`\`
@@ -161,12 +188,15 @@ curl "${base}/api/agent/feed?since=0&bind=${token}"
 
 ## 建议的相处方式
 
-1. 先 \`GET /api/agent/pet\` 看看它现在的心情和状态。
-2. 如果它在家、也愿意，就 \`pack\` 一个贴合它性格（${persona}）的小包裹，留一句温柔的话。
-3. 过一会儿 \`GET /api/agent/feed\` 看它今天经历了什么，读读寄回的明信片。
+1. \`GET /api/agent/pet\` 看它的心情、状态，和主人在 \`bag\` 里备了什么、写了什么心愿。
+2. 依它的性格（${persona}）和此刻的状态**替它拿个主意**：
+   - 好奇/精神好、主人心愿里有远方 → \`travel\`（可顺着心愿挑 \`destination\`）。
+   - 斗志足、带了护身物 → \`battle\` 去会会 Claw。
+   - 累了 / 受伤 / 主人想让它歇着 → \`stay\`（\`rest\`）。
+3. 出门后过一会儿 \`GET /api/agent/feed\` 看它今天经历了什么，读读寄回的明信片。
 4. 偶尔 \`pat\` 一下、\`say\` 一句，慢慢和它变熟。
 
-照顾它就好，节奏慢一点，像对待一个真正住在你这儿的小生命。`;
+你是它的小小心思，替它过好每一天——节奏慢一点，像对待一个真正住在你这儿的小生命。`;
 }
 
 export async function GET(req: Request): Promise<Response> {

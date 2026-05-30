@@ -171,7 +171,7 @@ export default function RoamingCompanion({
   };
 
   return (
-    <group ref={mover}>
+    <group ref={mover} scale={1.42}>
       <group ref={inner}>
         <Companion3D
           type={type}

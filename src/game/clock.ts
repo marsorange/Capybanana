@@ -15,12 +15,20 @@ import { randRange, uid } from "./util";
 // then resolves into one of the outcomes. Offline catch-up still resolves it.
 export const TIMING = { departMin: 8_000, departMax: 28_000 };
 
+// How long the pet is "away" when the agent sends it to scrap with Claw — a
+// quick scuffle, much shorter than a full trip.
+export const BATTLE = { awayMin: 12_000, awayMax: 30_000 };
+
+// Sentinel departAt for an agent-driven (cloud) pet: it never auto-departs on
+// its own — it waits for the agent to decide (travel / battle / stay).
+export const NO_AUTO_DEPART = Number.MAX_SAFE_INTEGER;
+
 export interface DepartureDecision {
   departAt: number;
   willGo: boolean;
 }
 
-/** When the prepared day starts to unfold. */
+/** When the prepared day starts to unfold (local/guest autonomous mode). */
 export function scheduleDeparture(now: number): DepartureDecision {
   return {
     departAt: now + randRange(TIMING.departMin, TIMING.departMax),
@@ -72,6 +80,7 @@ export function advanceLifecycle(
           gesture: packedBag.gesture,
           status: "traveling",
           destination: plan.destination,
+          intent: "auto", // it left on its own → it decides its own ending
           startedAt,
           durationMs: plan.durationMs,
           returnsAt: startedAt + plan.durationMs,

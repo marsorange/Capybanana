@@ -111,14 +111,28 @@ export default function Companion3D({
         {m(belly)}
       </mesh>
 
-      {/* eyes */}
-      <mesh ref={leftEye} position={[-0.18, 0.74, 0.52]}>
-        <sphereGeometry args={[0.075, 10, 8]} />
+      {/* eyes (with a glossy highlight for a cuter, alive look) */}
+      <mesh ref={leftEye} position={[-0.19, 0.75, 0.52]}>
+        <sphereGeometry args={[0.088, 12, 10]} />
         {m(INK)}
+        <mesh position={[0.03, 0.035, 0.055]}>
+          <sphereGeometry args={[0.03, 8, 8]} />
+          <meshBasicMaterial color="#fffdf8" />
+        </mesh>
       </mesh>
-      <mesh ref={rightEye} position={[0.18, 0.74, 0.52]}>
-        <sphereGeometry args={[0.075, 10, 8]} />
+      <mesh ref={rightEye} position={[0.19, 0.75, 0.52]}>
+        <sphereGeometry args={[0.088, 12, 10]} />
         {m(INK)}
+        <mesh position={[0.03, 0.035, 0.055]}>
+          <sphereGeometry args={[0.03, 8, 8]} />
+          <meshBasicMaterial color="#fffdf8" />
+        </mesh>
+      </mesh>
+
+      {/* tiny snout for a friendlier face */}
+      <mesh position={[0, 0.62, 0.56]} scale={[1.25, 0.85, 0.7]}>
+        <sphereGeometry args={[0.07, 10, 8]} />
+        {m(lightenColor(color, 0.32))}
       </mesh>
 
       {/* cheeks */}

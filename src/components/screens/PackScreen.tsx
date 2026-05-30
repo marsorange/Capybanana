@@ -2,17 +2,12 @@
 
 import { useState } from "react";
 
-import { LUGGAGE } from "@/game/labels";
-import type { LuggageItem, PackedItem } from "@/game/types";
-import { uid } from "@/game/util";
+import type { PackedItem } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import Backpack from "../scenes3d/Backpack";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import Button from "../ui/Button";
 import CameraCapture from "../ui/CameraCapture";
-import { cn } from "../ui/cn";
-
-const QUICK_TAGS = ["今天别太累", "想去海边", "想要安静一点", "随便走走"];
 
 function Pedestal() {
   return (
@@ -29,33 +24,17 @@ export default function PackScreen() {
   const prepareBag = useGameStore((s) => s.prepareBag);
   const goTo = useGameStore((s) => s.goTo);
 
-  const existingPhoto = existing?.items.find((i) => i.kind === "photo") ?? null;
-  const existingSmall =
-    existing?.items.find((i) => i.kind === "preset")?.preset ?? null;
-
-  const [photo, setPhoto] = useState<PackedItem | null>(existingPhoto);
-  const [small, setSmall] = useState<LuggageItem | null>(existingSmall);
+  const [photos, setPhotos] = useState<PackedItem[]>(
+    () => existing?.items.filter((i) => i.kind === "photo") ?? [],
+  );
   const [message, setMessage] = useState(existing?.message ?? "");
-  const [pat, setPat] = useState(existing?.gesture === "pat");
   const [cameraOpen, setCameraOpen] = useState(false);
 
-  const send = () => {
-    const items: PackedItem[] = [];
-    if (photo) items.push(photo);
-    if (small) {
-      const meta = LUGGAGE.find((l) => l.item === small);
-      items.push({
-        id: uid("pi"),
-        kind: "preset",
-        preset: small,
-        label: meta?.label ?? "小物",
-      });
-    }
-    prepareBag(items, message, pat ? "pat" : undefined);
-  };
+  const addPhoto = (item: PackedItem) => setPhotos((ps) => [...ps, item]);
+  const removePhoto = (id: string) =>
+    setPhotos((ps) => ps.filter((p) => p.id !== id));
 
-  const addTag = (tag: string) =>
-    setMessage((m) => (!m.trim() ? tag : m.includes(tag) ? m : `${m}，${tag}`));
+  const send = () => prepareBag(photos, message);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -73,66 +52,51 @@ export default function PackScreen() {
       </div>
 
       {/* 3D bag */}
-      <div className="h-[26%] shrink-0">
+      <div className="relative h-[34%] shrink-0">
         <SceneCanvas controls="spin">
           <Pedestal />
-          <group scale={1.6} position={[0, 0.1, 0]}>
+          <group scale={2.1} position={[0, 0.08, 0]}>
             <Backpack />
           </group>
         </SceneCanvas>
+        <span className="pointer-events-none absolute inset-x-0 bottom-1 text-center text-xs text-ink-soft/70">
+          {photos.length > 0 ? `背包里 · ${photos.length} 件` : "拍点东西放进背包"}
+        </span>
       </div>
 
       <div className="no-scrollbar flex-1 space-y-5 overflow-y-auto px-5 py-3">
-        {/* photo */}
+        {/* photos packed into the bag */}
         <section>
-          <p className="mb-2 text-sm font-medium text-ink">📷 一个现实拍照物</p>
-          {photo ? (
-            <div className="relative inline-block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photo.photo}
-                alt={photo.label}
-                className="h-20 w-20 rounded-xl border-2 border-ink object-cover"
-              />
-              <button
-                onClick={() => setPhoto(null)}
-                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-paper text-xs"
-              >
-                ×
-              </button>
-              {photo.hint && (
-                <p className="mt-1 text-xs text-ink-soft">看出来：{photo.hint}</p>
-              )}
-            </div>
-          ) : (
+          <p className="mb-2 text-sm font-medium text-ink">📷 拍下要带走的东西</p>
+          <div className="flex flex-wrap items-start gap-2.5">
+            {photos.map((p) => (
+              <div key={p.id} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.photo}
+                  alt={p.label}
+                  className="h-20 w-20 rounded-xl border-2 border-ink object-cover"
+                />
+                <button
+                  onClick={() => removePhoto(p.id)}
+                  className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-paper text-xs"
+                >
+                  ×
+                </button>
+                {p.hint && (
+                  <p className="mt-1 max-w-20 truncate text-center text-xs text-ink-soft">
+                    {p.hint}
+                  </p>
+                )}
+              </div>
+            ))}
             <button
               onClick={() => setCameraOpen(true)}
-              className="sticker rounded-sticker bg-accent px-4 py-2.5 text-paper"
+              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-ink/25 bg-cream-soft text-ink-soft"
             >
-              📷 拍一张
+              <span className="text-2xl">📷</span>
+              <span className="text-xs">拍一张</span>
             </button>
-          )}
-        </section>
-
-        {/* small item */}
-        <section>
-          <p className="mb-2 text-sm font-medium text-ink">🎒 一个随身小物</p>
-          <div className="flex flex-wrap gap-2">
-            {LUGGAGE.map((l) => (
-              <button
-                key={l.item}
-                onClick={() => setSmall(small === l.item ? null : l.item)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-sticker border-2 px-3 py-2 text-sm transition",
-                  small === l.item
-                    ? "border-ink bg-accent/10 text-ink"
-                    : "border-ink/12 bg-cream-soft text-ink",
-                )}
-              >
-                <span className="text-lg">{l.emoji}</span>
-                {l.label}
-              </button>
-            ))}
           </div>
         </section>
 
@@ -146,32 +110,6 @@ export default function PackScreen() {
             rows={2}
             className="w-full resize-none rounded-sticker border-2 border-ink/15 bg-paper px-4 py-3 text-base text-ink outline-none placeholder:text-ink-soft/60 focus:border-accent"
           />
-          <div className="mt-2 flex flex-wrap gap-2">
-            {QUICK_TAGS.map((t) => (
-              <button
-                key={t}
-                onClick={() => addTag(t)}
-                className="rounded-full border-2 border-ink/12 bg-cream-soft px-3 py-1 text-sm text-ink-soft"
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* gesture */}
-        <section>
-          <button
-            onClick={() => setPat((p) => !p)}
-            className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-sticker border-2 py-2.5 text-sm transition",
-              pat
-                ? "border-ink bg-accent/10 text-ink"
-                : "border-ink/12 bg-cream-soft text-ink-soft",
-            )}
-          >
-            {pat ? "🫶 摸了摸它的头 ♡" : "🫳 摸摸头（可选）"}
-          </button>
         </section>
       </div>
 
@@ -183,7 +121,7 @@ export default function PackScreen() {
 
       {cameraOpen && (
         <CameraCapture
-          onAdd={(item) => setPhoto(item)}
+          onAdd={addPhoto}
           onClose={() => setCameraOpen(false)}
         />
       )}

@@ -24,7 +24,18 @@ export type AgentEventType =
   | "returned"
   | "postcard"
   | "pat"
-  | "said";
+  | "said"
+  | "diary";
+
+// A daily diary entry the agent writes in the pet's voice (<= 200 chars).
+// At most one per calendar day — writing again the same day updates it.
+export interface DiaryEntry {
+  id: string;
+  day: string; // YYYY-MM-DD (UTC) the entry covers
+  text: string; // <= 200 chars
+  at: string; // ISO timestamp it was written
+  mood: number; // the pet's mood snapshot when written (flavor)
+}
 
 // One entry in the pet's activity log. `seq` (== the rev at which it was
 // appended) is the cursor the agent's `feed?since=` polls against.
@@ -50,6 +61,7 @@ export interface CloudSave {
   lastResult: DayOutcome | null;
   pendingPostcardId: string | null;
   pendingMessage: string | null; // a thing the agent "said"; seeds the next trip
+  diary: DiaryEntry[]; // newest-first; the agent's daily journal in the pet's voice
   rev: number;
   updatedAt: string;
   events: AgentEvent[];

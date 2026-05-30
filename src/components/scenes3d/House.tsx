@@ -19,7 +19,7 @@ interface HouseProps {
   onOpenAlbum?: () => void;
 }
 
-// footprint
+// footprint — kept in sync with villaLayout so the pet roams correctly.
 const XL = -4.6;
 const XR = 0.4;
 const ZB = -4.6;
@@ -28,22 +28,34 @@ const W = XR - XL;
 const D = ZF - ZB;
 const CX = (XL + XR) / 2;
 const CZ = (ZB + ZF) / 2;
-const TOP = 4.2;
+const TOP = 4.7;
 
 // palette
-const WALL = "#ecdcb9";
-const WALL_BACK = "#e6d3aa";
-const WOOD = "#a9774b";
-const WOOD_DK = "#8a5a32";
-const FLOOR0 = "#cf9f63";
-const FLOOR1 = "#dab985";
-const TILE = "#edb43f";
-const TILE_DK = "#dc9b2c";
-const GREEN = "#8fae66";
-const GREEN_DK = "#7ba65f";
+const WALL = "#f4e7cb";
+const WALL_BACK = "#eedcb6";
+const WAINSCOT = "#e3cb9c";
+const WOOD = "#b9844f";
+const WOOD_DK = "#85572f";
+const WOOD_LT = "#cfa46c";
+const FLOOR0 = "#d7ac72";
+const FLOOR1 = "#e2bd86";
+const ROOF = "#eeba4e";
+const ROOF_DK = "#e1a93c";
+const ROOF_RIDGE = "#9a6a32";
+const GREEN = "#8fbf68";
+const GREEN_DK = "#79a857";
+const SAGE = "#9dbf8c";
+const GOLD = "#e8b85c";
+const CREAM = "#fff6e6";
+const GLASS = "#cfe9e4";
+const PINK = "#f1a6bd";
+const RED = "#d95f59";
 
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} />
+  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
+);
+const glow = (c: string, e: string, i = 0.85) => (
+  <meshStandardMaterial color={c} emissive={e} emissiveIntensity={i} roughness={1} metalness={0} flatShading />
 );
 
 function Box({
@@ -70,16 +82,128 @@ function RB({
   pos,
   color,
   radius = 0.06,
+  rot,
 }: {
   args: [number, number, number];
   pos: [number, number, number];
   color: string;
   radius?: number;
+  rot?: [number, number, number];
 }) {
   return (
-    <RoundedBox args={args} radius={radius} smoothness={2} position={pos}>
+    <RoundedBox args={args} radius={radius} smoothness={2} position={pos} rotation={rot}>
       {m(color)}
     </RoundedBox>
+  );
+}
+
+// A leafy potted plant, reused all over the house.
+function Plant({
+  pos,
+  scale = 1,
+  pot = WOOD,
+}: {
+  pos: [number, number, number];
+  scale?: number;
+  pot?: string;
+}) {
+  return (
+    <group position={pos} scale={scale}>
+      <mesh position={[0, 0.11, 0]}>
+        <cylinderGeometry args={[0.13, 0.1, 0.22, 12]} />
+        {m(pot)}
+      </mesh>
+      {([
+        [0, 0.34, 0, 0.16, GREEN],
+        [0.1, 0.28, 0.05, 0.12, GREEN_DK],
+        [-0.08, 0.3, -0.04, 0.11, GREEN],
+      ] as const).map(([x, y, z, r, c], i) => (
+        <mesh key={i} position={[x, y, z]}>
+          <icosahedronGeometry args={[r, 0]} />
+          {m(c)}
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// A framed picture on a wall (faces +x by default via rotation prop).
+function Frame({
+  pos,
+  rot,
+  color,
+  w = 0.42,
+  h = 0.34,
+}: {
+  pos: [number, number, number];
+  rot?: [number, number, number];
+  color: string;
+  w?: number;
+  h?: number;
+}) {
+  return (
+    <group position={pos} rotation={rot}>
+      <mesh>
+        <planeGeometry args={[w, h]} />
+        {m("#5a4636")}
+      </mesh>
+      <mesh position={[0, 0, 0.01]}>
+        <planeGeometry args={[w - 0.07, h - 0.07]} />
+        {m(color)}
+      </mesh>
+    </group>
+  );
+}
+
+// A warm hanging pendant lamp with an emissive bulb.
+function Pendant({
+  pos,
+  drop = 0.7,
+  shade = WOOD_DK,
+}: {
+  pos: [number, number, number];
+  drop?: number;
+  shade?: string;
+}) {
+  return (
+    <group position={pos}>
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[0.012, 0.012, drop, 6]} />
+        {m("#5a4636")}
+      </mesh>
+      <mesh position={[0, -drop / 2, 0]}>
+        <coneGeometry args={[0.18, 0.2, 14, 1, true]} />
+        <meshStandardMaterial color={shade} roughness={1} metalness={0} side={2} />
+      </mesh>
+      <mesh position={[0, -drop / 2 - 0.04, 0]}>
+        <sphereGeometry args={[0.08, 12, 10]} />
+        {glow("#ffe9a8", "#ffcf63", 0.9)}
+      </mesh>
+    </group>
+  );
+}
+
+// A row of colorful book spines for a shelf.
+function Books({
+  pos,
+  count = 6,
+  len = 0.7,
+}: {
+  pos: [number, number, number];
+  count?: number;
+  len?: number;
+}) {
+  const cols = ["#d98a6a", "#7fae9b", "#e6b85c", "#9a86b8", "#cf6f63", "#85a86a"];
+  const gap = len / count;
+  return (
+    <group position={pos}>
+      {Array.from({ length: count }).map((_, i) => (
+        <mesh key={i} position={[0, 0.14, -len / 2 + gap * (i + 0.5)]}>
+          <boxGeometry args={[0.16, 0.26 + (i % 3) * 0.03, gap * 0.82]} />
+          {m(cols[i % cols.length])}
+        </mesh>
+      ))}
+    </group>
   );
 }
 
@@ -130,177 +254,386 @@ export default function House({
 
   return (
     <group>
-      {/* ground floor + trim */}
-      <RB args={[W, 0.18, D]} pos={[CX, 0.05, CZ]} color={FLOOR0} radius={0.04} />
-      <Box args={[0.16, TOP, D]} pos={[XL, TOP / 2, CZ]} color={WALL} />
-      <Box args={[W, TOP, 0.16]} pos={[CX, TOP / 2, ZB]} color={WALL_BACK} />
-      <Box args={[0.22, TOP, 0.22]} pos={[XL, TOP / 2, ZB]} color={WOOD} />
-      <Box args={[W, 0.16, 0.18]} pos={[CX, FLOOR_H - 0.02, ZB + 0.03]} color={WOOD_DK} />
-      <Box args={[0.18, 0.16, D]} pos={[XL + 0.03, FLOOR_H - 0.02, CZ]} color={WOOD_DK} />
+      {/* ===== SHELL ===== */}
+      {/* ground floor slab + plinth */}
+      <RB args={[W, 0.2, D]} pos={[CX, 0.06, CZ]} color={FLOOR0} radius={0.05} />
+      <Box args={[W + 0.16, 0.12, D + 0.16]} pos={[CX, 0.02, CZ]} color={WOOD_DK} />
+
+      {/* -x wall (left) with a wainscot band */}
+      <RB args={[0.18, TOP, D]} pos={[XL, TOP / 2, CZ]} color={WALL} radius={0.04} />
+      <Box args={[0.2, 0.9, D]} pos={[XL + 0.005, 0.5, CZ]} color={WAINSCOT} />
+      {/* -z wall (back) */}
+      <RB args={[W, TOP, 0.18]} pos={[CX, TOP / 2, ZB]} color={WALL_BACK} radius={0.04} />
+      <Box args={[W, 0.9, 0.2]} pos={[CX, 0.5, ZB + 0.005]} color={WAINSCOT} />
+      {/* corner post + floor trims */}
+      <Box args={[0.24, TOP, 0.24]} pos={[XL, TOP / 2, ZB]} color={WOOD} />
+      <Box args={[W, 0.14, 0.16]} pos={[CX, FLOOR_H - 0.02, ZB + 0.04]} color={WOOD_DK} />
+      <Box args={[0.16, 0.14, D]} pos={[XL + 0.04, FLOOR_H - 0.02, CZ]} color={WOOD_DK} />
 
       {/* loft slab + railing */}
-      <RB args={[3.5, 0.2, D]} pos={[XL + 1.75, FLOOR_H - 0.1, CZ]} color={FLOOR1} radius={0.03} />
-      <Box args={[0.12, 0.22, D]} pos={[-1.05, FLOOR_H - 0.1, CZ]} color={WOOD} />
-      {[-0.7, -0.1, -3.9].map((z, i) => (
-        <Box key={i} args={[0.08, 0.4, 0.08]} pos={[-1.1, FLOOR_H + 0.2, z]} color={WOOD} />
+      <RB args={[3.5, 0.22, D]} pos={[XL + 1.75, FLOOR_H - 0.11, CZ]} color={FLOOR1} radius={0.04} />
+      <Box args={[0.12, 0.24, D]} pos={[-1.05, FLOOR_H - 0.1, CZ]} color={WOOD} />
+      {[-0.65, -1.3, -2.0, -2.7, -3.9].map((z, i) => (
+        <Box key={i} args={[0.07, 0.42, 0.07]} pos={[-1.1, FLOOR_H + 0.2, z]} color={WOOD} />
       ))}
-      <Box args={[0.07, 0.08, 1.7]} pos={[-1.1, FLOOR_H + 0.34, -0.9]} color={WOOD_DK} />
+      <Box args={[0.08, 0.09, 1.9]} pos={[-1.1, FLOOR_H + 0.36, -1.0]} color={WOOD_DK} />
 
-      {/* stairs */}
-      {Array.from({ length: 8 }).map((_, i) => {
-        const t = i / 7;
+      {/* stairs + runner */}
+      {Array.from({ length: 9 }).map((_, i) => {
+        const t = i / 8;
         const x = STAIR_LOW[0] + (STAIR_HIGH[0] - STAIR_LOW[0]) * t;
         const z = STAIR_LOW[2] + (STAIR_HIGH[2] - STAIR_LOW[2]) * t;
         const y = 0.18 + (FLOOR_H - 0.18) * t;
-        return <Box key={i} args={[0.44, 0.16, 0.54]} pos={[x, y - 0.08, z]} color="#c89a64" />;
+        return (
+          <group key={i}>
+            <Box args={[0.46, 0.16, 0.56]} pos={[x, y - 0.08, z]} color={WOOD_LT} />
+            <Box args={[0.22, 0.04, 0.56]} pos={[x, y + 0.01, z]} color={RED} />
+          </group>
+        );
       })}
 
-      {/* tiled gable roof */}
+      {/* ===== ROOF ===== */}
       <group position={[CX, TOP, CZ]}>
-        <Box args={[W + 0.7, 0.18, D + 0.7]} pos={[0, 0.02, 0]} color={WOOD} />
+        <Box args={[W + 0.9, 0.2, D + 0.9]} pos={[0, 0.02, 0]} color={WOOD} />
         {([-1, 1] as const).map((side) => (
-          <mesh key={side} position={[side * 1.18, 0.6, 0]} rotation={[0, 0, side * -0.6]}>
-            <boxGeometry args={[2.2, 0.18, D + 0.7]} />
-            {m(TILE)}
+          <mesh key={side} position={[side * 1.28, 0.66, 0]} rotation={[0, 0, side * -0.62]}>
+            <boxGeometry args={[2.45, 0.2, D + 0.95]} />
+            {m(side === 1 ? ROOF : ROOF_DK)}
           </mesh>
         ))}
-        <Box args={[0.28, 0.22, D + 0.7]} pos={[0, 1.16, 0]} color={TILE_DK} />
-        <mesh position={[0, 0.58, -(D / 2) - 0.18]}>
-          <cylinderGeometry args={[1.08, 1.08, 0.14, 3]} />
+        {/* ridge cap */}
+        <Box args={[0.3, 0.24, D + 0.95]} pos={[0, 1.28, 0]} color={ROOF_RIDGE} />
+        {/* back gable fill */}
+        <mesh position={[0, 0.64, -(D / 2) - 0.2]}>
+          <cylinderGeometry args={[1.2, 1.2, 0.16, 3]} />
           {m(WALL_BACK)}
         </mesh>
-        {/* rooftop plant */}
-        <group position={[-1.55, 0.9, 1.0]}>
-          <RB args={[0.36, 0.3, 0.36]} pos={[0, 0, 0]} color="#dcd6c6" radius={0.05} />
+        {/* eave trim boards */}
+        {([-1, 1] as const).map((s) => (
+          <Box key={s} args={[0.06, 0.14, D + 0.95]} pos={[s * 2.34, 0.04, 0]} color={CREAM} />
+        ))}
+        {/* chimney */}
+        <group position={[-1.55, 0.5, -1.1]}>
+          <RB args={[0.42, 1.1, 0.42]} pos={[0, 0.4, 0]} color="#c98f64" radius={0.04} />
+          <Box args={[0.5, 0.14, 0.5]} pos={[0, 0.96, 0]} color={WOOD_DK} />
+        </group>
+        {/* rooftop flag */}
+        <group position={[1.0, 1.5, 1.2]}>
           <mesh position={[0, 0.3, 0]}>
-            <icosahedronGeometry args={[0.24, 0]} />
+            <cylinderGeometry args={[0.02, 0.02, 0.6, 6]} />
+            {m(WOOD_DK)}
+          </mesh>
+          <mesh position={[0.16, 0.5, 0]}>
+            <planeGeometry args={[0.3, 0.18]} />
+            <meshStandardMaterial color={RED} roughness={1} side={2} />
+          </mesh>
+        </group>
+        {/* rooftop plant */}
+        <group position={[1.5, 0.95, -1.2]}>
+          <RB args={[0.34, 0.3, 0.34]} pos={[0, 0, 0]} color={CREAM} radius={0.05} />
+          <mesh position={[0, 0.28, 0]}>
+            <icosahedronGeometry args={[0.22, 0]} />
             {m(GREEN)}
           </mesh>
         </group>
       </group>
 
-      {/* round window (back wall, bedroom) */}
-      <group position={[-3.1, 3.05, ZB + 0.12]}>
-        <mesh>
-          <circleGeometry args={[0.42, 24]} />
-          {m("#bfe3e0")}
+      {/* puffs of chimney smoke */}
+      {[0, 1, 2].map((i) => (
+        <mesh key={i} position={[-2.05, TOP + 1.5 + i * 0.5, -2.05]} scale={1 + i * 0.25}>
+          <icosahedronGeometry args={[0.16, 1]} />
+          <meshStandardMaterial color="#fff6ea" roughness={1} transparent opacity={0.78 - i * 0.18} />
         </mesh>
-        <Box args={[0.86, 0.06, 0.04]} pos={[0, 0, 0.02]} color="#fffaf2" />
-        <Box args={[0.06, 0.86, 0.04]} pos={[0, 0, 0.02]} color="#fffaf2" />
-      </group>
-      {/* leaf art + window on -x wall */}
-      <Box args={[0.04, 0.5, 0.4]} pos={[XL + 0.11, 1.55, -3.4]} color="#fffaf2" />
-      <Box args={[0.05, 0.7, 0.9]} pos={[XL + 0.1, 1.7, -2.0]} color="#bfe3e0" />
+      ))}
 
-      {/* ===== LIVING ===== */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-2.7, 0.15, -0.85]}>
-        <circleGeometry args={[1.2, 28]} />
-        {m("#e7b9a6")}
-      </mesh>
-      <group position={[-4.0, 0, -1.2]}>
-        <RB args={[0.55, 0.5, 1.7]} pos={[0, 0.4, 0]} color={GREEN} radius={0.1} />
-        <RB args={[0.6, 0.4, 1.7]} pos={[0.16, 0.62, 0]} color="#9cbd72" radius={0.1} />
-        <RB args={[0.44, 0.2, 0.5]} pos={[0.2, 0.6, -0.5]} color="#edc75a" radius={0.08} />
-        <RB args={[0.44, 0.2, 0.5]} pos={[0.2, 0.6, 0.5]} color="#edc75a" radius={0.08} />
-      </group>
-      <group position={[-2.8, 0, -0.5]}>
-        <RB args={[0.72, 0.28, 0.72]} pos={[0, 0.18, 0]} color={WOOD} radius={0.05} />
-        <mesh position={[0, 0.42, 0]}>
-          <icosahedronGeometry args={[0.13, 0]} />
-          <meshStandardMaterial color="#c8f08a" emissive="#9be05a" emissiveIntensity={0.7} roughness={1} />
+      {/* ===== WINDOWS / WALL ART ===== */}
+      {/* round window (back wall, bedroom) with frame */}
+      <group position={[-3.2, 3.3, ZB + 0.13]}>
+        <mesh>
+          <circleGeometry args={[0.46, 24]} />
+          {m(GLASS)}
         </mesh>
+        <mesh position={[0, 0, -0.01]}>
+          <ringGeometry args={[0.46, 0.55, 24]} />
+          {m(CREAM)}
+        </mesh>
+        <Box args={[0.94, 0.06, 0.04]} pos={[0, 0, 0.02]} color={CREAM} />
+        <Box args={[0.06, 0.94, 0.04]} pos={[0, 0, 0.02]} color={CREAM} />
       </group>
-      {/* floor lamp (emissive glow, no real light for perf) */}
-      <group position={[-1.5, 0, -1.5]}>
-        <mesh position={[0, 0.6, 0]}>
-          <cylinderGeometry args={[0.03, 0.05, 1.2, 6]} />
+      {/* kitchen window on back wall + curtains */}
+      <group position={[-0.5, 1.55, ZB + 0.12]}>
+        <Box args={[0.95, 0.8, 0.04]} pos={[0, 0, 0]} color={GLASS} />
+        <Box args={[1.06, 0.9, 0.05]} pos={[0, 0, -0.01]} color={CREAM} />
+        <Box args={[0.06, 0.8, 0.06]} pos={[0, 0, 0.03]} color={CREAM} />
+        <Box args={[0.22, 0.82, 0.05]} pos={[-0.37, 0, 0.04]} color="#e6a7a0" />
+        <Box args={[0.22, 0.82, 0.05]} pos={[0.37, 0, 0.04]} color="#e6a7a0" />
+      </group>
+      {/* tall window on -x wall (living) + curtains */}
+      <group position={[XL + 0.11, 1.85, -1.95]}>
+        <Box args={[0.05, 1.0, 0.9]} pos={[0, 0, 0]} color={GLASS} />
+        <Box args={[0.06, 1.1, 1.02]} pos={[-0.01, 0, 0]} color={CREAM} />
+        <Box args={[0.06, 0.06, 0.92]} pos={[0.02, 0, 0]} color={CREAM} />
+        <Box args={[0.06, 1.04, 0.24]} pos={[0.03, 0, -0.36]} color="#e6a7a0" />
+        <Box args={[0.06, 1.04, 0.24]} pos={[0.03, 0, 0.36]} color="#e6a7a0" />
+      </group>
+      {/* gallery wall on -x wall (above sofa) */}
+      <Frame pos={[XL + 0.12, 1.65, -0.55]} rot={[0, Math.PI / 2, 0]} color="#e8b85c" w={0.4} h={0.5} />
+      <Frame pos={[XL + 0.12, 1.5, -1.1]} rot={[0, Math.PI / 2, 0]} color="#88b39c" w={0.34} h={0.28} />
+      {/* wall clock on back wall */}
+      <group position={[-2.4, 1.7, ZB + 0.13]}>
+        <mesh>
+          <circleGeometry args={[0.2, 20]} />
+          {m(CREAM)}
+        </mesh>
+        <mesh position={[0, 0, -0.01]}>
+          <ringGeometry args={[0.2, 0.24, 20]} />
           {m(WOOD_DK)}
         </mesh>
-        <mesh position={[0, 1.28, 0]}>
-          <sphereGeometry args={[0.16, 12, 10]} />
-          <meshStandardMaterial color="#ffe39c" emissive="#ffce63" emissiveIntensity={0.85} roughness={1} />
-        </mesh>
+        <Box args={[0.015, 0.13, 0.02]} pos={[0, 0.04, 0.02]} color="#5a4636" />
+        <Box args={[0.09, 0.015, 0.02]} pos={[0.03, 0, 0.02]} color="#5a4636" />
       </group>
 
-      {/* ===== KITCHEN ===== */}
-      <group position={[-3.2, 0, -4.05]}>
-        <RB args={[2.0, 0.72, 0.5]} pos={[0, 0.36, 0]} color={WOOD} radius={0.04} />
-        <Box args={[2.04, 0.08, 0.56]} pos={[0, 0.74, 0]} color="#caa274" />
-        <Box args={[0.42, 0.05, 0.34]} pos={[-0.5, 0.77, 0]} color="#cdd6d0" />
-        <Box args={[1.4, 0.06, 0.22]} pos={[0, 1.5, -0.12]} color={WOOD} />
-        <mesh position={[-0.3, 1.66, -0.1]}>
-          <icosahedronGeometry args={[0.14, 0]} />
-          {m(GREEN)}
+      {/* ===== LIVING ===== */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3.0, 0.16, -1.0]}>
+        <circleGeometry args={[1.25, 28]} />
+        {m("#ecc2a8")}
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3.0, 0.17, -1.0]}>
+        <ringGeometry args={[0.95, 1.1, 28]} />
+        {m("#e0a98c")}
+      </mesh>
+      {/* golden sofa with green cushions, facing the room */}
+      <group position={[-4.05, 0, -1.0]}>
+        <RB args={[0.6, 0.46, 1.9]} pos={[0, 0.36, 0]} color={GOLD} radius={0.12} />
+        <RB args={[0.66, 0.42, 1.9]} pos={[0.18, 0.6, 0]} color="#f0c66e" radius={0.12} />
+        <RB args={[0.46, 0.22, 0.55]} pos={[0.22, 0.62, -0.55]} color={GREEN} radius={0.08} />
+        <RB args={[0.46, 0.22, 0.55]} pos={[0.22, 0.62, 0.55]} color={GREEN_DK} radius={0.08} />
+        <RB args={[0.6, 0.5, 0.18]} pos={[0.02, 0.42, 0.92]} color="#d9a64e" radius={0.09} />
+        <RB args={[0.6, 0.5, 0.18]} pos={[0.02, 0.42, -0.92]} color="#d9a64e" radius={0.09} />
+      </group>
+      {/* coffee table + tiny plant */}
+      <group position={[-2.85, 0, -0.55]}>
+        <RB args={[0.7, 0.1, 0.7]} pos={[0, 0.34, 0]} color={WOOD} radius={0.03} />
+        {[[-0.28, -0.28], [0.28, -0.28], [-0.28, 0.28], [0.28, 0.28]].map(([x, z], i) => (
+          <Box key={i} args={[0.06, 0.34, 0.06]} pos={[x, 0.17, z]} color={WOOD_DK} />
+        ))}
+        <mesh position={[0, 0.46, 0]}>
+          <icosahedronGeometry args={[0.1, 0]} />
+          {glow("#c8f08a", "#9be05a", 0.6)}
         </mesh>
       </group>
-      <RB args={[0.6, 1.42, 0.5]} pos={[-1.35, 0.72, -4.05]} color={GREEN_DK} radius={0.06} />
+      {/* bookshelf against -x wall */}
+      <group position={[-4.2, 0, -3.0]}>
+        <RB args={[0.4, 1.7, 1.1]} pos={[0, 0.85, 0]} color={WOOD} radius={0.04} />
+        {[0.5, 1.0, 1.45].map((y, i) => (
+          <Box key={i} args={[0.36, 0.05, 1.04]} pos={[0, y, 0]} color={WOOD_DK} />
+        ))}
+        <Books pos={[0.04, 0.5, 0]} count={6} len={0.95} />
+        <Books pos={[0.04, 1.0, 0]} count={5} len={0.95} />
+        <Plant pos={[0.04, 1.48, 0.2]} scale={0.7} />
+      </group>
+      {/* floor lamp */}
+      <group position={[-1.55, 0, -0.55]}>
+        <mesh position={[0, 0.02, 0]}>
+          <cylinderGeometry args={[0.13, 0.15, 0.06, 14]} />
+          {m(WOOD_DK)}
+        </mesh>
+        <mesh position={[0, 0.62, 0]}>
+          <cylinderGeometry args={[0.03, 0.04, 1.2, 8]} />
+          {m(WOOD_DK)}
+        </mesh>
+        <mesh position={[0, 1.32, 0]}>
+          <cylinderGeometry args={[0.2, 0.26, 0.3, 16, 1, true]} />
+          <meshStandardMaterial color="#fff0c8" emissive="#ffd98a" emissiveIntensity={0.7} roughness={1} side={2} />
+        </mesh>
+      </group>
+      {/* cozy pet bed on the living-room floor */}
+      <group position={[-2.4, 0, -1.75]}>
+        <mesh position={[0, 0.1, 0]}>
+          <cylinderGeometry args={[0.42, 0.46, 0.2, 18]} />
+          {m("#e8b85c")}
+        </mesh>
+        <mesh position={[0, 0.12, 0]}>
+          <cylinderGeometry args={[0.32, 0.32, 0.1, 18]} />
+          {m("#fff1d6")}
+        </mesh>
+      </group>
+      <Pendant pos={[-3.0, 1.65, -1.4]} drop={0.5} shade={RED} />
+
+      {/* ===== KITCHEN (back wall) ===== */}
+      <group position={[-3.2, 0, -4.05]}>
+        <RB args={[2.1, 0.76, 0.5]} pos={[0, 0.38, 0]} color={WOOD} radius={0.04} />
+        <Box args={[2.16, 0.09, 0.56]} pos={[0, 0.78, 0]} color="#d8b27e" />
+        {/* sink */}
+        <Box args={[0.44, 0.05, 0.34]} pos={[-0.55, 0.81, 0]} color="#cdd6d0" />
+        <mesh position={[-0.55, 0.92, -0.08]} rotation={[0.4, 0, 0]}>
+          <cylinderGeometry args={[0.018, 0.018, 0.18, 8]} />
+          {m("#b9c0bb")}
+        </mesh>
+        {/* stove + pot */}
+        <Box args={[0.5, 0.06, 0.4]} pos={[0.55, 0.81, 0]} color="#5a4f48" />
+        <mesh position={[0.55, 0.93, 0]}>
+          <cylinderGeometry args={[0.15, 0.13, 0.16, 14]} />
+          {m("#c25f55")}
+        </mesh>
+        {/* upper cabinets */}
+        <Box args={[1.4, 0.5, 0.26]} pos={[0, 1.7, -0.12]} color={WOOD_LT} />
+        <Box args={[0.66, 0.46, 0.02]} pos={[-0.36, 1.7, 0.02]} color={WOOD_DK} />
+        <Box args={[0.66, 0.46, 0.02]} pos={[0.36, 1.7, 0.02]} color={WOOD_DK} />
+        {/* hanging pots */}
+        {[-0.2, 0.05, 0.3].map((x, i) => (
+          <mesh key={i} position={[x, 1.28, 0.18]}>
+            <cylinderGeometry args={[0.07 + i * 0.01, 0.06, 0.12, 12]} />
+            {m(["#c98f64", "#b9c0bb", "#d98a6a"][i])}
+          </mesh>
+        ))}
+        {/* kettle + fruit bowl on counter */}
+        <mesh position={[0.0, 0.92, 0.08]}>
+          <sphereGeometry args={[0.1, 12, 10]} />
+          {m("#e6b85c")}
+        </mesh>
+        <mesh position={[-0.05, 0.86, 0.16]}>
+          <cylinderGeometry args={[0.12, 0.13, 0.07, 14]} />
+          {m("#dcd2c0")}
+        </mesh>
+      </group>
+      {/* fridge */}
+      <RB args={[0.62, 1.5, 0.52]} pos={[-1.4, 0.76, -4.05]} color="#eef0ea" radius={0.06} />
+      <Box args={[0.04, 0.5, 0.06]} pos={[-1.1, 1.0, -3.82]} color={WOOD_DK} />
 
       {/* ===== DINING ===== */}
-      <group position={[-2.45, 0, -3.05]}>
-        <RB args={[0.95, 0.1, 0.72]} pos={[0, 0.62, 0]} color="#bd8a5c" radius={0.03} />
-        {[-0.37, 0.37].map((x, i) => (
-          <Box key={i} args={[0.07, 0.6, 0.07]} pos={[x, 0.31, 0]} color={WOOD} />
-        ))}
-        {[0.56, -0.56].map((z, i) => (
-          <RB key={i} args={[0.34, 0.34, 0.34]} pos={[0, 0.17, z]} color="#caa274" radius={0.05} />
-        ))}
-        <mesh position={[0, 0.72, 0]}>
-          <sphereGeometry args={[0.13, 10, 8]} />
-          {m("#d98a6a")}
+      <group position={[-2.5, 0, -3.05]}>
+        <mesh position={[0, 0.64, 0]}>
+          <cylinderGeometry args={[0.52, 0.5, 0.1, 20]} />
+          {m("#c79256")}
         </mesh>
+        <mesh position={[0, 0.34, 0]}>
+          <cylinderGeometry args={[0.07, 0.1, 0.56, 10]} />
+          {m(WOOD_DK)}
+        </mesh>
+        <mesh position={[0, 0.06, 0]}>
+          <cylinderGeometry args={[0.26, 0.3, 0.08, 14]} />
+          {m(WOOD_DK)}
+        </mesh>
+        {[0.62, -0.62].map((z, i) => (
+          <RB key={i} args={[0.34, 0.36, 0.34]} pos={[0, 0.18, z]} color="#d8b27e" radius={0.05} />
+        ))}
+        {/* vase + flowers centerpiece */}
+        <mesh position={[0, 0.76, 0]}>
+          <cylinderGeometry args={[0.06, 0.05, 0.14, 10]} />
+          {m(GLASS)}
+        </mesh>
+        {[PINK, "#f7d06b", CREAM].map((c, i) => {
+          const a = (i / 3) * Math.PI * 2;
+          return (
+            <mesh key={i} position={[Math.cos(a) * 0.06, 0.88, Math.sin(a) * 0.06]}>
+              <sphereGeometry args={[0.05, 8, 8]} />
+              {m(c)}
+            </mesh>
+          );
+        })}
       </group>
+      <Pendant pos={[-2.5, 1.7, -3.05]} drop={0.45} shade={GREEN_DK} />
 
       {/* ===== LOFT: bedroom + bath ===== */}
       <group position={[0, FLOOR_H, 0]}>
-        <group position={[-3.6, 0, -3.4]}>
-          <RB args={[1.5, 0.34, 1.25]} pos={[0, 0.22, 0]} color={WOOD} radius={0.05} />
-          <RB args={[1.42, 0.2, 1.16]} pos={[0, 0.44, 0]} color="#bfe07d" radius={0.06} />
-          <RB args={[1.42, 0.08, 0.5]} pos={[0, 0.56, 0.34]} color="#f3ead4" radius={0.05} />
-          <RB args={[0.55, 0.34, 1.0]} pos={[-0.46, 0.5, 0]} color="#fffaf2" radius={0.06} />
-          <RB args={[0.4, 0.18, 0.32]} pos={[-0.2, 0.58, -0.3]} color="#edc75a" radius={0.05} />
+        {/* round rug */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3.0, 0.02, -2.7]}>
+          <circleGeometry args={[0.7, 24]} />
+          {m("#cfe0d0")}
+        </mesh>
+        {/* bed: headboard on -x wall, extends into room */}
+        <group position={[-3.7, 0, -3.4]}>
+          <RB args={[1.7, 0.36, 1.3]} pos={[0, 0.24, 0]} color={WOOD} radius={0.05} />
+          <RB args={[1.6, 0.22, 1.2]} pos={[0, 0.48, 0]} color="#bfe07d" radius={0.06} />
+          <RB args={[1.6, 0.1, 0.5]} pos={[0, 0.6, 0.36]} color="#f6ead2" radius={0.05} />
+          <RB args={[0.5, 0.5, 1.05]} pos={[-0.58, 0.55, 0]} color={CREAM} radius={0.07} />
+          <RB args={[0.42, 0.2, 0.34]} pos={[-0.34, 0.66, -0.32]} color={PINK} radius={0.05} />
+          <RB args={[0.42, 0.2, 0.34]} pos={[-0.34, 0.66, 0.3]} color="#e7b85c" radius={0.05} />
         </group>
-        <group position={[-4.3, 0, -2.3]}>
-          <RB args={[0.5, 0.5, 0.5]} pos={[0, 0.25, 0]} color={WOOD} radius={0.05} />
-          <mesh position={[0, 0.66, 0]}>
-            <sphereGeometry args={[0.13, 12, 10]} />
-            <meshStandardMaterial color="#ffe39c" emissive="#ffce63" emissiveIntensity={0.85} roughness={1} />
+        {/* nightstand + lamp */}
+        <group position={[-4.2, 0, -2.2]}>
+          <RB args={[0.5, 0.5, 0.5]} pos={[0, 0.26, 0]} color={WOOD} radius={0.05} />
+          <mesh position={[0, 0.58, 0]}>
+            <cylinderGeometry args={[0.04, 0.05, 0.18, 8]} />
+            {m(WOOD_DK)}
+          </mesh>
+          <mesh position={[0, 0.74, 0]}>
+            <cylinderGeometry args={[0.13, 0.16, 0.2, 14, 1, true]} />
+            <meshStandardMaterial color="#fff0c8" emissive="#ffd98a" emissiveIntensity={0.75} roughness={1} side={2} />
           </mesh>
         </group>
-        <group position={[-1.7, 0, -3.7]}>
-          <mesh position={[0, 0.32, 0]}>
-            <cylinderGeometry args={[0.56, 0.5, 0.64, 16]} />
+        {/* bath: tub + mirror + towel */}
+        <group position={[-1.7, 0, -3.8]}>
+          <mesh position={[0, 0.3, 0]}>
+            <cylinderGeometry args={[0.5, 0.44, 0.6, 18]} />
+            {m(CREAM)}
+          </mesh>
+          <mesh position={[0, 0.5, 0]}>
+            <cylinderGeometry args={[0.42, 0.42, 0.1, 18]} />
+            {m("#8fd0d6")}
+          </mesh>
+        </group>
+        {/* mirror on back wall (above the tub) */}
+        <group position={[-1.7, 1.0, ZB + 0.14]}>
+          <mesh>
+            <circleGeometry args={[0.24, 20]} />
+            {m("#d4ecec")}
+          </mesh>
+          <mesh position={[0, 0, -0.01]}>
+            <ringGeometry args={[0.24, 0.29, 20]} />
+            {m(WOOD_DK)}
+          </mesh>
+        </group>
+        {/* loft shelf + plant + books on back wall */}
+        <group position={[-2.6, 1.05, -4.36]}>
+          <Box args={[0.7, 0.06, 0.24]} pos={[0, 0, 0]} color={WOOD} />
+          <Plant pos={[-0.2, 0.03, 0]} scale={0.8} />
+          <Books pos={[0.18, -0.08, 0]} count={4} len={0.36} />
+        </group>
+        {/* hanging plant from loft ceiling */}
+        <group position={[-2.1, 1.7, -2.2]}>
+          <mesh position={[0, 0.25, 0]}>
+            <cylinderGeometry args={[0.008, 0.008, 0.5, 6]} />
+            {m("#5a4636")}
+          </mesh>
+          <mesh position={[0, 0, 0]}>
+            <sphereGeometry args={[0.16, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
             {m(WOOD)}
           </mesh>
-          <mesh position={[0, 0.58, 0]}>
-            <cylinderGeometry args={[0.47, 0.47, 0.1, 16]} />
-            {m("#7ec7cf")}
-          </mesh>
-        </group>
-        <group position={[-2.55, 1.0, -4.4]}>
-          <Box args={[0.6, 0.06, 0.22]} pos={[0, 0, 0]} color={WOOD} />
-          <mesh position={[0, 0.18, 0]}>
-            <icosahedronGeometry args={[0.18, 0]} />
-            {m(GREEN)}
-          </mesh>
+          {[-0.06, 0.08, 0.0].map((x, i) => (
+            <mesh key={i} position={[x, -0.12 - i * 0.04, 0.02 * i]}>
+              <coneGeometry args={[0.05, 0.22, 6]} />
+              {m(GREEN)}
+            </mesh>
+          ))}
         </group>
       </group>
 
+      {/* string lights along the loft edge */}
+      {Array.from({ length: 7 }).map((_, i) => (
+        <mesh key={i} position={[-1.1, FLOOR_H + 0.7 + Math.sin(i) * 0.04, -0.4 - i * 0.62]}>
+          <sphereGeometry args={[0.045, 8, 8]} />
+          {glow(["#ffe39c", "#ffd2a8", "#ffe39c"][i % 3], "#ffce63", 0.9)}
+        </mesh>
+      ))}
+
       {/* wall postcards (diegetic -> album) */}
-      <group position={[XL + 0.12, 1.45, -0.8]} rotation={[0, Math.PI / 2, 0]} onClick={goAlbum}>
+      <group position={[XL + 0.13, 1.55, -3.8]} rotation={[0, Math.PI / 2, 0]} onClick={goAlbum}>
         {(postcardThemes.length ? postcardThemes.slice(0, 3) : (["seaside"] as DestinationTheme[])).map(
           (theme, i, arr) => (
             <PinnedCard key={i} x={(i - (arr.length - 1) / 2) * 0.64} tilt={i % 2 === 0 ? 0.06 : -0.06} theme={theme} faded={!postcardThemes.length} />
           ),
         )}
       </group>
-      <Hint pos={[-4.45, 2.2, -0.8]} icon="📮" label="明信片" onClick={goAlbum} />
+      <Hint pos={[-4.5, 2.35, -3.8]} icon="📮" label="明信片" onClick={goAlbum} />
 
       {/* backpack (diegetic -> pack) */}
       {mode === "home" && (
         <>
           <group
             position={[-1.5, 0, -0.7]}
-            scale={0.95}
+            scale={1.0}
             onClick={(e: ThreeEvent<MouseEvent>) => {
               e.stopPropagation();
               goPack();
@@ -308,7 +641,7 @@ export default function House({
           >
             <Backpack />
           </group>
-          <Hint pos={[-1.5, 1.1, -0.7]} icon="🧳" label="打包行李" onClick={goPack} />
+          <Hint pos={[-1.5, 1.15, -0.7]} icon="🧳" label="打包行李" onClick={goPack} />
         </>
       )}
     </group>

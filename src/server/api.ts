@@ -1,6 +1,7 @@
 // Shared helpers for the bind-authenticated route handlers.
 import { readBind } from "./bind";
 import { summarizePet } from "./engine";
+import { schedulePendingImages } from "./postcardImages";
 import { resolveBind, savePet } from "./store";
 import type { CloudSave, User } from "./types";
 
@@ -23,6 +24,9 @@ export async function authed(
 /** Persist the save and reply with the standard envelope (raw save + summary). */
 export async function commit(petId: string, save: CloudSave): Promise<Response> {
   await savePet(petId, save);
+  // Backend pre-generation: kick any not-yet-generated postcard art in the
+  // background (after the response). The web client polls for the result.
+  schedulePendingImages(petId, save);
   return Response.json({
     ok: true,
     rev: save.rev,

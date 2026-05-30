@@ -115,6 +115,11 @@ export type TripStatus = "traveling" | "returned";
 
 export type Gesture = "pat"; // optional 摸头/手势
 
+// What the agent decided the pet should do with the day. A concrete OutcomeKind
+// forces that ending; "auto" lets the pet pick for itself (weighted random, the
+// legacy autonomous behavior); "quiet" is a low-key day (home/yard/rest).
+export type TripIntent = OutcomeKind | "auto" | "quiet";
+
 export interface Trip {
   id: string;
   companionId: string;
@@ -123,6 +128,8 @@ export interface Trip {
   gesture?: Gesture;
   status: TripStatus;
   destination: DestinationTheme;
+  intent?: TripIntent; // the agent's decision; undefined === "auto"
+  note?: string; // why the agent sent it out (free text, optional)
   startedAt: number; // epoch ms
   durationMs: number;
   returnsAt: number; // epoch ms

@@ -100,21 +100,35 @@ export default function PostcardScreen() {
   const [flipped, setFlipped] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
-  // Cloud pets: fetch the AI art (generated once, server-side). Guests / no
-  // prompt → keep imageUrl null and fall back to the procedural SVG.
+  // Cloud pets: the art is pre-generated server-side (see server/postcardImages).
+  // Poll until it's ready; meanwhile the procedural SVG shows as the fallback.
+  // Guests / no prompt / no API key → stay on SVG.
   useEffect(() => {
     setImageUrl(null);
     const id = card?.id;
     if (!id || !bindToken || !card?.imagePrompt) return;
     let alive = true;
-    cloud
-      .postcardImage(bindToken, id)
-      .then((r) => {
-        if (alive) setImageUrl(r.url);
-      })
-      .catch(() => {});
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const r = await cloud.postcardImage(bindToken, id);
+        if (!alive) return;
+        if (r.status === "ready" && r.url) {
+          setImageUrl(r.url);
+          return;
+        }
+        if (r.status === "fallback") return; // no key/prompt → keep SVG
+      } catch {
+        if (!alive) return;
+      }
+      // pending (or a transient error) → keep polling for ~2min, then give up.
+      if (tries++ < 30) timer = setTimeout(poll, 4000);
+    };
+    poll();
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
   }, [card?.id, card?.imagePrompt, bindToken]);
 

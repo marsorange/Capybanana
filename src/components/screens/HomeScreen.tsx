@@ -6,6 +6,7 @@ import { useGameStore } from "@/state/gameStore";
 import HomeScene from "../scenes3d/HomeScene";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
+import Sky from "../scenes3d/Sky";
 
 const IDLE_LINES = [
   "今天也想和你待在一起。",
@@ -36,14 +37,23 @@ export default function HomeScreen() {
 
   return (
     <div className="relative h-full overflow-hidden">
+      {/* soft pastel sky behind the floating diorama */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, #fde9d6 0%, #fbdcc8 32%, #f6d0cf 64%, #e8c9e0 100%)",
+        }}
+      />
       {/* fixed immersive isometric view (no orbit / no zoom) */}
       <SceneCanvas
         controls="none"
         orthographic
-        cameraPosition={[9, 9, 9]}
-        target={[-1.3, 1.7, -1.3]}
-        zoom={56}
+        cameraPosition={[9, 8.4, 9]}
+        target={[-0.9, 1.9, -0.9]}
+        zoom={62}
       >
+        <Sky />
         <HomeScene
           mode="home"
           postcardThemes={wallThemes}
