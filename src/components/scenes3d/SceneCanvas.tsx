@@ -106,11 +106,11 @@ export default function SceneCanvas({
       <WebGLContextGuard />
       {/* bright, airy "日系" low-poly light: high soft sky fill keeps it fresh
           while a gentle warm key still sculpts the facets. */}
-      <hemisphereLight args={["#fffaf0", "#e7ddca", 1.0]} />
-      <ambientLight intensity={0.5} color="#fff6ec" />
-      <directionalLight position={[7, 12, 8]} intensity={1.5} color="#fff3df" />
-      <directionalLight position={[-8, 6, -3]} intensity={0.55} color="#d6e2f5" />
-      <directionalLight position={[1, 3, -9]} intensity={0.3} color="#ffe0cf" />
+      <hemisphereLight args={["#fffdf6", "#ece1cd", 1.1]} />
+      <ambientLight intensity={0.58} color="#fff7ee" />
+      <directionalLight position={[8, 12, 7]} intensity={1.95} color="#fff0d2" />
+      <directionalLight position={[-8, 6, -3]} intensity={0.5} color="#dbe6f6" />
+      <directionalLight position={[1, 3, -9]} intensity={0.3} color="#ffe2d0" />
 
       <Suspense fallback={null}>{children}</Suspense>
 

@@ -279,25 +279,26 @@ function MiniCapy({ pos }: { pos: [number, number, number] }) {
 }
 
 // A flat right-triangle gable end that closes the side of the sliced roof.
-function GableEnd({
+// The triangular attic face (gable wall) under the roof ridge.
+function IsoGable({
   x,
-  run,
+  halfRun,
   h,
   color,
 }: {
   x: number;
-  run: number;
+  halfRun: number;
   h: number;
   color: string;
 }) {
   const geo = useMemo(() => {
     const s = new THREE.Shape();
-    s.moveTo(0, 0); // front-bottom (under ridge)
-    s.lineTo(run, 0); // back-bottom
-    s.lineTo(0, h); // ridge
+    s.moveTo(-halfRun, 0);
+    s.lineTo(halfRun, 0);
+    s.lineTo(0, h);
     s.closePath();
     return new THREE.ShapeGeometry(s);
-  }, [run, h]);
+  }, [halfRun, h]);
   return (
     <mesh position={[x, 0, 0]} rotation={[0, Math.PI / 2, 0]} geometry={geo}>
       <meshStandardMaterial
@@ -308,6 +309,34 @@ function GableEnd({
         side={THREE.DoubleSide}
       />
     </mesh>
+  );
+}
+
+// One tiled roof slope: a faceted plank dressed with raised, alternating tile
+// courses so the roof reads as hand-laid tiles instead of a flat slab.
+function RoofSlope({
+  z,
+  rot,
+  width,
+}: {
+  z: number;
+  rot: number;
+  width: number;
+}) {
+  const courses = [-1.16, -0.58, 0, 0.58, 1.16];
+  return (
+    <group position={[0, 0.92, z]} rotation={[rot, 0, 0]}>
+      <mesh>
+        <boxGeometry args={[width, 0.16, 2.92]} />
+        {m(ROOF_DK)}
+      </mesh>
+      {courses.map((cz, i) => (
+        <mesh key={i} position={[0, 0.1, cz]}>
+          <boxGeometry args={[width + 0.06, 0.12, 0.48]} />
+          {m(i % 2 ? "#f8d775" : ROOF)}
+        </mesh>
+      ))}
+    </group>
   );
 }
 
@@ -388,40 +417,63 @@ export default function House({
         );
       })}
 
-      {/* ===== ROOF — a bold faceted gable whose FRONT slope is sliced down to a
-            short lip, so the back rooms get a real roof while the cutaway stays
-            an open cross-section ===== */}
+      {/* ===== ROOF — a proper tiled gable. Eaves sit at the wall-top so the
+            iso sightlines pass UNDER the front eave into the rooms (no occlusion),
+            while the warm tiled slopes + rounded ridge give it real character. */}
       <group position={[CX, TOP, CZ]}>
-        {/* big faceted back slope (the main visible roof plane) */}
-        <mesh position={[0, 0.92, -1.4]} rotation={[-0.6, 0, 0]}>
-          <boxGeometry args={[W + 1.15, 0.2, 3.3]} />
-          {m(ROOF)}
+        {/* cream attic gables on each end (the +x one faces the camera) */}
+        <IsoGable x={2.9} halfRun={2.25} h={1.8} color={WALL_BACK} />
+        <IsoGable x={-2.9} halfRun={2.25} h={1.8} color={WALL_BACK} />
+        {/* two tiled slopes meeting at the ridge */}
+        <RoofSlope z={1.12} rot={0.685} width={5.8} />
+        <RoofSlope z={-1.12} rot={-0.685} width={5.8} />
+        {/* rounded faceted ridge beam */}
+        <mesh position={[0, 1.82, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.2, 0.2, 6.0, 6]} />
+          {m("#e0a93c")}
         </mesh>
-        {/* short sliced front lip so it still peaks like a gable */}
-        <mesh position={[0, 1.6, 0.36]} rotation={[0.72, 0, 0]}>
-          <boxGeometry args={[W + 1.15, 0.18, 0.82]} />
-          {m(ROOF_DK)}
-        </mesh>
-        {/* ridge cap */}
-        <Box args={[W + 1.27, 0.2, 0.24]} pos={[0, 1.86, -0.02]} color={ROOF_RIDGE} />
-        {/* gable end triangles close the sides */}
-        <GableEnd x={(W + 1.15) / 2} run={2.75} h={1.85} color={ROOF_DK} />
-        <GableEnd x={-(W + 1.15) / 2} run={2.75} h={1.85} color={ROOF_DK} />
-        {/* chimney near the ridge, over the kitchen */}
-        <group position={[-0.4, 1.6, -0.75]}>
-          <RB args={[0.4, 1.1, 0.4]} pos={[0, 0.3, 0]} color="#caa07a" radius={0.04} />
-          <Box args={[0.5, 0.14, 0.5]} pos={[0, 0.84, 0]} color={WOOD_DK} />
-          <Box args={[0.32, 0.16, 0.32]} pos={[0, 0.88, 0]} color="#5a4636" />
+        {/* wood fascia boards along the two eaves */}
+        <Box args={[5.95, 0.16, 0.16]} pos={[0, 0.02, 2.18]} color={WOOD} />
+        <Box args={[5.95, 0.16, 0.16]} pos={[0, 0.02, -2.18]} color={WOOD} />
+        {/* wood barge boards framing the gable slopes */}
+        {[2.98, -2.98].map((gx) =>
+          [1.12, -1.12].map((sz, i) => (
+            <mesh
+              key={`${gx}-${i}`}
+              position={[gx, 0.92, sz]}
+              rotation={[i ? -0.685 : 0.685, 0, 0]}
+            >
+              <boxGeometry args={[0.14, 0.24, 2.95]} />
+              {m(WOOD)}
+            </mesh>
+          )),
+        )}
+        {/* round attic window on the camera-facing gable */}
+        <group position={[2.93, 0.78, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <mesh>
+            <circleGeometry args={[0.32, 20]} />
+            {m(GLASS)}
+          </mesh>
+          <mesh position={[0, 0, -0.01]}>
+            <ringGeometry args={[0.32, 0.42, 20]} />
+            {m(CREAM)}
+          </mesh>
+          <Box args={[0.66, 0.05, 0.04]} pos={[0, 0, 0.02]} color={CREAM} />
+          <Box args={[0.05, 0.66, 0.04]} pos={[0, 0, 0.02]} color={CREAM} />
+        </group>
+        {/* a little potted plant perched on the ridge */}
+        <group position={[1.5, 1.95, 0]}>
+          <RB args={[0.36, 0.3, 0.34]} pos={[0, 0, 0]} color={CREAM} radius={0.05} />
+          <mesh position={[0, 0.26, 0]}>
+            <icosahedronGeometry args={[0.22, 0]} />
+            {m(GREEN)}
+          </mesh>
+          <mesh position={[0.12, 0.34, 0.06]}>
+            <icosahedronGeometry args={[0.14, 0]} />
+            {m(GREEN_DK)}
+          </mesh>
         </group>
       </group>
-
-      {/* puffs of chimney smoke */}
-      {[0, 1, 2].map((i) => (
-        <mesh key={i} position={[CX - 0.4, TOP + 2.95 + i * 0.5, CZ - 0.75]} scale={1 + i * 0.25}>
-          <icosahedronGeometry args={[0.16, 1]} />
-          <meshStandardMaterial color="#fffaf2" roughness={1} transparent opacity={0.7 - i * 0.18} />
-        </mesh>
-      ))}
 
       {/* ===== WINDOWS / WALL ART ===== */}
       {/* round window (back wall, bedroom) with frame */}

@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { applyOutcome } from "@/game/applyOutcome";
 import { advanceLifecycle, scheduleDeparture } from "@/game/clock";
 import { planTrip } from "@/game/planTrip";
+import { resolveDay } from "@/game/resolveDay";
 import type {
   Accessory,
   CapyState,
@@ -11,6 +13,7 @@ import type {
   CompanionType,
   DayOutcome,
   Gesture,
+  OutcomeKind,
   PackedBag,
   PackedItem,
   Personality,
@@ -118,6 +121,8 @@ interface GameState {
   tick: (now?: number) => void;
   devFastForward: () => void;
   devRunTrip: () => void;
+  devPreviewOutcome: (kind: OutcomeKind) => void;
+  devRunDay: (kind: OutcomeKind) => void;
   reset: () => void;
 
   // cloud actions
@@ -379,6 +384,133 @@ export const useGameStore = create<GameState>()(
         };
         set({ activeTrip: trip, companionState: "traveling", packedBag: null });
         get().tick(now);
+      },
+
+      // Dev/QA: preview exactly one ending — a trip (出门旅行) or any at-home
+      // state (在家/院子/休息养伤/找 Claw/神秘) — without waiting or permanently
+      // mutating the pet. Pure local preview: it resolves the chosen `kind`, then
+      // routes to the result/postcard screen so you can eyeball每种结果。Works in
+      // both guest and cloud mode; the server is never touched.
+      devPreviewOutcome: (kind) => {
+        const s = get();
+        if (!s.companion) return;
+        const now = Date.now();
+        const items = s.packedBag?.items ?? [];
+        const message = s.packedBag?.message ?? "";
+        const plan = planTrip(items, message);
+        const trip: Trip = {
+          id: uid("trip"),
+          companionId: s.companion.id,
+          items,
+          message,
+          gesture: s.packedBag?.gesture,
+          status: "returned",
+          destination: plan.destination,
+          intent: kind, // force this exact ending
+          startedAt: now - 1,
+          durationMs: 1,
+          returnsAt: now,
+        };
+        const outcome = resolveDay(s.companion, s.capyState, trip);
+        const patch: Partial<GameState> = { lastResult: outcome };
+        if (outcome.postcard) {
+          // travel: surface the just-arrived postcard like the real flow
+          patch.postcards = [outcome.postcard, ...s.postcards];
+          patch.selectedPostcardId = outcome.postcard.id;
+          patch.pendingPostcardId = outcome.postcard.id;
+          patch.screen = "postcard";
+        } else {
+          patch.screen = "result";
+        }
+        set(patch);
+      },
+
+      // Dev/QA: actually RUN a day with a chosen ending — effects are applied for
+      // real (unlike devPreviewOutcome, which only shows the screen).
+      //  • Guest: resolve locally and fold the result into state (stats / traits /
+      //    souvenirs / postcard), exactly like a real day.
+      //  • Cloud: drive the matching server endpoint so the real pet changes and
+      //    syncs back — travel→travel, claw→battle, home/yard/rest→stay(mode).
+      //    "secret" can't be commanded on the server, so it falls back to a local
+      //    preview. The server's one-action-a-day / too-hurt rules still apply and
+      //    surface as cloudError.
+      devRunDay: (kind) => {
+        const s = get();
+        if (!s.companion || s.cloudBusy) return;
+
+        if (s.cloud) {
+          const token = s.cloud.bindToken;
+          if (kind === "secret") {
+            // emergent event — no command for it on the cloud pet; preview instead
+            get().devPreviewOutcome("secret");
+            return;
+          }
+          set({ cloudBusy: true, cloudError: null });
+          const onSave = ({ save }: { save: CloudSave }) => {
+            get().adoptSave(save);
+            set(() => {
+              if (save.companionState === "traveling")
+                return { cloudBusy: false, screen: "traveling" as Screen };
+              if (save.lastResult)
+                return { cloudBusy: false, screen: "result" as Screen };
+              return { cloudBusy: false };
+            });
+          };
+          const onErr = (e: Error & { status?: number }) => {
+            if (e.status === 401) return get().logout();
+            set({ cloudBusy: false, cloudError: e.message });
+          };
+          if (kind === "travel") cloud.travel(token).then(onSave).catch(onErr);
+          else if (kind === "claw") cloud.battle(token).then(onSave).catch(onErr);
+          else cloud.stay(token, kind).then(onSave).catch(onErr); // home/yard/rest
+          return;
+        }
+
+        // guest: resolve locally and fold into state like a real day
+        const now = Date.now();
+        const items = s.packedBag?.items ?? [];
+        const message = s.packedBag?.message ?? "";
+        const plan = planTrip(items, message);
+        const trip: Trip = {
+          id: uid("trip"),
+          companionId: s.companion.id,
+          items,
+          message,
+          gesture: s.packedBag?.gesture,
+          status: "returned",
+          destination: plan.destination,
+          intent: kind,
+          startedAt: now - 1,
+          durationMs: 1,
+          returnsAt: now,
+        };
+        const outcome = resolveDay(s.companion, s.capyState, trip);
+        const folded = applyOutcome(
+          {
+            capy: s.capyState,
+            souvenirs: s.souvenirs,
+            misunderstandings: s.misunderstandings,
+          },
+          outcome,
+          trip.gesture === "pat",
+        );
+        const patch: Partial<GameState> = {
+          capyState: folded.capy,
+          souvenirs: folded.souvenirs,
+          misunderstandings: folded.misunderstandings,
+          lastResult: outcome,
+          packedBag: null,
+          companionState: "idle_home",
+        };
+        if (outcome.postcard) {
+          patch.postcards = [outcome.postcard, ...s.postcards];
+          patch.selectedPostcardId = outcome.postcard.id;
+          patch.pendingPostcardId = outcome.postcard.id;
+          patch.screen = "postcard";
+        } else {
+          patch.screen = "result";
+        }
+        set(patch);
       },
 
       reset: () =>
