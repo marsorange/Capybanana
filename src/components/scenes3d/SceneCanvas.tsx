@@ -24,15 +24,16 @@ interface SceneCanvasProps {
 }
 
 function ZoomApplier({ min, max }: { min: number; max: number }) {
-  const camera = useThree((s) => s.camera);
-  useFrame(() => {
-    if (zoomBus.factor !== 1) {
-      const next = THREE.MathUtils.clamp(camera.zoom * zoomBus.factor, min, max);
-      zoomBus.factor = 1;
-      if (next !== camera.zoom) {
-        camera.zoom = next;
-        camera.updateProjectionMatrix();
-      }
+  // Read the camera from the per-frame state (not a hook return) so applying the
+  // pinch-zoom from the bus stays a legitimate r3f imperative mutation.
+  useFrame((state) => {
+    if (zoomBus.factor === 1) return;
+    const camera = state.camera;
+    const next = THREE.MathUtils.clamp(camera.zoom * zoomBus.factor, min, max);
+    zoomBus.factor = 1;
+    if (next !== camera.zoom) {
+      camera.zoom = next;
+      camera.updateProjectionMatrix();
     }
   });
   return null;

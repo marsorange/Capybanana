@@ -101,20 +101,27 @@ export default function PostcardScreen() {
   const card = allCards.find((p) => p.id === selectedId) ?? allCards[0];
   const isFresh = pendingId != null && card?.id === pendingId;
   const [flipped, setFlipped] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [polledUrl, setPolledUrl] = useState<string | null>(null);
+
+  // Reset the server-polled art when switching to a different card — adjust
+  // state during render (the React-recommended pattern) rather than calling
+  // setState synchronously inside an effect.
+  const [lastCardId, setLastCardId] = useState(card?.id);
+  if (card?.id !== lastCardId) {
+    setLastCardId(card?.id);
+    setPolledUrl(null);
+  }
+
+  // The art to show: an inline image (mock/demo cards) wins; otherwise the
+  // server-polled URL; otherwise the procedural SVG fallback inside <Front/>.
+  const imageUrl = card?.imageUrl ?? polledUrl;
 
   // Cloud pets: the art is pre-generated server-side (see server/postcardImages).
   // Poll until it's ready; meanwhile the procedural SVG shows as the fallback.
-  // Guests / no prompt / no API key → stay on SVG.
+  // Guests / inline image / no prompt / no API key → nothing to poll.
   useEffect(() => {
-    setImageUrl(null);
-    // Mock/demo cards carry the image inline — use it directly, no fetch.
-    if (card?.imageUrl) {
-      setImageUrl(card.imageUrl);
-      return;
-    }
     const id = card?.id;
-    if (!id || !bindToken || !card?.imagePrompt) return;
+    if (!id || card?.imageUrl || !bindToken || !card?.imagePrompt) return;
     let alive = true;
     let tries = 0;
     let timer: ReturnType<typeof setTimeout>;
@@ -123,7 +130,7 @@ export default function PostcardScreen() {
         const r = await cloud.postcardImage(bindToken, id);
         if (!alive) return;
         if (r.status === "ready" && r.url) {
-          setImageUrl(r.url);
+          setPolledUrl(r.url);
           return;
         }
         if (r.status === "fallback") return; // no key/prompt → keep SVG

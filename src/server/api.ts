@@ -35,6 +35,25 @@ export async function commit(petId: string, save: CloudSave): Promise<Response> 
   });
 }
 
+/**
+ * Persist the (already-ticked) save but reply with an error envelope. Used when
+ * an agent action is refused (e.g. already acted today / too hurt): we still want
+ * any trip that resolved during the tick to be saved, and to hand the agent the
+ * current `pet` summary so it can see why it's blocked.
+ */
+export async function commitError(
+  petId: string,
+  save: CloudSave,
+  message: string,
+  status = 409,
+): Promise<Response> {
+  await savePet(petId, save);
+  return Response.json(
+    { ok: false, error: message, rev: save.rev, pet: summarizePet(save) },
+    { status },
+  );
+}
+
 /** Absolute origin for building the bind link (deployed domain on Vercel). */
 export function baseUrl(req: Request): string {
   if (process.env.APP_BASE_URL)

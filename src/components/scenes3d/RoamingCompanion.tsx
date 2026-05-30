@@ -66,7 +66,7 @@ export default function RoamingCompanion({
   const tmp = useRef(new THREE.Vector3());
   const command = useRef<(() => void) | null>(null);
 
-  const [emote, setEmote] = useState<string>(start.emote);
+  const [, setEmote] = useState<string>(start.emote);
   const [speech, setSpeech] = useState<string | null>(null);
   const speechTimer = useRef<number | undefined>(undefined);
 

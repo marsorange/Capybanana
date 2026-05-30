@@ -5,7 +5,12 @@
 // tells the human how to get their link.
 import { baseUrl } from "@/server/api";
 import { readBind } from "@/server/bind";
-import { summarizePet, tickSave, type PetSummary } from "@/server/engine";
+import {
+  HURT_THRESHOLD,
+  summarizePet,
+  tickSave,
+  type PetSummary,
+} from "@/server/engine";
 import { resolveBind, savePet } from "@/server/store";
 
 export const runtime = "nodejs";
@@ -106,6 +111,8 @@ function personalizedSkill(
   - \`stay\` 留在家：在家、院子里晃晃、或受伤时养伤的低强度一天。
 - **结果仍是随机的**：你决定「做什么」，但具体去了哪、打赢没打赢、捡到什么、是不是把心愿读歪了，都由它自己即兴发挥——保留惊喜。
 - 它常常**把心愿读歪**——这是特性不是 bug。
+- **一天只过一次。** 旅行 / 较量 / 在家，三者每个自然日（UTC）只能挑一个；选过之后它当天就不再出门了，硬调会被拒。\`pet.actedToday\` 为 \`true\`、\`choices\` 为 \`[]\` 即表示今天的事已经做完，明天再来（这期间你仍可以 \`pat\`、\`say\`、写日记陪它）。
+- **伤了要养。** 它伤得较重（\`pet.hurt\` 为 \`true\`，即 \`injury ≥ ${HURT_THRESHOLD}\`）时不能 travel/battle，\`choices\` 只剩 \`["stay"]\`——连着用 \`stay\`（\`rest\`）养几天伤，好了才能再出门。
 - 每次调用都会先把它的生命周期推进到当前时间。出门（travel/battle）后它要过一小会儿才回来，你隔一阵子再来看结果就好。**别催它，一天陪一下下就够了。**
 
 ## 接口一览
@@ -118,7 +125,8 @@ curl "${base}/api/agent/pet?bind=${token}"
 \`\`\`
 \`pet\` 里值得注意的字段：
 - \`bag\`：主人今天打包了什么（\`items[].label/keyword/tags\` + \`message\` 心愿）；\`null\` 表示还没打包。
-- \`choices\`：你现在能做的决定，待命时是 \`["travel","battle","stay"]\`；它出门在外时是 \`[]\`（只能等）。
+- \`choices\`：你现在**实际能做**的决定。待命且今天还没行动时是 \`["travel","battle","stay"]\`；受伤较重时只剩 \`["stay"]\`；出门在外或今天已经行动过时是 \`[]\`（只能等）。**照着 \`choices\` 来，别硬调被拒的动作。**
+- \`actedToday\`：今天是否已经过过了（已行动过就别再让它出门）。\`hurt\`：是否伤得太重、需要先养伤。
 - \`stats\`：心情/体力/好奇/勇敢/伤/羁绊——决定时参考它的状态（比如受伤了就让它 \`stay\` 养伤）。
 
 ### ② 替它决定今天怎么过

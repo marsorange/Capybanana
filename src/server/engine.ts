@@ -25,6 +25,44 @@ import type { AgentEvent, CloudSave, DiaryEntry } from "./types";
 const DESTINATION_THEMES = new Set<string>(DESTINATIONS.map((d) => d.theme));
 const QUIET_MODES = new Set<string>(["home", "yard", "rest"]);
 
+// At/above this injury the pet is "badly hurt" — it can't travel or battle, only
+// stay home and recover (rest heals ~15/day, so a couple of quiet days fixes it).
+export const HURT_THRESHOLD = 45;
+
+/** The UTC calendar day a timestamp falls on (YYYY-MM-DD). */
+export function dayKey(now: number): string {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
+/** Already spent today's one growth action (travel / battle / stay)? */
+export function actedToday(save: CloudSave, now: number): boolean {
+  return !!save.lastActionDay && save.lastActionDay === dayKey(now);
+}
+
+/** Too hurt to head out — must recover at home first. */
+export function isHurt(save: CloudSave): boolean {
+  return save.capyState.injury >= HURT_THRESHOLD;
+}
+
+/**
+ * Why the agent can't start a new day right now (null = go ahead). Enforces the
+ * core rhythm: at most one growth action per UTC day, and no heading out while
+ * badly hurt.
+ */
+export function dayBlockedReason(
+  save: CloudSave,
+  now: number,
+  action: "travel" | "battle" | "stay",
+): string | null {
+  if (save.companionState === "traveling")
+    return "它已经出门了，等它回来再说";
+  if (actedToday(save, now))
+    return "今天它已经过完啦——一天陪它一次就好，明天再来吧";
+  if ((action === "travel" || action === "battle") && isHurt(save))
+    return "它伤得不轻，先让它在家用 stay（rest）养几天伤，好了再出门";
+  return null;
+}
+
 /** Fold a resolved day into the save: stat effects + the right log event. */
 function foldOutcome(
   save: CloudSave,
@@ -159,6 +197,7 @@ export function createPet(
     pendingPostcardId: null,
     pendingMessage: null,
     diary: [],
+    lastActionDay: null,
   };
   return bump(base, now, {
     type: "created",
@@ -250,6 +289,7 @@ export function startTravel(
       companionState: "traveling",
       packedBag: null,
       pendingMessage: null,
+      lastActionDay: dayKey(now),
     },
     now,
     { type: "departed", text: `${companion.name} 背上包裹，出门去远方了。` },
@@ -286,6 +326,7 @@ export function startBattle(
       companionState: "traveling",
       packedBag: null,
       pendingMessage: null,
+      lastActionDay: dayKey(now),
     },
     now,
     { type: "departed", text: `${companion.name} 气鼓鼓地出门，去找 Claw 较量了。` },
@@ -318,7 +359,13 @@ export function stayHome(
   };
   const outcome = resolveDay(companion, save.capyState, trip);
   const next = foldOutcome(
-    { ...save, packedBag: null, pendingMessage: null, companionState: "idle_home" },
+    {
+      ...save,
+      packedBag: null,
+      pendingMessage: null,
+      companionState: "idle_home",
+      lastActionDay: dayKey(now),
+    },
     outcome,
     gesture === "pat",
     now,
@@ -385,11 +432,15 @@ export function writeDiary(save: CloudSave, text: string, now: number): CloudSav
     ? prior.map((d, i) => (i === existingIdx ? entry : d))
     : [entry, ...prior].slice(0, 90); // keep ~3 months of entries
 
-  const capy = {
-    ...save.capyState,
-    bond: clamp(save.capyState.bond + 3),
-    mood: clamp(save.capyState.mood + 2),
-  };
+  // The bond/mood bump rewards the *daily ritual*, so only the first entry of
+  // the day earns it — rewriting the same day just replaces the text.
+  const capy = updated
+    ? save.capyState
+    : {
+        ...save.capyState,
+        bond: clamp(save.capyState.bond + 3),
+        mood: clamp(save.capyState.mood + 2),
+      };
   const name = save.companion?.name ?? "它";
   return bump({ ...save, diary, capyState: capy }, now, {
     type: "diary",
@@ -428,8 +479,10 @@ export interface PetSummary {
   recentMemories: string[];
   souvenirs: string[];
   bag: PetBag | null; // today's packed supplies (null if nothing packed)
-  canDecide: boolean; // true when it's home/ready and awaiting the agent's call
-  choices: string[]; // suggested next actions for the agent
+  canDecide: boolean; // true when you can still start today's action (home/ready, not yet acted, not too hurt to do anything)
+  choices: string[]; // the actions allowed right now ([] while traveling / already acted; ["stay"] only when badly hurt)
+  actedToday: boolean; // already spent today's one growth action (travel/battle/stay)?
+  hurt: boolean; // too injured to travel/battle — needs to rest at home first
   pendingPostcard: { id: string; title: string } | null;
   latestPostcard: {
     id: string;
@@ -457,11 +510,20 @@ function bagOf(save: CloudSave): PetBag | null {
   };
 }
 
-function describeToday(save: CloudSave): string {
+function describeToday(save: CloudSave, now: number): string {
   const name = save.companion?.name ?? "它";
   if (save.companionState === "traveling")
     return `${name} 正在外面，等它回来才知道结果。`;
-  const decision = `等你替它拿主意：今天去旅行、去找 Claw 较量、还是在家待着？`;
+
+  // Today's one growth action is already spent — only gentle interactions left.
+  if (actedToday(save, now)) {
+    const last = save.lastResult ? `今天它${save.lastResult.title}。` : "";
+    return `${last}${name} 今天的事都忙完啦，明天再陪它出门——现在还能摸摸头、说说话、写写日记。`;
+  }
+
+  const decision = isHurt(save)
+    ? `它伤得不轻，今天先让它 stay（rest）在家养伤吧。`
+    : `等你替它拿主意：今天去旅行、去找 Claw 较量、还是在家待着？`;
   if (save.companionState === "ready") {
     const b = save.packedBag;
     const things =
@@ -483,13 +545,20 @@ export function summarizePet(save: CloudSave): PetSummary | null {
   const pending = save.pendingPostcardId
     ? save.postcards.find((p) => p.id === save.pendingPostcardId)
     : undefined;
-  const canDecide = save.companionState !== "traveling";
-  const choices = canDecide ? ["travel", "battle", "stay"] : [];
+  const now = Date.now();
+  const acted = actedToday(save, now);
+  const hurt = isHurt(save);
+  const canDecide = save.companionState !== "traveling" && !acted;
+  const choices = canDecide
+    ? hurt
+      ? ["stay"] // badly hurt → can only recover at home
+      : ["travel", "battle", "stay"]
+    : [];
   const diary = save.diary ?? [];
   const latestDiary = diary[0]
     ? { day: diary[0].day, text: diary[0].text, at: diary[0].at }
     : null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dayKey(now);
   return {
     name: c.name,
     type: c.type,
@@ -497,7 +566,7 @@ export function summarizePet(save: CloudSave): PetSummary | null {
     accessory: c.accessory,
     color: c.primaryColor,
     state: save.companionState,
-    today: describeToday(save),
+    today: describeToday(save, now),
     stats: {
       mood: cap.mood,
       energy: cap.energy,
@@ -512,6 +581,8 @@ export function summarizePet(save: CloudSave): PetSummary | null {
     bag: bagOf(save),
     canDecide,
     choices,
+    actedToday: acted,
+    hurt,
     pendingPostcard: pending ? { id: pending.id, title: pending.title } : null,
     latestPostcard: latest
       ? {

@@ -62,6 +62,7 @@ export interface CloudSave {
   pendingPostcardId: string | null;
   pendingMessage: string | null; // a thing the agent "said"; seeds the next trip
   diary: DiaryEntry[]; // newest-first; the agent's daily journal in the pet's voice
+  lastActionDay: string | null; // YYYY-MM-DD (UTC) the day's growth action (travel/battle/stay) was spent — caps the pet to one a day
   rev: number;
   updatedAt: string;
   events: AgentEvent[];
