@@ -57,6 +57,9 @@ export default function GameRoot() {
   const lastResult = useGameStore((s) => s.lastResult);
   const tick = useGameStore((s) => s.tick);
   const cloudPull = useGameStore((s) => s.cloudPull);
+  const ensureCloudPet = useGameStore((s) => s.ensureCloudPet);
+  const cloudBusy = useGameStore((s) => s.cloudBusy);
+  const cloudError = useGameStore((s) => s.cloudError);
   const bound = useGameStore((s) => !!s.cloud);
 
   // Hydrate from localStorage on the client only (avoids SSR mismatch).
@@ -82,7 +85,25 @@ export default function GameRoot() {
     };
   }, [hasHydrated, bound, tick, cloudPull]);
 
+  // A bound account with no pet means the server pet hasn't been adopted yet
+  // (legacy account). Adopt one so the owner isn't stranded on the connect
+  // screen. Guarded so it fires once, not on every poll.
+  useEffect(() => {
+    if (!hasHydrated) return;
+    if (bound && !companion && !cloudBusy && !cloudError) void ensureCloudPet();
+  }, [hasHydrated, bound, companion, cloudBusy, cloudError, ensureCloudPet]);
+
   if (!hasHydrated) {
+    return (
+      <PortraitFrame>
+        <Splash />
+      </PortraitFrame>
+    );
+  }
+
+  // Bound but petless: a capybara is being adopted. Show the splash rather than
+  // the connect screen (whose "enter" button is disabled without a pet).
+  if (bound && !companion && !cloudError) {
     return (
       <PortraitFrame>
         <Splash />
@@ -92,8 +113,8 @@ export default function GameRoot() {
 
   let effective: Screen = screen;
   if (!companion) {
-    // No pet yet: bound accounts wait on the connect screen (the Agent creates
-    // the pet); guests see login unless they chose to skip into local create.
+    // No pet: a failed adoption falls back to the connect screen so the owner
+    // can retry/attach an agent; guests see login (or local create).
     if (bound) effective = "connect";
     else effective = screen === "create" ? "create" : "login";
   } else if (screen === "login" || screen === "create") {

@@ -18,6 +18,7 @@ import type {
   Trip,
 } from "@/game/types";
 import { pick, uid } from "@/game/util";
+import { randomCompanion } from "@/game/randomCompanion";
 import { cloud } from "@/lib/cloudClient";
 import type { CloudSave } from "@/server/types";
 
@@ -121,6 +122,7 @@ interface GameState {
   // cloud actions
   login: (phone: string) => Promise<void>;
   logout: () => void;
+  ensureCloudPet: () => Promise<void>;
   cloudPull: () => Promise<void>;
   adoptSave: (save: CloudSave) => void;
 }
@@ -413,11 +415,47 @@ export const useGameStore = create<GameState>()(
             cloudBusy: false,
           });
           get().adoptSave(res.save);
-          // No pet yet → show the connect link so the Agent creates one;
-          // otherwise straight home.
-          set({ screen: res.save.companion ? "home" : "connect" });
+          if (res.save.companion) {
+            set({ screen: "home" });
+            return;
+          }
+          // Legacy/edge case: account exists without a pet. Adopt one now so
+          // the owner can play instead of being stuck on the connect screen.
+          await get().ensureCloudPet();
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
+        }
+      },
+
+      // Make sure a bound account has a pet to play with. New accounts get one
+      // on login, but this also rescues accounts left petless (e.g. created
+      // before auto-adoption). Attaching an AI agent stays optional.
+      ensureCloudPet: async () => {
+        const s = get();
+        if (!s.cloud || s.companion || s.cloudBusy) return;
+        set({ cloudBusy: true, cloudError: null });
+        try {
+          const { save } = await cloud.create(
+            s.cloud.bindToken,
+            randomCompanion(),
+          );
+          get().adoptSave(save);
+          set({ cloudBusy: false, screen: "home" });
+        } catch (e) {
+          const err = e as Error & { status?: number };
+          if (err.status === 401) return get().logout();
+          // Pet already exists (race) → pull whatever the server has.
+          if (err.status === 409) {
+            try {
+              const { save } = await cloud.pet(s.cloud.bindToken);
+              get().adoptSave(save);
+              set({ cloudBusy: false, screen: "home" });
+              return;
+            } catch {
+              /* fall through to surfacing the error below */
+            }
+          }
+          set({ cloudBusy: false, cloudError: err.message });
         }
       },
 

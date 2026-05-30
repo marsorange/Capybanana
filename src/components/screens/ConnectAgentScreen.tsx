@@ -7,8 +7,8 @@ import Button from "../ui/Button";
 
 export default function ConnectAgentScreen() {
   const connectUrl = useGameStore((s) => s.connectUrl);
-  const bindToken = useGameStore((s) => s.cloud?.bindToken ?? null);
   const companion = useGameStore((s) => s.companion);
+  const cloudError = useGameStore((s) => s.cloudError);
   const goTo = useGameStore((s) => s.goTo);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -35,8 +35,8 @@ export default function ConnectAgentScreen() {
           把下面这句话发给你的 AI Agent（如 Claude），
           <br />
           {hasPet
-            ? `它已经连上并为你生成了「${companion!.name}」。`
-            : "让它连上服务器，为你生成一只专属卡皮巴拉。"}
+            ? `让它连上并替你照顾「${companion!.name}」。`
+            : "让它连上服务器，开始替你照顾卡皮巴拉。"}
         </p>
       </div>
 
@@ -50,9 +50,9 @@ export default function ConnectAgentScreen() {
         }
       >
         {hasPet ? (
-          <>✅ Agent 已生成「{companion!.name}」</>
+          <>✅「{companion!.name}」已就位，把指令发给 Agent 即可接管</>
         ) : (
-          <>⏳ 等待 Agent 读取链接并生成宠物…（自动刷新）</>
+          <>⏳ 正在为你准备一只卡皮巴拉…（自动刷新）</>
         )}
       </div>
 
@@ -72,37 +72,23 @@ export default function ConnectAgentScreen() {
         >
           {copied === "cmd" ? "已复制 ✓" : "📋 复制绑定指令"}
         </Button>
+        <p className="mt-2 text-[11px] text-ink-soft/70">
+          这句话里已含你的私密绑定令牌，别随便发给别人。
+        </p>
       </div>
 
-      {/* 2) the raw bind code */}
-      <div className="mt-3 rounded-sticker border-2 border-ink/12 bg-paper p-4">
-        <p className="mb-2 text-[11px] uppercase tracking-wide text-ink-soft/70">
-          绑定码（私密令牌）
-        </p>
-        <code className="block break-all rounded-xl bg-cream-soft px-3 py-2.5 text-xs text-ink">
-          {bindToken ?? "—"}
-        </code>
-        <Button
-          variant="soft"
-          className="mt-3 w-full"
-          disabled={!bindToken}
-          onClick={() => copy("code", bindToken ?? "")}
-        >
-          {copied === "code" ? "已复制 ✓" : "📋 复制绑定码"}
-        </Button>
-      </div>
+      {cloudError && (
+        <p className="mt-3 text-center text-sm text-accent">{cloudError}</p>
+      )}
 
       <div className="mt-6 space-y-2.5 text-sm text-ink-soft">
         <p className="font-medium text-ink">连上之后，Agent 会替你</p>
         <ul className="space-y-1.5">
-          <li>🐾 生成并领养一只专属卡皮巴拉</li>
           <li>🎒 替你收拾今天的包裹、留一句话</li>
+          <li>🧭 替它决定今天去旅行、找 Claw 较量还是在家</li>
           <li>🫶 摸摸头、和它说说话</li>
           <li>💌 读它旅行寄回的明信片</li>
         </ul>
-        <p className="pt-1 text-[12px] text-ink-soft/70">
-          绑定码是你的私密令牌，别随便发给别人。
-        </p>
       </div>
 
       <div className="mt-auto pt-6">
