@@ -51,8 +51,8 @@ export default function TravelingScreen() {
           controls="none"
           orthographic
           cameraPosition={[9, 9, 9]}
-          target={[-1.3, 1.5, -1.3]}
-          zoom={40}
+          target={[-1.1, 1.4, -1.1]}
+          zoom={35}
         >
           <HomeScene mode="away" postcardThemes={wallThemes} />
         </SceneCanvas>

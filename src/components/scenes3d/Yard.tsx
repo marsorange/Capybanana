@@ -289,26 +289,47 @@ export default function Yard() {
         </mesh>
       </group>
 
-      {/* ===== TREE with a swing-rope birdhouse ===== */}
-      <group position={[3.7, 0, 2.5]}>
-        <mesh position={[0, 0.55, 0]}>
-          <cylinderGeometry args={[0.17, 0.22, 1.1, 8]} />
+      {/* ===== big cartoon TREE in the corner (+ hanging birdhouse) ===== */}
+      <group position={[4.1, 0, 2.9]}>
+        {/* root flare + trunk */}
+        <mesh position={[0, 0.09, 0]}>
+          <cylinderGeometry args={[0.34, 0.42, 0.2, 8]} />
+          {m(WOOD_DK)}
+        </mesh>
+        <mesh position={[0, 0.8, 0]}>
+          <cylinderGeometry args={[0.22, 0.3, 1.5, 8]} />
           {m(WOOD)}
         </mesh>
-        <mesh position={[0, 1.55, 0]}>
-          <icosahedronGeometry args={[0.85, 0]} />
+        {/* fluffy faceted canopy clusters */}
+        <mesh position={[0, 2.2, 0]}>
+          <icosahedronGeometry args={[1.28, 0]} />
           {m(LEAF)}
         </mesh>
-        <mesh position={[0.4, 1.9, 0.15]}>
-          <icosahedronGeometry args={[0.5, 0]} />
+        <mesh position={[0.66, 2.56, 0.22]}>
+          <icosahedronGeometry args={[0.8, 0]} />
           {m(LEAF_LT)}
         </mesh>
-        <mesh position={[-0.35, 1.85, -0.1]}>
-          <icosahedronGeometry args={[0.42, 0]} />
+        <mesh position={[-0.58, 2.46, -0.16]}>
+          <icosahedronGeometry args={[0.68, 0]} />
           {m(LEAF)}
         </mesh>
+        <mesh position={[0.12, 2.96, -0.1]}>
+          <icosahedronGeometry args={[0.56, 0]} />
+          {m(LEAF_LT)}
+        </mesh>
+        {/* a few fruit tucked in the leaves */}
+        {([
+          [0.74, 1.98, 0.52],
+          [-0.5, 1.86, 0.42],
+          [0.2, 1.78, 0.66],
+        ] as const).map((p, i) => (
+          <mesh key={i} position={p}>
+            <icosahedronGeometry args={[0.12, 0]} />
+            {m("#e88a3c")}
+          </mesh>
+        ))}
         {/* hanging birdhouse */}
-        <group position={[0.5, 1.0, 0.4]}>
+        <group position={[0.7, 1.28, 0.55]}>
           <mesh position={[0, 0.2, 0]}>
             <cylinderGeometry args={[0.006, 0.006, 0.4, 6]} />
             {m(WOOD_DK)}
@@ -507,10 +528,10 @@ export default function Yard() {
       <Bush pos={[5.0, 0, 1.8]} scale={0.8} />
       <Bush pos={[2.0, 0, -0.6]} scale={0.7} />
 
-      {/* mushrooms */}
-      <Mushroom pos={[3.1, 0, 3.3]} scale={1.0} />
-      <Mushroom pos={[2.7, 0, 3.5]} scale={0.7} />
-      <Mushroom pos={[4.9, 0, 2.4]} scale={0.8} />
+      {/* chunky toadstools */}
+      <Mushroom pos={[3.0, 0, 3.4]} scale={1.5} />
+      <Mushroom pos={[2.5, 0, 3.7]} scale={1.0} />
+      <Mushroom pos={[5.0, 0, 1.4]} scale={1.2} />
 
       {/* flower beds */}
       {([

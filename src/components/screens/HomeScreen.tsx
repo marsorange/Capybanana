@@ -63,18 +63,27 @@ export default function HomeScreen() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(125% 95% at 50% 20%, #f7eedb 0%, #efe2c8 58%, #e6d6b8 100%)",
+            "radial-gradient(120% 90% at 78% 8%, #fdf3d6 0%, #f4e8cd 42%, #ecdcbd 100%)",
+        }}
+      />
+      {/* the sun, glowing up in the corner */}
+      <div
+        className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full blur-[2px]"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(255,243,190,0.98) 0%, rgba(255,227,150,0.6) 36%, rgba(255,227,150,0) 70%)",
         }}
       />
       {/* free-orbit isometric view, centered on the island */}
       <SceneCanvas
         controls="orbit"
         orthographic
+        sun
         cameraPosition={[9, 8.4, 9]}
-        target={[-0.6, 2.0, -0.6]}
-        zoom={54}
+        target={[-0.4, 1.7, -0.4]}
+        zoom={41}
         enableZoom
-        minZoom={40}
+        minZoom={30}
         maxZoom={95}
         minPolar={0.6}
         maxPolar={1.32}

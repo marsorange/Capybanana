@@ -3,7 +3,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ReactNode } from "react";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { zoomBus } from "./zoomBus";
 
@@ -20,6 +20,7 @@ interface SceneCanvasProps {
   azimuth?: number; // +/- range; undefined = unlimited
   minPolar?: number;
   maxPolar?: number;
+  sun?: boolean; // enable a real shadow-casting sun
   className?: string;
 }
 
@@ -35,6 +36,26 @@ function ZoomApplier({ min, max }: { min: number; max: number }) {
       camera.zoom = next;
       camera.updateProjectionMatrix();
     }
+  });
+  return null;
+}
+
+// Flip every mesh in the scene to cast + receive shadows (for the first ~1.5s,
+// to catch async/Suspense-mounted meshes) so sunlight reads without hand-
+// flagging hundreds of meshes.
+function ShadowEnabler() {
+  const scene = useThree((s) => s.scene);
+  const frames = useRef(0);
+  useFrame(() => {
+    if (frames.current > 90) return;
+    frames.current += 1;
+    scene.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
+    });
   });
   return null;
 }
@@ -87,6 +108,7 @@ export default function SceneCanvas({
   azimuth,
   minPolar = 1.05,
   maxPolar = 1.5,
+  sun = false,
   className,
 }: SceneCanvasProps) {
   const camera = orthographic
@@ -97,20 +119,36 @@ export default function SceneCanvas({
     <Canvas
       className={className}
       orthographic={orthographic}
-      shadows={false}
+      shadows={sun ? "soft" : false}
       dpr={[1, 1.25]}
       gl={{ alpha: true, antialias: true, powerPreference: "default" }}
       camera={camera}
       style={{ touchAction: "none" }}
     >
       <WebGLContextGuard />
+      {sun && <ShadowEnabler />}
       {/* bright, airy "日系" low-poly light: high soft sky fill keeps it fresh
-          while a gentle warm key still sculpts the facets. */}
-      <hemisphereLight args={["#fffdf6", "#ece1cd", 1.1]} />
-      <ambientLight intensity={0.58} color="#fff7ee" />
-      <directionalLight position={[8, 12, 7]} intensity={1.95} color="#fff0d2" />
-      <directionalLight position={[-8, 6, -3]} intensity={0.5} color="#dbe6f6" />
-      <directionalLight position={[1, 3, -9]} intensity={0.3} color="#ffe2d0" />
+          while a warm sun key sculpts the facets and casts real shadows. */}
+      <hemisphereLight args={["#fffdf6", "#ece1cd", 1.05]} />
+      <ambientLight intensity={0.52} color="#fff7ee" />
+      <directionalLight
+        position={[9, 13, 6]}
+        intensity={2.1}
+        color="#fff0cf"
+        castShadow={sun}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-near={0.5}
+        shadow-camera-far={48}
+        shadow-camera-left={-11}
+        shadow-camera-right={11}
+        shadow-camera-top={11}
+        shadow-camera-bottom={-11}
+        shadow-bias={-0.0012}
+        shadow-normalBias={0.02}
+      />
+      <directionalLight position={[-8, 6, -3]} intensity={0.45} color="#dbe6f6" />
+      <directionalLight position={[1, 3, -9]} intensity={0.28} color="#ffe2d0" />
 
       <Suspense fallback={null}>{children}</Suspense>
 

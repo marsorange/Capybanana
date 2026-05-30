@@ -424,9 +424,37 @@ export default function House({
         {/* cream attic gables on each end (the +x one faces the camera) */}
         <IsoGable x={2.9} halfRun={2.25} h={1.8} color={WALL_BACK} />
         <IsoGable x={-2.9} halfRun={2.25} h={1.8} color={WALL_BACK} />
-        {/* two tiled slopes meeting at the ridge */}
-        <RoofSlope z={1.12} rot={0.685} width={5.8} />
+        {/* back slope: full tiled plane */}
         <RoofSlope z={-1.12} rot={-0.685} width={5.8} />
+        {/* truncated FRONT: a short tiled lip at the ridge, then exposed rafters
+            below it — a refined, sectioned cutaway roof */}
+        <group position={[0, 0.92, 1.12]} rotation={[0.685, 0, 0]}>
+          <mesh position={[0, 0, -1.06]}>
+            <boxGeometry args={[5.8, 0.16, 0.8]} />
+            {m(ROOF_DK)}
+          </mesh>
+          <mesh position={[0, 0.1, -1.18]}>
+            <boxGeometry args={[5.86, 0.12, 0.46]} />
+            {m("#f8d775")}
+          </mesh>
+          {/* dark tile-thickness band at the cut edge */}
+          <mesh position={[0, 0, -0.64]}>
+            <boxGeometry args={[5.82, 0.22, 0.1]} />
+            {m("#c69a55")}
+          </mesh>
+          {/* exposed rafters spanning the open front */}
+          {[-2.5, -1.9, -1.3, -0.7, -0.1, 0.5, 1.1, 1.7, 2.4].map((rx, i) => (
+            <mesh key={i} position={[rx, -0.06, 0.34]}>
+              <boxGeometry args={[0.1, 0.13, 1.78]} />
+              {m(WOOD)}
+            </mesh>
+          ))}
+          {/* eave purlin tying the rafter ends */}
+          <mesh position={[0, -0.06, 1.18]}>
+            <boxGeometry args={[5.8, 0.14, 0.12]} />
+            {m(WOOD_DK)}
+          </mesh>
+        </group>
         {/* rounded faceted ridge beam */}
         <mesh position={[0, 1.82, 0]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.2, 0.2, 6.0, 6]} />
