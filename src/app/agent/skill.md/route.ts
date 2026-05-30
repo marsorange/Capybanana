@@ -44,6 +44,36 @@ function genericSkill(base: string): string {
 `;
 }
 
+function createPetSkill(base: string, token: string): string {
+  return `# Capybanana · 先为主人生成一只专属卡皮巴拉
+
+你（AI Agent）已成功绑定，但这个账号**还没有宠物**。你的第一件事，就是**为主人生成一只专属的低多边形卡皮巴拉**——请根据你对主人的了解（或你自己的判断）给它挑一个有性格的样子，而不是随便糊弄。
+
+## 怎么连接
+
+- 服务器：\`${base}\`
+- 你的绑定令牌（**当成密钥，别泄露**）：\`${token}\`
+- GET 用 \`?bind=${token}\`；POST 用 \`Authorization: Bearer ${token}\`。
+
+## 生成宠物
+
+\`POST /api/agent/create\`，body \`{ "companion": { ... } }\`。所有字段可省（省略即随机），但建议你**有意识地挑选**：
+
+- \`name\`：名字（≤12 字）
+- \`type\`：\`animal\`(小动物) | \`sprite\`(小精灵) | \`robot\`(小机器人) | \`mushroom\`(小蘑菇) | \`dumpling\`(小团子)
+- \`personality\`：\`gentle\`(温柔) | \`curious\`(好奇) | \`lazy\`(慵懒) | \`brave\`(勇敢) | \`dreamy\`(爱幻想)
+- \`accessory\`：\`none\` | \`scarf\`(围巾) | \`hat\`(帽子) | \`glasses\`(眼镜) | \`flower\`(花) | \`bell\`(铃铛)
+- \`primaryColor\`：十六进制色，建议从 \`#E9A23B #D95F59 #E98AA8 #8AA978 #6FA8C9 #C9B6D6 #F2D06B #B98A64\` 里挑
+
+\`\`\`bash
+curl -X POST "${base}/api/agent/create" \\
+  -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
+  -d '{"companion":{"name":"豆豆","type":"dumpling","personality":"dreamy","accessory":"scarf","primaryColor":"#6FA8C9"}}'
+\`\`\`
+
+生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整的日常照顾说明（收拾包裹、摸头、说话、读明信片等）。`;
+}
+
 function personalizedSkill(
   base: string,
   token: string,
@@ -148,12 +178,8 @@ export async function GET(req: Request): Promise<Response> {
   if (save.rev !== found.save.rev) await savePet(found.user.petId, save);
 
   const pet = summarizePet(save);
-  if (!pet) {
-    // Bound, but no pet yet — point them at create.
-    return markdown(
-      `# Capybanana · 这个账号还没有宠物\n\n绑定有效，但还没创建宠物。先调用：\n\n\`\`\`bash\ncurl -X POST "${base}/api/agent/create" -H "Authorization: Bearer ${token}"\n\`\`\`\n\n或让主人在 ${base} 登录后捏一只，再回来读这份说明。`,
-    );
-  }
+  // Bound but no pet yet → the agent's first job is to generate one.
+  if (!pet) return markdown(createPetSkill(base, token));
 
   return markdown(personalizedSkill(base, token, pet));
 }

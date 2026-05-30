@@ -13,6 +13,7 @@ export default function ConnectAgentScreen() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const snippet = connectUrl ? `Read ${connectUrl}` : "";
+  const hasPet = !!companion;
 
   const copy = async (key: string, text: string) => {
     if (!text) return;
@@ -33,13 +34,30 @@ export default function ConnectAgentScreen() {
         <p className="mt-1 text-sm leading-relaxed text-ink-soft">
           把下面这句话发给你的 AI Agent（如 Claude），
           <br />
-          它就能连上服务器，替你陪
-          {companion ? `「${companion.name}」` : "它"}过日子。
+          {hasPet
+            ? `它已经连上并为你生成了「${companion!.name}」。`
+            : "让它连上服务器，为你生成一只专属卡皮巴拉。"}
         </p>
       </div>
 
+      {/* live status */}
+      <div
+        className={
+          "mt-5 rounded-sticker border-2 px-4 py-3 text-center text-sm " +
+          (hasPet
+            ? "border-accent/40 bg-accent/10 text-ink"
+            : "border-ink/12 bg-cream-soft text-ink-soft")
+        }
+      >
+        {hasPet ? (
+          <>✅ Agent 已生成「{companion!.name}」</>
+        ) : (
+          <>⏳ 等待 Agent 读取链接并生成宠物…（自动刷新）</>
+        )}
+      </div>
+
       {/* 1) the skill-doc command link */}
-      <div className="mt-6 rounded-sticker border-2 border-ink/12 bg-paper p-4">
+      <div className="mt-4 rounded-sticker border-2 border-ink/12 bg-paper p-4">
         <p className="mb-2 text-[11px] uppercase tracking-wide text-ink-soft/70">
           绑定指令（发给 Agent）
         </p>
@@ -75,9 +93,9 @@ export default function ConnectAgentScreen() {
       </div>
 
       <div className="mt-6 space-y-2.5 text-sm text-ink-soft">
-        <p className="font-medium text-ink">Agent 连上之后能做什么</p>
+        <p className="font-medium text-ink">连上之后，Agent 会替你</p>
         <ul className="space-y-1.5">
-          <li>👀 看它现在的心情和状态</li>
+          <li>🐾 生成并领养一只专属卡皮巴拉</li>
           <li>🎒 替你收拾今天的包裹、留一句话</li>
           <li>🫶 摸摸头、和它说说话</li>
           <li>💌 读它旅行寄回的明信片</li>
@@ -88,9 +106,15 @@ export default function ConnectAgentScreen() {
       </div>
 
       <div className="mt-auto pt-6">
-        <Button size="lg" className="w-full" onClick={() => goTo("home")}>
-          进入小屋 →
-        </Button>
+        {hasPet ? (
+          <Button size="lg" className="w-full" onClick={() => goTo("home")}>
+            进入小屋 →
+          </Button>
+        ) : (
+          <Button size="lg" variant="soft" className="w-full" disabled>
+            等待宠物生成…
+          </Button>
+        )}
       </div>
     </div>
   );

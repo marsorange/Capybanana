@@ -413,8 +413,9 @@ export const useGameStore = create<GameState>()(
             cloudBusy: false,
           });
           get().adoptSave(res.save);
-          // No pet yet → make one (random); otherwise go home.
-          set({ screen: res.save.companion ? "home" : "create" });
+          // No pet yet → show the connect link so the Agent creates one;
+          // otherwise straight home.
+          set({ screen: res.save.companion ? "home" : "connect" });
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
         }

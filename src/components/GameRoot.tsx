@@ -92,9 +92,9 @@ export default function GameRoot() {
 
   let effective: Screen = screen;
   if (!companion) {
-    // No pet yet: bound accounts go straight to the (random) create flow;
-    // guests see login unless they chose to skip into create.
-    if (bound) effective = "create";
+    // No pet yet: bound accounts wait on the connect screen (the Agent creates
+    // the pet); guests see login unless they chose to skip into local create.
+    if (bound) effective = "connect";
     else effective = screen === "create" ? "create" : "login";
   } else if (screen === "login" || screen === "create") {
     effective = "home";
