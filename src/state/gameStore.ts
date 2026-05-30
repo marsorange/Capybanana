@@ -112,11 +112,6 @@ interface GameState {
     gesture?: Gesture,
   ) => void;
   openPostcard: (id: string) => void;
-  setPostcardImage: (
-    id: string,
-    url: string | undefined,
-    status: "ready" | "error",
-  ) => void;
   collectPostcard: () => void;
   tick: (now?: number) => void;
   devFastForward: () => void;
@@ -166,9 +161,10 @@ export const useGameStore = create<GameState>()(
               get().adoptSave(save);
               set({ cloudBusy: false, screen: "connect" });
             })
-            .catch((e: Error) =>
-              set({ cloudBusy: false, cloudError: e.message }),
-            );
+            .catch((e: Error & { status?: number }) => {
+              if (e.status === 401) return get().logout();
+              set({ cloudBusy: false, cloudError: e.message });
+            });
           return;
         }
 
@@ -204,9 +200,10 @@ export const useGameStore = create<GameState>()(
               get().adoptSave(save);
               set({ cloudBusy: false });
             })
-            .catch((e: Error) =>
-              set({ cloudBusy: false, cloudError: e.message }),
-            );
+            .catch((e: Error & { status?: number }) => {
+              if (e.status === 401) return get().logout();
+              set({ cloudBusy: false, cloudError: e.message });
+            });
           return;
         }
 
@@ -227,16 +224,6 @@ export const useGameStore = create<GameState>()(
       },
 
       openPostcard: (id) => set({ selectedPostcardId: id, screen: "postcard" }),
-
-      // Persist a generated postcard image so it is only generated once.
-      setPostcardImage: (id, url, status) =>
-        set((s) => ({
-          postcards: s.postcards.map((p) =>
-            p.id === id
-              ? { ...p, imageUrl: url ?? p.imageUrl, imageStatus: status }
-              : p,
-          ),
-        })),
 
       collectPostcard: () => {
         const s = get();
@@ -485,8 +472,11 @@ export const useGameStore = create<GameState>()(
             patch.screen = screen;
             return patch;
           });
-        } catch {
-          /* offline / transient — keep showing the last known state */
+        } catch (e) {
+          // A dead/stale token (e.g. server restarted) → drop to login so the
+          // user can re-bind, rather than silently failing forever.
+          if ((e as { status?: number }).status === 401) get().logout();
+          /* else offline / transient — keep showing the last known state */
         }
       },
 

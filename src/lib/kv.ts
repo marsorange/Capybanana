@@ -49,8 +49,15 @@ function makeUpstash(cfg: { url: string; token: string }): KV {
 }
 
 function makeMemory(): KV {
-  const values = new Map<string, unknown>();
-  const sets = new Map<string, Set<string>>();
+  // Stash on globalThis so Next.js dev HMR (which re-evaluates modules) doesn't
+  // wipe accounts on every file save. A full server restart still clears it —
+  // that's what a real KV is for.
+  const g = globalThis as typeof globalThis & {
+    __capyKVValues?: Map<string, unknown>;
+    __capyKVSets?: Map<string, Set<string>>;
+  };
+  const values = (g.__capyKVValues ??= new Map<string, unknown>());
+  const sets = (g.__capyKVSets ??= new Map<string, Set<string>>());
   return {
     async getJSON<T>(key: string) {
       return values.has(key) ? (structuredClone(values.get(key)) as T) : null;

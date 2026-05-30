@@ -139,14 +139,6 @@ export interface Postcard {
   reason: string;
   imageKey: string; // === destinationTheme
   sentAt: string;
-  // Prompt for the AI postcard art (MiniMax image-01), composed at trip
-  // resolution from the companion look + packed items + location + the note the
-  // player wrote. Sent to /api/postcard-image; falls back to procedural SVG art
-  // if image generation is unavailable.
-  imagePrompt?: string;
-  // Generated image persisted on the card so it is only produced once.
-  imageStatus?: "pending" | "ready" | "error";
-  imageUrl?: string;
 }
 
 // Bag prepared by the player; the companion decides on its own when to leave.

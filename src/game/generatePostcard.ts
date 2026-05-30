@@ -7,7 +7,6 @@ import {
   PERSONALITY_LINES,
 } from "./destinations";
 import { photoItemsOf, presetsOf } from "./packing";
-import { buildPostcardImagePrompt } from "./postcardPrompt";
 import type { Companion, DestinationTheme, Postcard, Trip } from "./types";
 import { pick, uid } from "./util";
 
@@ -77,10 +76,5 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
     reason,
     imageKey: trip.destination,
     sentAt: new Date().toISOString(),
-    // Prompt for the AI postcard art; image itself is generated client-side.
-    imagePrompt: buildPostcardImagePrompt(companion, trip, {
-      locationName,
-      scene,
-    }),
   };
 }

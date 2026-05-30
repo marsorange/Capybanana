@@ -7,18 +7,19 @@ import Button from "../ui/Button";
 
 export default function ConnectAgentScreen() {
   const connectUrl = useGameStore((s) => s.connectUrl);
+  const bindToken = useGameStore((s) => s.cloud?.bindToken ?? null);
   const companion = useGameStore((s) => s.companion);
   const goTo = useGameStore((s) => s.goTo);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
 
   const snippet = connectUrl ? `Read ${connectUrl}` : "";
 
-  const copy = async () => {
-    if (!snippet) return;
+  const copy = async (key: string, text: string) => {
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(snippet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied((c) => (c === key ? null : c)), 1600);
     } catch {
       /* clipboard blocked — the text is selectable below anyway */
     }
@@ -37,9 +38,10 @@ export default function ConnectAgentScreen() {
         </p>
       </div>
 
+      {/* 1) the skill-doc command link */}
       <div className="mt-6 rounded-sticker border-2 border-ink/12 bg-paper p-4">
         <p className="mb-2 text-[11px] uppercase tracking-wide text-ink-soft/70">
-          绑定指令
+          绑定指令（发给 Agent）
         </p>
         <code className="block break-all rounded-xl bg-cream-soft px-3 py-2.5 text-sm text-ink">
           {snippet || "（未生成链接，请重新登录）"}
@@ -48,9 +50,27 @@ export default function ConnectAgentScreen() {
           variant="soft"
           className="mt-3 w-full"
           disabled={!snippet}
-          onClick={copy}
+          onClick={() => copy("cmd", snippet)}
         >
-          {copied ? "已复制 ✓" : "📋 复制绑定指令"}
+          {copied === "cmd" ? "已复制 ✓" : "📋 复制绑定指令"}
+        </Button>
+      </div>
+
+      {/* 2) the raw bind code */}
+      <div className="mt-3 rounded-sticker border-2 border-ink/12 bg-paper p-4">
+        <p className="mb-2 text-[11px] uppercase tracking-wide text-ink-soft/70">
+          绑定码（私密令牌）
+        </p>
+        <code className="block break-all rounded-xl bg-cream-soft px-3 py-2.5 text-xs text-ink">
+          {bindToken ?? "—"}
+        </code>
+        <Button
+          variant="soft"
+          className="mt-3 w-full"
+          disabled={!bindToken}
+          onClick={() => copy("code", bindToken ?? "")}
+        >
+          {copied === "code" ? "已复制 ✓" : "📋 复制绑定码"}
         </Button>
       </div>
 
@@ -63,7 +83,7 @@ export default function ConnectAgentScreen() {
           <li>💌 读它旅行寄回的明信片</li>
         </ul>
         <p className="pt-1 text-[12px] text-ink-soft/70">
-          绑定指令里带着你的私密令牌，别随便发给别人。
+          绑定码是你的私密令牌，别随便发给别人。
         </p>
       </div>
 

@@ -41,8 +41,11 @@ async function call<T>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}) as Record<string, unknown>);
-  if (!res.ok || data?.ok === false)
-    throw new Error((data?.error as string) || `请求失败（${res.status}）`);
+  if (!res.ok || data?.ok === false) {
+    const err = new Error((data?.error as string) || `请求失败（${res.status}）`);
+    (err as Error & { status?: number }).status = res.status;
+    throw err;
+  }
   return data as T;
 }
 

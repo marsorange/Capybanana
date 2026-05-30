@@ -23,7 +23,6 @@ export async function GET(req: Request): Promise<Response> {
       message: p.message,
       reason: p.reason,
       sentAt: p.sentAt,
-      imagePrompt: p.imagePrompt,
     })),
   });
 }
