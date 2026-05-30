@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 
 import { getMusicPref, setMusicEnabled } from "@/lib/ambientMusic";
 
-// Small round toggle for the procedural ambient music. Browsers won't let audio
-// start without a user gesture, so when a saved "on" preference exists we wait
-// for the first tap anywhere to quietly resume it.
+// Small round toggle for the background music. Browsers won't let audio start
+// without a user gesture, so when a saved "on" preference exists we wait for the
+// first tap anywhere to quietly resume it.
 export default function MusicToggle() {
   const [on, setOn] = useState(() => getMusicPref());
 
