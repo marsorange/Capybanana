@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #fbf3e7;
+  --color-cream-soft: #fff7ec;
+  --color-cream-deep: #f2e4cf;
+  --color-paper: #fffdf8;
+  --color-ink: #3a2e2a;
+  --color-ink-soft: #7a6a60;
+  --color-accent: #d95f59;
+  --color-accent-soft: #e98a77;
+  --color-leaf: #8aa978;
+  --color-sky: #bfe3e0;
+  --color-dusk: #c9b6d6;
+
+  --radius-sticker: 14px;
+
+  --font-hand: "Yuanti SC", "STYuanti", "PingFang SC", ui-rounded, system-ui,
+    sans-serif;
+  --font-body: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui,
+    sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(120% 80% at 50% 0%, #fdf6ea 0%, #f3e6d2 60%, #ecdcc2 100%);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+/* Hide scrollbars inside the portrait frame for a cleaner app feel */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Sticker button press feel */
+.sticker {
+  border: 2px solid var(--color-ink);
+  box-shadow: 0 3px 0 rgba(58, 46, 42, 0.18);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.sticker:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(58, 46, 42, 0.18);
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-float-soft {
+  animation: float-soft 3.6s ease-in-out infinite;
+}
