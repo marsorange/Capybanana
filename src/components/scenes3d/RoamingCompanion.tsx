@@ -8,6 +8,7 @@ import * as THREE from "three";
 import type { Accessory, CompanionType } from "@/game/types";
 import { pick, randRange } from "@/game/util";
 import SpeechBubble from "../ui/SpeechBubble";
+import { commandBus } from "./commandBus";
 import Companion3D from "./Companion3D";
 import {
   SPOTS,
@@ -61,6 +62,7 @@ export default function RoamingCompanion({
   const pendingSpot = useRef<Spot>(start);
   const faceTarget = useRef(start.face);
   const tmp = useRef(new THREE.Vector3());
+  const command = useRef<(() => void) | null>(null);
 
   const [emote, setEmote] = useState<string>(start.emote);
   const [speech, setSpeech] = useState<string | null>(null);
@@ -68,6 +70,27 @@ export default function RoamingCompanion({
 
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
+
+    // pick up a tap-command: drop everything and walk to the target
+    if (commandBus.pending && command.current === null) {
+      const cmd = commandBus.pending;
+      commandBus.pending = null;
+      command.current = cmd.onArrive;
+      const synthetic: Spot = {
+        id: "__cmd",
+        pos: cmd.target,
+        floor: cmd.floor,
+        face: 0,
+        activity: "idle",
+        emote: "",
+        dwell: [0.2, 0.2],
+      };
+      pendingSpot.current = synthetic;
+      path.current = buildPath(floor.current, synthetic);
+      nodeIdx.current = 0;
+      phase.current = "move";
+      setEmote("");
+    }
 
     if (phase.current === "dwell") {
       faceTarget.current = currentSpot.current.face;
@@ -99,6 +122,11 @@ export default function RoamingCompanion({
           phase.current = "dwell";
           dwell.current = randRange(spot.dwell[0], spot.dwell[1]);
           setEmote(spot.emote);
+          if (spot.id === "__cmd" && command.current) {
+            const cb = command.current;
+            command.current = null;
+            cb();
+          }
         }
       } else {
         const step = Math.min(dist, SPEED * dt);
@@ -158,11 +186,11 @@ export default function RoamingCompanion({
         <group ref={broom} position={[0.42, 0, 0.2]} rotation={[0, 0, -0.5]} visible={false}>
           <mesh position={[0, 0.35, 0]}>
             <cylinderGeometry args={[0.02, 0.02, 0.7, 6]} />
-            <meshToonMaterial color="#a9774b" />
+            <meshStandardMaterial color="#a9774b" roughness={1} metalness={0} />
           </mesh>
           <mesh position={[0, 0.02, 0]}>
             <coneGeometry args={[0.1, 0.18, 8]} />
-            <meshToonMaterial color="#e0b15e" />
+            <meshStandardMaterial color="#e0b15e" roughness={1} metalness={0} />
           </mesh>
         </group>
       </group>

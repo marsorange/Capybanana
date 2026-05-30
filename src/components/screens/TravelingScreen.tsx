@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { tripProgress } from "@/game/clock";
 import { useGameStore } from "@/state/gameStore";
+import HomeScene from "../scenes3d/HomeScene";
 import SceneCanvas from "../scenes3d/SceneCanvas";
-import Villa from "../scenes3d/Villa";
 import JournalMap from "../ui/JournalMap";
 
 const WEATHERS = [
@@ -47,8 +47,20 @@ export default function TravelingScreen() {
     <div className="flex h-full flex-col">
       {/* empty room */}
       <div className="relative h-[42%] shrink-0 overflow-hidden bg-gradient-to-b from-cream-soft to-cream-deep">
-        <SceneCanvas controls="none" cameraPosition={[0, 2.5, 7.4]} target={[0, 1.7, -0.2]}>
-          <Villa mode="away" postcardThemes={wallThemes} />
+        <SceneCanvas
+          controls="orbit"
+          orthographic
+          enableZoom
+          cameraPosition={[9, 9, 9]}
+          target={[-1.3, 1.5, -1.3]}
+          zoom={40}
+          minZoom={24}
+          maxZoom={100}
+          azimuth={0.85}
+          minPolar={0.7}
+          maxPolar={1.2}
+        >
+          <HomeScene mode="away" postcardThemes={wallThemes} />
         </SceneCanvas>
         <div className="pointer-events-none absolute inset-x-0 top-0 px-5 pt-5">
           <h1 className="font-hand text-2xl text-ink">{companion.name} 出门了</h1>

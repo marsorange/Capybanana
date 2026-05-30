@@ -15,17 +15,15 @@ import type {
 } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import Companion3D from "../scenes3d/Companion3D";
-import { getToonGradient } from "../scenes3d/materials";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import Button from "../ui/Button";
 import { cn } from "../ui/cn";
 
 function Pedestal() {
-  const grad = getToonGradient();
   return (
     <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <circleGeometry args={[0.95, 40]} />
-      <meshToonMaterial color="#f1e2c8" gradientMap={grad} />
+      <meshLambertMaterial color="#f1e2c8" />
     </mesh>
   );
 }

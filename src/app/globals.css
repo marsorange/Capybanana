@@ -71,3 +71,48 @@ body {
 .animate-float-soft {
   animation: float-soft 3.6s ease-in-out infinite;
 }
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+.animate-breathe {
+  animation: breathe 3.6s ease-in-out infinite;
+  transform-origin: 50% 92%;
+}
+
+@keyframes blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.08);
+  }
+}
+.animate-blink {
+  animation: blink 4.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes sway-soft {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+.animate-sway-soft {
+  animation: sway-soft 5s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}

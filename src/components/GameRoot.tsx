@@ -10,6 +10,7 @@ import HomeScreen from "./screens/HomeScreen";
 import PackScreen from "./screens/PackScreen";
 import PostcardScreen from "./screens/PostcardScreen";
 import TravelingScreen from "./screens/TravelingScreen";
+import ErrorBoundary from "./ui/ErrorBoundary";
 import PortraitFrame from "./ui/PortraitFrame";
 
 function Splash() {
@@ -125,7 +126,7 @@ export default function GameRoot() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.26, ease: "easeOut" }}
           >
-            {renderScreen(effective)}
+            <ErrorBoundary>{renderScreen(effective)}</ErrorBoundary>
           </motion.div>
         </AnimatePresence>
         <NoticeToast />
