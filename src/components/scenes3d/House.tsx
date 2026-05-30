@@ -395,6 +395,15 @@ export default function House({
       <Box args={[W, 0.14, 0.16]} pos={[CX, FLOOR_H - 0.02, ZB + 0.04]} color={WOOD_DK} />
       <Box args={[0.16, 0.14, D]} pos={[XL + 0.04, FLOOR_H - 0.02, CZ]} color={WOOD_DK} />
 
+      {/* ---- timber frame: corner posts at the open cut edges + wall-top plates
+            + a loft-edge fascia, so the cross-section reads as a built house ---- */}
+      <Box args={[0.24, TOP, 0.24]} pos={[XL + 0.02, TOP / 2, ZF]} color={WOOD} />
+      <Box args={[0.24, TOP, 0.24]} pos={[XR, TOP / 2, ZB + 0.02]} color={WOOD} />
+      <Box args={[0.22, 0.2, D + 0.1]} pos={[XL + 0.02, TOP - 0.1, CZ]} color={WOOD} />
+      <Box args={[W + 0.1, 0.2, 0.22]} pos={[CX, TOP - 0.1, ZB + 0.02]} color={WOOD} />
+      <Box args={[3.5, 0.24, 0.18]} pos={[XL + 1.75, FLOOR_H - 0.1, ZF]} color={WOOD} />
+      <Box args={[0.18, 0.24, D]} pos={[XL + 0.05, FLOOR_H - 0.1, CZ]} color={WOOD} />
+
       {/* loft slab + railing */}
       <RB args={[3.5, 0.22, D]} pos={[XL + 1.75, FLOOR_H - 0.11, CZ]} color={FLOOR1} radius={0.04} />
       <Box args={[0.12, 0.24, D]} pos={[-1.05, FLOOR_H - 0.1, CZ]} color={WOOD} />

@@ -230,6 +230,7 @@ function resolveClaw(
       souvenir: Math.random() < 0.7 ? pick(CLAW_SPOILS) : undefined,
       trait: capy.bravery > 72 ? "常胜将军" : undefined,
       misunderstanding: misread,
+      battle: "win",
     };
   }
   if (margin < -10) {
@@ -239,6 +240,7 @@ function resolveClaw(
       story: pick(CLAW_REPORTS_LOSE),
       effects: { injury: randInt(8, 20), mood: -6, energy: -15, bravery: 4, bond: 3 },
       misunderstanding: misread,
+      battle: "lose",
     };
   }
   return {
@@ -248,6 +250,7 @@ function resolveClaw(
     effects: { bravery: 5, injury: randInt(0, 8), mood: 3, bond: 4 },
     souvenir: Math.random() < 0.4 ? pick(CLAW_SPOILS) : undefined,
     misunderstanding: misread,
+    battle: "draw",
   };
 }
 

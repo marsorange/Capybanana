@@ -26,6 +26,7 @@ export function emptySave(): CloudSave {
     postcards: [],
     souvenirs: [],
     misunderstandings: [],
+    battles: [],
     lastResult: null,
     pendingPostcardId: null,
     pendingMessage: null,

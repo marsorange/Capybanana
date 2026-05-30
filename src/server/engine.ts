@@ -3,7 +3,8 @@
 // identically to a local one, and folds results into a CloudSave with a bumped
 // rev + an activity-log entry.
 import { advanceLifecycle, BATTLE, NO_AUTO_DEPART } from "@/game/clock";
-import { applyOutcome, clamp } from "@/game/applyOutcome";
+import { applyOutcome, battleRecordFrom, clamp } from "@/game/applyOutcome";
+import { pickGripe } from "@/game/diaryGripes";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { DESTINATIONS } from "@/game/destinations";
 import { planTrip } from "@/game/planTrip";
@@ -85,11 +86,15 @@ function foldOutcome(
     o,
     patted,
   );
+  const battle = battleRecordFrom(o);
   let next: CloudSave = {
     ...save,
     capyState: merged.capy,
     souvenirs: merged.souvenirs,
     misunderstandings: merged.misunderstandings,
+    battles: battle
+      ? [battle, ...(save.battles ?? [])].slice(0, 60)
+      : save.battles ?? [],
     lastResult: o,
   };
   if (o.postcard) {
@@ -198,6 +203,7 @@ export function createPet(
     postcards: [],
     souvenirs: [],
     misunderstandings: [],
+    battles: [],
     lastResult: null,
     pendingPostcardId: null,
     pendingMessage: null,
@@ -448,20 +454,32 @@ export function collectPostcard(save: CloudSave, now: number): CloudSave {
 }
 
 export const DIARY_MAX = 200;
+export const GRIPE_MAX = 200;
 
 /**
  * The agent writes today's diary in the pet's voice (<= 200 chars). At most one
  * entry per calendar day (UTC) — writing again the same day replaces it. A small
  * bond/mood bump rewards the daily ritual. Returns the unchanged save if empty.
+ *
+ * `gripe` is the overworked agent's behind-the-scenes grumble (the diary's flip
+ * side); when the agent doesn't supply one we fall back to a procedural grumble
+ * so the joke always lands.
  */
-export function writeDiary(save: CloudSave, text: string, now: number): CloudSave {
+export function writeDiary(
+  save: CloudSave,
+  text: string,
+  gripe: string | undefined,
+  now: number,
+): CloudSave {
   const clean = text.trim().slice(0, DIARY_MAX);
   if (!clean) return save;
+  const cleanGripe = (gripe ?? "").trim().slice(0, GRIPE_MAX) || pickGripe();
   const day = new Date(now).toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
   const entry: DiaryEntry = {
     id: uid("diary"),
     day,
     text: clean,
+    gripe: cleanGripe,
     at: new Date(now).toISOString(),
     mood: save.capyState.mood,
   };

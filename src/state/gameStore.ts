@@ -1,12 +1,13 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import { applyOutcome } from "@/game/applyOutcome";
+import { applyOutcome, battleRecordFrom } from "@/game/applyOutcome";
 import { advanceLifecycle, scheduleDeparture } from "@/game/clock";
 import { planTrip } from "@/game/planTrip";
 import { resolveDay } from "@/game/resolveDay";
 import type {
   Accessory,
+  BattleRecord,
   CapyState,
   Companion,
   CompanionState,
@@ -23,7 +24,7 @@ import type {
 import { pick, uid } from "@/game/util";
 import { randomCuteCompanion } from "@/game/randomCompanion";
 import { cloud } from "@/lib/cloudClient";
-import type { CloudSave } from "@/server/types";
+import type { CloudSave, DiaryEntry } from "@/server/types";
 
 export type Screen =
   | "login"
@@ -36,6 +37,8 @@ export type Screen =
   | "album"
   | "postcard"
   | "result";
+
+type LoginDestination = "profile" | "connect";
 
 export interface CreateCompanionInput {
   name: string;
@@ -96,9 +99,12 @@ interface GameState {
   postcards: Postcard[];
   souvenirs: string[];
   misunderstandings: string[];
+  battles: BattleRecord[]; // 对战记录 (scraps with Claw), newest-first
+  diary: DiaryEntry[]; // the agent-written diary (cloud), newest-first
   secretProgress: number;
   lastResult: DayOutcome | null;
   screen: Screen;
+  loginDestination: LoginDestination;
   selectedPostcardId: string | null;
   pendingPostcardId: string | null;
 
@@ -123,10 +129,11 @@ interface GameState {
   devRunTrip: () => void;
   devPreviewOutcome: (kind: OutcomeKind) => void;
   devRunDay: (kind: OutcomeKind) => void;
+  openAgentOnboardingLogin: () => void;
   reset: () => void;
 
   // cloud actions
-  login: (phone: string) => Promise<void>;
+  login: (phone: string, destination?: LoginDestination) => Promise<void>;
   logout: () => void;
   ensureCloudPet: () => Promise<void>;
   restyle: () => void;
@@ -146,9 +153,12 @@ export const useGameStore = create<GameState>()(
       postcards: [],
       souvenirs: [],
       misunderstandings: [],
+      battles: [],
+      diary: [],
       secretProgress: 0,
       lastResult: null,
       screen: "login",
+      loginDestination: "profile",
       selectedPostcardId: null,
       pendingPostcardId: null,
 
@@ -325,6 +335,8 @@ export const useGameStore = create<GameState>()(
           if (o.souvenir) patch.souvenirs = [o.souvenir, ...s.souvenirs];
           if (o.misunderstanding)
             patch.misunderstandings = [o.misunderstanding, ...s.misunderstandings];
+          const battle = battleRecordFrom(o);
+          if (battle) patch.battles = [battle, ...s.battles].slice(0, 60);
 
           if (o.postcard) {
             patch.pendingPostcardId = o.postcard.id;
@@ -413,6 +425,8 @@ export const useGameStore = create<GameState>()(
         };
         const outcome = resolveDay(s.companion, s.capyState, trip);
         const patch: Partial<GameState> = { lastResult: outcome };
+        const battle = battleRecordFrom(outcome);
+        if (battle) patch.battles = [battle, ...s.battles].slice(0, 60);
         if (outcome.postcard) {
           // travel: surface the just-arrived postcard like the real flow
           patch.postcards = [outcome.postcard, ...s.postcards];
@@ -502,6 +516,8 @@ export const useGameStore = create<GameState>()(
           packedBag: null,
           companionState: "idle_home",
         };
+        const battle = battleRecordFrom(outcome);
+        if (battle) patch.battles = [battle, ...s.battles].slice(0, 60);
         if (outcome.postcard) {
           patch.postcards = [outcome.postcard, ...s.postcards];
           patch.selectedPostcardId = outcome.postcard.id;
@@ -513,6 +529,30 @@ export const useGameStore = create<GameState>()(
         set(patch);
       },
 
+      openAgentOnboardingLogin: () =>
+        set({
+          companion: null,
+          capyState: DEFAULT_CAPY,
+          companionState: "idle_home",
+          packedBag: null,
+          activeTrip: null,
+          postcards: [],
+          souvenirs: [],
+          misunderstandings: [],
+          battles: [],
+          diary: [],
+          secretProgress: 0,
+          lastResult: null,
+          selectedPostcardId: null,
+          pendingPostcardId: null,
+          cloud: null,
+          connectUrl: null,
+          cloudBusy: false,
+          cloudError: null,
+          screen: "login",
+          loginDestination: "connect",
+        }),
+
       reset: () =>
         set({
           companion: null,
@@ -523,8 +563,11 @@ export const useGameStore = create<GameState>()(
           postcards: [],
           souvenirs: [],
           misunderstandings: [],
+          battles: [],
+          diary: [],
           lastResult: null,
           screen: "login",
+          loginDestination: "profile",
           selectedPostcardId: null,
           pendingPostcardId: null,
           cloud: null,
@@ -534,7 +577,7 @@ export const useGameStore = create<GameState>()(
 
       // ---- cloud ----
 
-      login: async (phone) => {
+      login: async (phone, destination = "profile") => {
         set({ cloudBusy: true, cloudError: null });
         try {
           const res = await cloud.login(phone);
@@ -551,12 +594,15 @@ export const useGameStore = create<GameState>()(
           get().adoptSave(res.save);
           if (res.save.companion) {
             // Meet-your-pet card first, then the owner taps into the house.
-            set({ screen: "profile" });
+            set({ screen: destination });
             return;
           }
           // Legacy/edge case: account exists without a pet. Adopt one now so
           // the owner can play instead of being stuck on the connect screen.
           await get().ensureCloudPet();
+          if (destination === "connect" && get().companion) {
+            set({ screen: "connect" });
+          }
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
         }
@@ -622,12 +668,15 @@ export const useGameStore = create<GameState>()(
           postcards: [],
           souvenirs: [],
           misunderstandings: [],
+          battles: [],
+          diary: [],
           lastResult: null,
           selectedPostcardId: null,
           pendingPostcardId: null,
           cloud: null,
           connectUrl: null,
           cloudError: null,
+          loginDestination: "profile",
           screen: "login",
         }),
 
@@ -682,6 +731,8 @@ export const useGameStore = create<GameState>()(
           postcards: save.postcards,
           souvenirs: save.souvenirs,
           misunderstandings: save.misunderstandings,
+          battles: save.battles ?? [],
+          diary: save.diary ?? [],
           lastResult: save.lastResult,
           pendingPostcardId: save.pendingPostcardId,
           cloud: s.cloud ? { ...s.cloud, rev: save.rev } : s.cloud,
@@ -708,9 +759,12 @@ export const useGameStore = create<GameState>()(
         postcards: s.postcards,
         souvenirs: s.souvenirs,
         misunderstandings: s.misunderstandings,
+        battles: s.battles,
+        diary: s.diary,
         secretProgress: s.secretProgress,
         lastResult: s.lastResult,
         screen: s.screen,
+        loginDestination: s.loginDestination,
         selectedPostcardId: s.selectedPostcardId,
         pendingPostcardId: s.pendingPostcardId,
         cloud: s.cloud,

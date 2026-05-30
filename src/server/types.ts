@@ -1,5 +1,6 @@
 // Server-side persistence shapes (stored in KV).
 import type {
+  BattleRecord,
   CapyState,
   Companion,
   CompanionState,
@@ -33,7 +34,8 @@ export type AgentEventType =
 export interface DiaryEntry {
   id: string;
   day: string; // YYYY-MM-DD (UTC) the entry covers
-  text: string; // <= 200 chars
+  text: string; // <= 200 chars — the pet's sweet first-person diary (the "front")
+  gripe?: string; // the overworked agent's behind-the-scenes grumble (the "flip side")
   at: string; // ISO timestamp it was written
   mood: number; // the pet's mood snapshot when written (flavor)
 }
@@ -59,6 +61,7 @@ export interface CloudSave {
   postcards: Postcard[];
   souvenirs: string[];
   misunderstandings: string[];
+  battles: BattleRecord[]; // newest-first; the pet's 对战记录 (scraps with Claw)
   lastResult: DayOutcome | null;
   pendingPostcardId: string | null;
   pendingMessage: string | null; // a thing the agent "said"; seeds the next trip

@@ -10,12 +10,14 @@ import CapyLogo from "./CapyLogo";
 export default function LoginScreen() {
   const login = useGameStore((s) => s.login);
   const goTo = useGameStore((s) => s.goTo);
+  const loginDestination = useGameStore((s) => s.loginDestination);
   const busy = useGameStore((s) => s.cloudBusy);
   const error = useGameStore((s) => s.cloudError);
 
   const [phone, setPhone] = useState("");
   const normalized = phone.replace(/[\s-]/g, "");
   const ok = /^\+?\d{5,}$/.test(normalized);
+  const agentOnboarding = loginDestination === "connect";
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden px-7">
@@ -37,9 +39,19 @@ export default function LoginScreen() {
           Capybanana
         </h1>
         <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
-          用手机号登录，领养一只随机卡皮巴拉，
-          <br />
-          还能让你的 AI Agent 来陪它。
+          {agentOnboarding ? (
+            <>
+              测试新用户登录后，
+              <br />
+              直接展示绑定 AI Agent 的引导页。
+            </>
+          ) : (
+            <>
+              用手机号登录，领养一只随机卡皮巴拉，
+              <br />
+              还能让你的 AI Agent 来陪它。
+            </>
+          )}
         </p>
       </motion.div>
 
@@ -64,9 +76,13 @@ export default function LoginScreen() {
           size="lg"
           className="w-full"
           disabled={!ok || busy}
-          onClick={() => login(normalized)}
+          onClick={() => login(normalized, loginDestination)}
         >
-          {busy ? "登录中…" : "登录 / 注册"}
+          {busy
+            ? "登录中…"
+            : agentOnboarding
+              ? "登录 / 注册并查看绑定页"
+              : "登录 / 注册"}
         </Button>
         <p className="text-center text-[11px] text-ink-soft/70">
           不需要密码 · 手机号即身份

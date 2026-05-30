@@ -42,6 +42,9 @@ export default function HomeScreen() {
   const goTo = useGameStore((s) => s.goTo);
   const devPreviewOutcome = useGameStore((s) => s.devPreviewOutcome);
   const devRunDay = useGameStore((s) => s.devRunDay);
+  const openAgentOnboardingLogin = useGameStore(
+    (s) => s.openAgentOnboardingLogin,
+  );
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const cloudError = useGameStore((s) => s.cloudError);
   const bound = useGameStore((s) => !!s.cloud);
@@ -80,8 +83,8 @@ export default function HomeScreen() {
         orthographic
         sun
         cameraPosition={[9, 8.4, 9]}
-        target={[-0.4, 1.7, -0.4]}
-        zoom={41}
+        target={[-0.4, 2.4, -0.4]}
+        zoom={45}
         enableZoom
         minZoom={30}
         maxZoom={95}
@@ -206,6 +209,18 @@ export default function HomeScreen() {
                 <span>{o.label}</span>
               </button>
             ))}
+            <div className="my-1 border-t border-dashed border-ink/15" />
+            <button
+              disabled={cloudBusy}
+              onClick={() => {
+                setShowTest(false);
+                openAgentOnboardingLogin();
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-ink active:bg-cream-soft disabled:opacity-40"
+            >
+              <span className="w-5 text-center">🔗</span>
+              <span>新用户绑定页</span>
+            </button>
             {cloudError && (
               <p className="px-1 pt-1 text-[10px] leading-snug text-accent">
                 {cloudError}

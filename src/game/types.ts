@@ -79,6 +79,8 @@ export type OutcomeKind =
   | "rest"
   | "secret";
 
+export type BattleResult = "win" | "lose" | "draw";
+
 export interface DayOutcome {
   id: string;
   kind: OutcomeKind;
@@ -96,7 +98,20 @@ export interface DayOutcome {
   memory?: string; // appended to CapyState.memories (secrets build suspense)
   trait?: string; // a personality trait it picked up
   postcard?: Postcard; // only for travel outcomes
+  battle?: BattleResult; // only for claw outcomes — win/lose/draw (seeds 对战记录)
   resolvedAt: string;
+}
+
+// A persisted record of one scrap with Claw — the "对战记录" counterpart to
+// postcards (travel records). Derived from a resolved claw DayOutcome.
+export interface BattleRecord {
+  id: string;
+  result: BattleResult;
+  title: string; // e.g. "它赢下了和 Claw 的对决"
+  story: string; // the battle report
+  spoils?: string; // 战利品 brought back (the outcome's souvenir)
+  injury: number; // 受伤值 taken this fight (effects.injury, for flavor)
+  at: string; // ISO timestamp it resolved
 }
 
 export type DestinationTheme =

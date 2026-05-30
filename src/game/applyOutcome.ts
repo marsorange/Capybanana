@@ -1,9 +1,27 @@
 // Shared, pure outcome → state merge. Lives here (not in the Zustand store) so
 // the client (gameStore.tick) and the server (engine.tickSave) fold a resolved
 // DayOutcome into the capybara's state identically — no drift between the two.
-import type { CapyState, DayOutcome } from "./types";
+import type { BattleRecord, CapyState, DayOutcome } from "./types";
 
 export const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
+/**
+ * Distil a resolved claw day into a persistable 对战记录. Returns null for any
+ * non-battle outcome. Client and server both call this so the battle log they
+ * build from the same outcome is identical.
+ */
+export function battleRecordFrom(o: DayOutcome): BattleRecord | null {
+  if (!o.battle) return null;
+  return {
+    id: o.id,
+    result: o.battle,
+    title: o.title,
+    story: o.story,
+    spoils: o.souvenir,
+    injury: o.effects.injury ?? 0,
+    at: o.resolvedAt,
+  };
+}
 
 export function applyEffects(
   capy: CapyState,
