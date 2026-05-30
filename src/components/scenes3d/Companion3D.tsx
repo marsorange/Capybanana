@@ -289,14 +289,14 @@ export default function Companion3D({
             </mesh>
           ))}
 
-        {/* cheeks */}
-        <mesh position={[-0.33, 0.62, 0.36]} scale={[1, 0.7, 0.4]}>
-          <sphereGeometry args={[0.07, 8, 6]} />
-          {m("#f1a6ad")}
+        {/* round rosy blush cheeks */}
+        <mesh position={[-0.34, 0.6, 0.37]} scale={[1, 0.82, 0.45]}>
+          <sphereGeometry args={[0.088, 10, 8]} />
+          {m("#f6a3b0")}
         </mesh>
-        <mesh position={[0.33, 0.62, 0.36]} scale={[1, 0.7, 0.4]}>
-          <sphereGeometry args={[0.07, 8, 6]} />
-          {m("#f1a6ad")}
+        <mesh position={[0.34, 0.6, 0.37]} scale={[1, 0.82, 0.45]}>
+          <sphereGeometry args={[0.088, 10, 8]} />
+          {m("#f6a3b0")}
         </mesh>
 
         {/* a cowlick tuft of fur on the crown */}

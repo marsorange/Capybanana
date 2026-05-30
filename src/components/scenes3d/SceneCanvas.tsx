@@ -104,13 +104,13 @@ export default function SceneCanvas({
       style={{ touchAction: "none" }}
     >
       <WebGLContextGuard />
-      {/* low-poly cartoon lighting: a strong warm key sculpts the facets,
-          a soft cool fill keeps shadows from going muddy, warm back rim. */}
-      <hemisphereLight args={["#fff4e6", "#dfcbb0", 0.66]} />
-      <ambientLight intensity={0.28} color="#fff3e4" />
-      <directionalLight position={[7, 12, 8]} intensity={2.0} color="#fff1d8" />
-      <directionalLight position={[-8, 6, -3]} intensity={0.5} color="#cdd8f2" />
-      <directionalLight position={[1, 3, -9]} intensity={0.35} color="#ffd6c0" />
+      {/* bright, airy "日系" low-poly light: high soft sky fill keeps it fresh
+          while a gentle warm key still sculpts the facets. */}
+      <hemisphereLight args={["#fffaf0", "#e7ddca", 1.0]} />
+      <ambientLight intensity={0.5} color="#fff6ec" />
+      <directionalLight position={[7, 12, 8]} intensity={1.5} color="#fff3df" />
+      <directionalLight position={[-8, 6, -3]} intensity={0.55} color="#d6e2f5" />
+      <directionalLight position={[1, 3, -9]} intensity={0.3} color="#ffe0cf" />
 
       <Suspense fallback={null}>{children}</Suspense>
 

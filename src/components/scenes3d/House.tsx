@@ -2,7 +2,7 @@
 
 import { RoundedBox } from "@react-three/drei";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { getDestination } from "@/game/destinations";
 import type { DestinationTheme } from "@/game/types";
@@ -31,20 +31,20 @@ const CX = (XL + XR) / 2;
 const CZ = (ZB + ZF) / 2;
 const TOP = 4.7;
 
-// palette
-const WALL = "#f4e7cb";
-const WALL_BACK = "#eedcb6";
-const WAINSCOT = "#e3cb9c";
-const WOOD = "#b9844f";
-const WOOD_DK = "#85572f";
-const WOOD_LT = "#cfa46c";
-const FLOOR0 = "#d7ac72";
-const FLOOR1 = "#e2bd86";
-const ROOF = "#eeba4e";
-const ROOF_DK = "#e1a93c";
-const ROOF_RIDGE = "#9a6a32";
-const GREEN = "#8fbf68";
-const GREEN_DK = "#79a857";
+// palette — fresh, bright "日系" cottage
+const WALL = "#f8f1e2";
+const WALL_BACK = "#f1e8d3";
+const WAINSCOT = "#e6d6b2";
+const WOOD = "#c08f58";
+const WOOD_DK = "#8e6238";
+const WOOD_LT = "#d6ad74";
+const FLOOR0 = "#e2c08a";
+const FLOOR1 = "#ecd2a3";
+const ROOF = "#f6ce60";
+const ROOF_DK = "#ecbf4d";
+const ROOF_RIDGE = "#b07d3c";
+const GREEN = "#92c46b";
+const GREEN_DK = "#7caf58";
 const SAGE = "#9dbf8c";
 const GOLD = "#e8b85c";
 const CREAM = "#fff6e6";
@@ -278,6 +278,39 @@ function MiniCapy({ pos }: { pos: [number, number, number] }) {
   );
 }
 
+// A flat right-triangle gable end that closes the side of the sliced roof.
+function GableEnd({
+  x,
+  run,
+  h,
+  color,
+}: {
+  x: number;
+  run: number;
+  h: number;
+  color: string;
+}) {
+  const geo = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0); // front-bottom (under ridge)
+    s.lineTo(run, 0); // back-bottom
+    s.lineTo(0, h); // ridge
+    s.closePath();
+    return new THREE.ShapeGeometry(s);
+  }, [run, h]);
+  return (
+    <mesh position={[x, 0, 0]} rotation={[0, Math.PI / 2, 0]} geometry={geo}>
+      <meshStandardMaterial
+        color={color}
+        roughness={1}
+        metalness={0}
+        flatShading
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
 // A subtle pulsing ground ring that marks an interactive spot (no emoji).
 function Beacon({ pos, color = "#e8b85c" }: { pos: [number, number, number]; color?: string }) {
   const ring = useRef<THREE.Mesh>(null);
@@ -355,57 +388,38 @@ export default function House({
         );
       })}
 
-      {/* ===== ROOF ===== */}
+      {/* ===== ROOF — a bold faceted gable whose FRONT slope is sliced down to a
+            short lip, so the back rooms get a real roof while the cutaway stays
+            an open cross-section ===== */}
       <group position={[CX, TOP, CZ]}>
-        <Box args={[W + 0.9, 0.2, D + 0.9]} pos={[0, 0.02, 0]} color={WOOD} />
-        {([-1, 1] as const).map((side) => (
-          <mesh key={side} position={[side * 1.28, 0.66, 0]} rotation={[0, 0, side * -0.62]}>
-            <boxGeometry args={[2.45, 0.2, D + 0.95]} />
-            {m(side === 1 ? ROOF : ROOF_DK)}
-          </mesh>
-        ))}
-        {/* ridge cap */}
-        <Box args={[0.3, 0.24, D + 0.95]} pos={[0, 1.28, 0]} color={ROOF_RIDGE} />
-        {/* back gable fill */}
-        <mesh position={[0, 0.64, -(D / 2) - 0.2]}>
-          <cylinderGeometry args={[1.2, 1.2, 0.16, 3]} />
-          {m(WALL_BACK)}
+        {/* big faceted back slope (the main visible roof plane) */}
+        <mesh position={[0, 0.92, -1.4]} rotation={[-0.6, 0, 0]}>
+          <boxGeometry args={[W + 1.15, 0.2, 3.3]} />
+          {m(ROOF)}
         </mesh>
-        {/* eave trim boards */}
-        {([-1, 1] as const).map((s) => (
-          <Box key={s} args={[0.06, 0.14, D + 0.95]} pos={[s * 2.34, 0.04, 0]} color={CREAM} />
-        ))}
-        {/* chimney */}
-        <group position={[-1.55, 0.5, -1.1]}>
-          <RB args={[0.42, 1.1, 0.42]} pos={[0, 0.4, 0]} color="#c98f64" radius={0.04} />
-          <Box args={[0.5, 0.14, 0.5]} pos={[0, 0.96, 0]} color={WOOD_DK} />
-        </group>
-        {/* rooftop flag */}
-        <group position={[1.0, 1.5, 1.2]}>
-          <mesh position={[0, 0.3, 0]}>
-            <cylinderGeometry args={[0.02, 0.02, 0.6, 6]} />
-            {m(WOOD_DK)}
-          </mesh>
-          <mesh position={[0.16, 0.5, 0]}>
-            <planeGeometry args={[0.3, 0.18]} />
-            <meshStandardMaterial color={RED} roughness={1} side={2} />
-          </mesh>
-        </group>
-        {/* rooftop plant */}
-        <group position={[1.5, 0.95, -1.2]}>
-          <RB args={[0.34, 0.3, 0.34]} pos={[0, 0, 0]} color={CREAM} radius={0.05} />
-          <mesh position={[0, 0.28, 0]}>
-            <icosahedronGeometry args={[0.22, 0]} />
-            {m(GREEN)}
-          </mesh>
+        {/* short sliced front lip so it still peaks like a gable */}
+        <mesh position={[0, 1.6, 0.36]} rotation={[0.72, 0, 0]}>
+          <boxGeometry args={[W + 1.15, 0.18, 0.82]} />
+          {m(ROOF_DK)}
+        </mesh>
+        {/* ridge cap */}
+        <Box args={[W + 1.27, 0.2, 0.24]} pos={[0, 1.86, -0.02]} color={ROOF_RIDGE} />
+        {/* gable end triangles close the sides */}
+        <GableEnd x={(W + 1.15) / 2} run={2.75} h={1.85} color={ROOF_DK} />
+        <GableEnd x={-(W + 1.15) / 2} run={2.75} h={1.85} color={ROOF_DK} />
+        {/* chimney near the ridge, over the kitchen */}
+        <group position={[-0.4, 1.6, -0.75]}>
+          <RB args={[0.4, 1.1, 0.4]} pos={[0, 0.3, 0]} color="#caa07a" radius={0.04} />
+          <Box args={[0.5, 0.14, 0.5]} pos={[0, 0.84, 0]} color={WOOD_DK} />
+          <Box args={[0.32, 0.16, 0.32]} pos={[0, 0.88, 0]} color="#5a4636" />
         </group>
       </group>
 
       {/* puffs of chimney smoke */}
       {[0, 1, 2].map((i) => (
-        <mesh key={i} position={[-2.05, TOP + 1.5 + i * 0.5, -2.05]} scale={1 + i * 0.25}>
+        <mesh key={i} position={[CX - 0.4, TOP + 2.95 + i * 0.5, CZ - 0.75]} scale={1 + i * 0.25}>
           <icosahedronGeometry args={[0.16, 1]} />
-          <meshStandardMaterial color="#fff6ea" roughness={1} transparent opacity={0.78 - i * 0.18} />
+          <meshStandardMaterial color="#fffaf2" roughness={1} transparent opacity={0.7 - i * 0.18} />
         </mesh>
       ))}
 

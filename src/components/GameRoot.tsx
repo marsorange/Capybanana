@@ -13,13 +13,14 @@ import PackScreen from "./screens/PackScreen";
 import PostcardScreen from "./screens/PostcardScreen";
 import ResultScreen from "./screens/ResultScreen";
 import TravelingScreen from "./screens/TravelingScreen";
+import CapyLogo from "./screens/CapyLogo";
 import ErrorBoundary from "./ui/ErrorBoundary";
 import PortraitFrame from "./ui/PortraitFrame";
 
 function Splash() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 text-ink-soft">
-      <div className="animate-float-soft text-5xl">🧳</div>
+    <div className="flex h-full flex-col items-center justify-center gap-4 text-ink-soft">
+      <CapyLogo className="h-24 w-24" />
       <p className="font-hand text-xl">Capybanana</p>
     </div>
   );
