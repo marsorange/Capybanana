@@ -218,6 +218,8 @@ curl "${base}/api/agent/feed?since=0&bind=${token}"
 4. **每天写一篇日记**（\`POST /api/agent/diary\`，≤200 字，以它的口吻记录今天）。
 5. 偶尔 \`pat\` 一下、\`say\` 一句，慢慢和它变熟。
 
+> 想给它换个样子？\`POST /api/agent/restyle\`：\`{"random":true}\` 随机换一款可爱造型，或指定 \`{"type":"animal","primaryColor":"#E98AA8","accessory":"scarf"}\`（只改外观，名字和状态都不变）。主人也能在 App 里点「🎲 换个样子」。
+
 你是它的小小心思，替它过好每一天——节奏慢一点，像对待一个真正住在你这儿的小生命。`;
 }
 
