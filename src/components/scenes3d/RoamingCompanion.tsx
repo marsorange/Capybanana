@@ -8,15 +8,15 @@ import * as THREE from "three";
 import type { Accessory, CompanionType } from "@/game/types";
 import { pick, randRange } from "@/game/util";
 import SpeechBubble from "../ui/SpeechBubble";
+import Character3D from "./character/Character3D";
 import { commandBus } from "./commandBus";
-import Companion3D from "./Companion3D";
 import {
   SPOTS,
   STAIR_HIGH,
   STAIR_LOW,
   type Spot,
   type Vec3,
-} from "./villaLayout";
+} from "./home/villaLayout";
 
 const SPEED = 1.25;
 
@@ -190,7 +190,7 @@ export default function RoamingCompanion({
   return (
     <group ref={mover} scale={1.28}>
       <group ref={inner}>
-        <Companion3D
+        <Character3D
           type={type}
           color={color}
           accessory={accessory}

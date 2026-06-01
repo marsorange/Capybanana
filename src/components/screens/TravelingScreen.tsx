@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { tripProgress } from "@/game/clock";
 import { useGameStore } from "@/state/gameStore";
-import HomeScene from "../scenes3d/HomeScene";
+import HomeScene from "../scenes3d/home/HomeScene";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import JournalMap from "../ui/JournalMap";
 

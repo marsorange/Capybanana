@@ -1,11 +1,16 @@
 // Core domain types for Capybanana.
 
+// The protagonist roster: six fixed characters, each its own species. The
+// reference art lives in src/asset/Character/*.png; their dedicated 3D assets
+// get generated later (until then the shared low-poly placeholder stands in).
+// See src/game/characters.ts for the per-species metadata.
 export type CompanionType =
-  | "animal"
-  | "sprite"
-  | "robot"
-  | "mushroom"
-  | "dumpling";
+  | "capybara"
+  | "rabbit"
+  | "duck"
+  | "raccoon"
+  | "shiba"
+  | "sheep";
 
 export type Personality = "gentle" | "curious" | "lazy" | "brave" | "dreamy";
 

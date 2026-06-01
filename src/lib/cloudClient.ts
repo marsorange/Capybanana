@@ -6,7 +6,7 @@ import type { Gesture, PackedItem } from "@/game/types";
 import type { CloudSave, DiaryEntry } from "@/server/types";
 
 export interface LoginResult {
-  user: { id: string; phone: string };
+  user: { id: string; email: string | null };
   bindToken: string;
   connectUrl: string;
   save: CloudSave;
@@ -50,9 +50,10 @@ async function call<T>(
 }
 
 export const cloud = {
-  login: (phone: string) =>
-    call<LoginResult & { ok: true }>("POST", "/api/auth/login", undefined, {
-      phone,
+  // Bridge a verified Supabase Auth session into our bind-token account.
+  loginSupabase: (accessToken: string) =>
+    call<LoginResult & { ok: true }>("POST", "/api/auth/supabase", undefined, {
+      accessToken,
     }),
   pet: (token: string) => call<MutationResult>("GET", "/api/agent/pet", token),
   create: (token: string, companion: CompanionDraft) =>

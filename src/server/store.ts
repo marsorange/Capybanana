@@ -1,20 +1,15 @@
 // Repository over KV: users, bind tokens, and the per-pet cloud save.
 //
 // Key layout:
-//   phone:<phone>   -> userId          (login lookup)
-//   user:<userId>   -> User
-//   bind:<token>    -> userId          (auth resolution)
-//   pet:<petId>     -> CloudSave        (the authoritative game state)
+//   sb:<supabaseUserId> -> userId      (login lookup — Supabase Auth identity)
+//   user:<userId>       -> User
+//   bind:<token>        -> userId      (auth resolution)
+//   pet:<petId>         -> CloudSave    (the authoritative game state)
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { uid } from "@/game/util";
 import { kv } from "@/lib/kv";
 import { newToken } from "./bind";
 import type { CloudSave, User } from "./types";
-
-export function normalizePhone(raw: string): string | null {
-  const p = raw.replace(/[\s-]/g, "");
-  return /^\+?\d{5,20}$/.test(p) ? p : null;
-}
 
 export function emptySave(): CloudSave {
   return {
@@ -38,14 +33,24 @@ export function emptySave(): CloudSave {
   };
 }
 
-/** Find or create the account for a phone number (no verification by design). */
-export async function loginByPhone(
-  phone: string,
+/**
+ * Find or create the account for a verified Supabase Auth user. The Supabase
+ * user id is the stable identity; email is stored for display and kept fresh.
+ */
+export async function loginBySupabase(
+  supabaseUserId: string,
+  email: string | null,
 ): Promise<{ user: User; save: CloudSave; isNew: boolean }> {
-  const existingId = await kv.getJSON<string>(`phone:${phone}`);
+  const idKey = `sb:${supabaseUserId}`;
+  const existingId = await kv.getJSON<string>(idKey);
   if (existingId) {
     const user = await kv.getJSON<User>(`user:${existingId}`);
     if (user) {
+      // Keep the cached email in sync if Google reports a new one.
+      if (email && user.email !== email) {
+        user.email = email;
+        await kv.setJSON(`user:${user.id}`, user);
+      }
       const save =
         (await kv.getJSON<CloudSave>(`pet:${user.petId}`)) ?? emptySave();
       return { user, save, isNew: false };
@@ -54,7 +59,8 @@ export async function loginByPhone(
 
   const user: User = {
     id: uid("usr"),
-    phone,
+    supabaseUserId,
+    email,
     bindToken: newToken(),
     petId: uid("pet"),
     createdAt: new Date().toISOString(),
@@ -62,7 +68,7 @@ export async function loginByPhone(
   const save = emptySave();
   await kv.setJSON(`pet:${user.petId}`, save);
   await kv.setJSON(`user:${user.id}`, user);
-  await kv.setJSON(`phone:${phone}`, user.id);
+  await kv.setJSON(idKey, user.id);
   await kv.setJSON(`bind:${user.bindToken}`, user.id);
   return { user, save, isNew: true };
 }

@@ -1,7 +1,9 @@
 // Roll a brand-new travel companion. Used by both the client (the "🎲 换一只"
 // reroll on the create screen) and the server (a new account's first pet), so a
-// fresh capybara looks the same wherever it is born.
-import { ACCESSORIES, COMPANION_TYPES, PERSONALITIES, PRIMARY_COLORS } from "./labels";
+// fresh pet looks the same wherever it is born. A roll now lands on one of the
+// six roster characters, wearing that character's signature color + accessory.
+import { CHARACTERS, isSpecies, normalizeSpecies } from "./characters";
+import { ACCESSORIES, PERSONALITIES } from "./labels";
 import type { Accessory, CompanionType, Personality } from "./types";
 import { pick } from "./util";
 
@@ -13,7 +15,7 @@ export interface CompanionDraft {
   accessory: Accessory;
 }
 
-// Soft, food-and-nature flavored names that suit a low-poly capybara.
+// Soft, food-and-nature flavored names that suit the low-poly roster.
 const NAMES = [
   "豆豆",
   "团团",
@@ -33,40 +35,32 @@ const NAMES = [
   "椰果",
 ];
 
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
 export function randomCompanion(): CompanionDraft {
+  const character = pick(CHARACTERS);
   return {
     name: pick(NAMES),
-    type: pick(COMPANION_TYPES).type,
-    primaryColor: pick(PRIMARY_COLORS).hex,
+    type: character.species,
+    primaryColor: character.defaultColor,
     personality: pick(PERSONALITIES).value,
-    accessory: pick(ACCESSORIES).value,
+    accessory: character.accessory,
   };
 }
 
-// The chonky/soft, most capybara-like types + soft colors + gentle accessories.
-// Used for new adoptions and the "换个样子" re-roll so a pet reads cute-capybara
-// by default (no boxy robot / spiky look).
-const CUTE_TYPES: CompanionType[] = ["animal", "dumpling", "mushroom"];
-const CUTE_ACCESSORIES: Accessory[] = ["none", "scarf", "flower", "bell"];
-const CUTE_COLORS = ["#E9A23B", "#E98AA8", "#8AA978", "#F2D06B", "#B98A64", "#6FA8C9"];
-
+// Every roster character is already a soft, cute animal, so the "cute" roll is
+// just a fresh roster pick (kept as its own export for the adoption / "换个样子"
+// callers that want to stay explicit about intent).
 export function randomCuteCompanion(): CompanionDraft {
-  return {
-    name: pick(NAMES),
-    type: pick(CUTE_TYPES),
-    primaryColor: pick(CUTE_COLORS),
-    personality: pick(PERSONALITIES).value,
-    accessory: pick(CUTE_ACCESSORIES),
-  };
+  return randomCompanion();
 }
 
-const TYPE_SET = new Set<string>(COMPANION_TYPES.map((t) => t.type));
 const PERSONALITY_SET = new Set<string>(PERSONALITIES.map((p) => p.value));
 const ACCESSORY_SET = new Set<string>(ACCESSORIES.map((a) => a.value));
-const COLOR_SET = new Set<string>(PRIMARY_COLORS.map((c) => c.hex));
 
 // Coerce arbitrary (e.g. agent-supplied) input into a valid draft, filling any
-// missing or out-of-range field with a fresh random pick.
+// missing or out-of-range field with a fresh random pick. Legacy species names
+// are mapped onto the roster rather than discarded.
 export function coerceCompanionDraft(input: unknown): CompanionDraft {
   const base = randomCompanion();
   if (!input || typeof input !== "object") return base;
@@ -77,11 +71,9 @@ export function coerceCompanionDraft(input: unknown): CompanionDraft {
         ? o.name.trim().slice(0, 12)
         : base.name,
     type:
-      typeof o.type === "string" && TYPE_SET.has(o.type)
-        ? (o.type as CompanionType)
-        : base.type,
+      typeof o.type === "string" ? normalizeSpecies(o.type) : base.type,
     primaryColor:
-      typeof o.primaryColor === "string" && COLOR_SET.has(o.primaryColor)
+      typeof o.primaryColor === "string" && HEX.test(o.primaryColor)
         ? o.primaryColor
         : base.primaryColor,
     personality:
@@ -108,12 +100,9 @@ export function coerceAppearance(input: unknown, fallback: Appearance): Appearan
   if (!input || typeof input !== "object") return fallback;
   const o = input as Record<string, unknown>;
   return {
-    type:
-      typeof o.type === "string" && TYPE_SET.has(o.type)
-        ? (o.type as CompanionType)
-        : fallback.type,
+    type: isSpecies(o.type) ? o.type : fallback.type,
     primaryColor:
-      typeof o.primaryColor === "string" && COLOR_SET.has(o.primaryColor)
+      typeof o.primaryColor === "string" && HEX.test(o.primaryColor)
         ? o.primaryColor
         : fallback.primaryColor,
     accessory:

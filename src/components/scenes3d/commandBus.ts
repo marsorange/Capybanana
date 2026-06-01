@@ -1,4 +1,4 @@
-import type { Activity, Vec3 } from "./villaLayout";
+import type { Activity, Vec3 } from "./home/villaLayout";
 
 // Lets an in-scene tap send the companion walking to a spot, then either fire an
 // action (open a screen) and/or perform an activity (farm/sleep/clean…) there.

@@ -4,20 +4,31 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 
 import { useGameStore } from "@/state/gameStore";
-import Button from "../ui/Button";
+import { isSupabaseConfigured, signInWithGoogle } from "@/lib/supabaseClient";
 import CapyLogo from "./CapyLogo";
 
 export default function LoginScreen() {
-  const login = useGameStore((s) => s.login);
-  const goTo = useGameStore((s) => s.goTo);
   const loginDestination = useGameStore((s) => s.loginDestination);
-  const busy = useGameStore((s) => s.cloudBusy);
-  const error = useGameStore((s) => s.cloudError);
+  const cloudBusy = useGameStore((s) => s.cloudBusy);
+  const cloudError = useGameStore((s) => s.cloudError);
 
-  const [phone, setPhone] = useState("");
-  const normalized = phone.replace(/[\s-]/g, "");
-  const ok = /^\+?\d{5,}$/.test(normalized);
+  // `redirecting` covers the moment between the click and the browser leaving
+  // for Google; `cloudBusy` covers the bridge after we land back here.
+  const [redirecting, setRedirecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const busy = redirecting || cloudBusy;
   const agentOnboarding = loginDestination === "connect";
+
+  const onGoogle = async () => {
+    setError(null);
+    setRedirecting(true);
+    try {
+      await signInWithGoogle(); // navigates away to Google on success
+    } catch (e) {
+      setRedirecting(false);
+      setError((e as Error).message);
+    }
+  };
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden px-7">
@@ -47,7 +58,7 @@ export default function LoginScreen() {
             </>
           ) : (
             <>
-              用手机号登录，领养一只随机卡皮巴拉，
+              用 Google 登录，领养一只随机卡皮巴拉，
               <br />
               还能让你的 AI Agent 来陪它。
             </>
@@ -62,39 +73,57 @@ export default function LoginScreen() {
         transition={{ duration: 0.5, delay: 0.18 }}
         className="relative z-10 w-full space-y-3"
       >
-        <input
-          value={phone}
-          onChange={(e) =>
-            setPhone(e.target.value.replace(/[^\d+\s-]/g, "").slice(0, 20))
-          }
-          inputMode="tel"
-          placeholder="手机号"
-          className="w-full rounded-sticker border-2 border-ink/15 bg-paper px-4 py-3 text-center text-lg tracking-wider text-ink outline-none placeholder:text-ink-soft/60 focus:border-accent"
-        />
-        {error && <p className="text-center text-sm text-accent">{error}</p>}
-        <Button
-          size="lg"
-          className="w-full"
-          disabled={!ok || busy}
-          onClick={() => login(normalized, loginDestination)}
+        <button
+          onClick={onGoogle}
+          disabled={!isSupabaseConfigured || busy}
+          className="flex w-full items-center justify-center gap-3 rounded-sticker border-2 border-ink/15 bg-paper px-4 py-3.5 text-base font-medium text-ink shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {busy
-            ? "登录中…"
-            : agentOnboarding
-              ? "登录 / 注册并查看绑定页"
-              : "登录 / 注册"}
-        </Button>
-        <p className="text-center text-[11px] text-ink-soft/70">
-          不需要密码 · 手机号即身份
-        </p>
-      </motion.div>
+          <GoogleMark className="h-5 w-5" />
+          {busy ? "登录中…" : "用 Google 登录"}
+        </button>
 
-      <button
-        onClick={() => goTo("create")}
-        className="relative z-10 text-sm text-ink-soft underline underline-offset-4"
-      >
-        先本地玩，不登录 →
-      </button>
+        {(error || cloudError) && (
+          <p className="text-center text-sm text-accent">
+            {error || cloudError}
+          </p>
+        )}
+
+        {isSupabaseConfigured ? (
+          <p className="text-center text-[11px] text-ink-soft/70">
+            首次登录即自动领养 · 云端存档
+          </p>
+        ) : (
+          <p className="text-center text-[11px] leading-relaxed text-accent/90">
+            登录暂不可用：未配置 Supabase。
+            <br />
+            请设置 NEXT_PUBLIC_SUPABASE_URL 与 NEXT_PUBLIC_SUPABASE_ANON_KEY。
+          </p>
+        )}
+      </motion.div>
     </div>
+  );
+}
+
+/** Google "G" mark (inline SVG so we add no asset / network dependency). */
+function GoogleMark({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </svg>
   );
 }

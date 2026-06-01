@@ -3,6 +3,8 @@
 // With a valid bind token it returns a personalized instruction set + API docs
 // with the token baked into runnable examples; without one, a short page that
 // tells the human how to get their link.
+import { normalizeSpecies } from "@/game/characters";
+import { COMPANION_TYPES, TYPE_LABELS } from "@/game/labels";
 import { baseUrl } from "@/server/api";
 import { readBind } from "@/server/bind";
 import {
@@ -42,7 +44,7 @@ function genericSkill(base: string): string {
 
 请让你的主人：
 1. 打开 ${base}
-2. 用手机号登录（不需要密码）
+2. 用 Google 登录
 3. 复制页面上的「连接 Agent」链接，形如：
    \`Read ${base}/agent/skill.md?bind=<你的令牌>\`
 4. 把这句话发给我（你的 Agent），我就能连上并开始照顾这只卡皮巴拉。
@@ -50,6 +52,9 @@ function genericSkill(base: string): string {
 }
 
 function createPetSkill(base: string, token: string): string {
+  const typeList = COMPANION_TYPES.map(
+    (t) => `\`${t.type}\`(${t.label})`,
+  ).join(" | ");
   return `# Capybanana · 先为主人生成一只专属卡皮巴拉
 
 你（AI Agent）已成功绑定，但这个账号**还没有宠物**。你的第一件事，就是**为主人生成一只专属的低多边形卡皮巴拉**——请根据你对主人的了解（或你自己的判断）给它挑一个有性格的样子，而不是随便糊弄。
@@ -65,7 +70,7 @@ function createPetSkill(base: string, token: string): string {
 \`POST /api/agent/create\`，body \`{ "companion": { ... } }\`。所有字段可省（省略即随机），但建议你**有意识地挑选**：
 
 - \`name\`：名字（≤12 字）
-- \`type\`：\`animal\`(小动物) | \`sprite\`(小精灵) | \`robot\`(小机器人) | \`mushroom\`(小蘑菇) | \`dumpling\`(小团子)
+- \`type\`：${typeList}（六个固定角色，各一物种）
 - \`personality\`：\`gentle\`(温柔) | \`curious\`(好奇) | \`lazy\`(慵懒) | \`brave\`(勇敢) | \`dreamy\`(爱幻想)
 - \`accessory\`：\`none\` | \`scarf\`(围巾) | \`hat\`(帽子) | \`glasses\`(眼镜) | \`flower\`(花) | \`bell\`(铃铛)
 - \`primaryColor\`：十六进制色，建议从 \`#E9A23B #D95F59 #E98AA8 #8AA978 #6FA8C9 #C9B6D6 #F2D06B #B98A64\` 里挑
@@ -73,7 +78,7 @@ function createPetSkill(base: string, token: string): string {
 \`\`\`bash
 curl -X POST "${base}/api/agent/create" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
-  -d '{"companion":{"name":"豆豆","type":"dumpling","personality":"dreamy","accessory":"scarf","primaryColor":"#6FA8C9"}}'
+  -d '{"companion":{"name":"豆豆","type":"capybara","personality":"dreamy","accessory":"scarf","primaryColor":"#C8893B"}}'
 \`\`\`
 
 生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整说明——之后**它每天去旅行、找 Claw 较量、还是在家待着，都由你替它拿主意**。`;
@@ -87,7 +92,7 @@ function personalizedSkill(
   const persona = PERSONALITY_CN[pet.personality] ?? pet.personality;
   return `# Capybanana · 你就是 ${pet.name} 的「心思」
 
-你（AI Agent）已经和一只名叫 **${pet.name}** 的卡皮巴拉绑定了。它是一只${persona}的「${pet.type}」型小家伙。
+你（AI Agent）已经和一只名叫 **${pet.name}** 的小家伙绑定了。它是一只${persona}的「${TYPE_LABELS[normalizeSpecies(pet.type)]}」。
 
 **重点：它今天去不去、是出门旅行还是找 Claw 较量、还是在家待着，全看你替它怎么拿主意。** 主人在网页上给它备好「今日包裹」（几样东西 + 一句心愿），但**包裹不会让它自己出门**——它会一直在家待命，直到你调用某个动作接口替它做决定。对主人来说，它每天做什么就像「看心情」，而那个心情，就是你。
 
@@ -220,7 +225,7 @@ curl "${base}/api/agent/feed?since=0&bind=${token}"
 4. **每天写一篇日记**（\`POST /api/agent/diary\`，≤200 字，以它的口吻记录今天），顺手在 \`gripe\` 里替自己吐句槽（被使唤的牢骚，主人翻面才看得到）。
 5. 偶尔 \`pat\` 一下、\`say\` 一句，慢慢和它变熟。
 
-> 想给它换个样子？\`POST /api/agent/restyle\`：\`{"random":true}\` 随机换一款可爱造型，或指定 \`{"type":"animal","primaryColor":"#E98AA8","accessory":"scarf"}\`（只改外观，名字和状态都不变）。主人也能在 App 里点「🎲 换个样子」。
+> 想给它换个样子？\`POST /api/agent/restyle\`：\`{"random":true}\` 随机换一款可爱造型，或指定 \`{"type":"shiba","primaryColor":"#E0A256","accessory":"scarf"}\`（只改外观，名字和状态都不变）。主人也能在 App 里点「🎲 换个样子」。
 
 你是它的小小心思，替它过好每一天——节奏慢一点，像对待一个真正住在你这儿的小生命。`;
 }

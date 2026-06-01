@@ -1,3 +1,4 @@
+import { CHARACTERS } from "./characters";
 import type {
   Accessory,
   CompanionType,
@@ -5,18 +6,18 @@ import type {
   Personality,
 } from "./types";
 
+// Derived from the six-character roster so there is a single source of truth.
 export const COMPANION_TYPES: {
   type: CompanionType;
   label: string;
   emoji: string;
   blurb: string;
-}[] = [
-  { type: "animal", label: "小动物", emoji: "🐾", blurb: "毛茸茸，爱蹭人" },
-  { type: "sprite", label: "小精灵", emoji: "✨", blurb: "轻飘飘，会发光" },
-  { type: "robot", label: "小机器人", emoji: "🤖", blurb: "方方的，很认真" },
-  { type: "mushroom", label: "小蘑菇", emoji: "🍄", blurb: "圆头顶，慢悠悠" },
-  { type: "dumpling", label: "小团子", emoji: "🥟", blurb: "软乎乎，爱睡觉" },
-];
+}[] = CHARACTERS.map((c) => ({
+  type: c.species,
+  label: c.label,
+  emoji: c.emoji,
+  blurb: c.blurb,
+}));
 
 export const PERSONALITIES: {
   value: Personality;
@@ -74,13 +75,9 @@ export const PERSONALITY_LABELS: Record<Personality, string> = {
   dreamy: "爱幻想",
 };
 
-export const TYPE_LABELS: Record<CompanionType, string> = {
-  animal: "小动物",
-  sprite: "小精灵",
-  robot: "小机器人",
-  mushroom: "小蘑菇",
-  dumpling: "小团子",
-};
+export const TYPE_LABELS = Object.fromEntries(
+  CHARACTERS.map((c) => [c.species, c.label]),
+) as Record<CompanionType, string>;
 
 export const LUGGAGE_LABELS: Record<LuggageItem, string> = {
   food: "食物",

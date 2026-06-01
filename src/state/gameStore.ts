@@ -24,6 +24,7 @@ import type {
 import { pick, uid } from "@/game/util";
 import { randomCuteCompanion } from "@/game/randomCompanion";
 import { cloud } from "@/lib/cloudClient";
+import { supabaseSignOut } from "@/lib/supabaseClient";
 import type { CloudSave, DiaryEntry } from "@/server/types";
 
 export type Screen =
@@ -52,7 +53,7 @@ export interface CreateCompanionInput {
 // token, talking to the same /api/agent/* endpoints an external agent uses.
 export interface CloudAuth {
   userId: string;
-  phone: string;
+  email: string | null;
   bindToken: string;
   rev: number;
 }
@@ -133,7 +134,10 @@ interface GameState {
   reset: () => void;
 
   // cloud actions
-  login: (phone: string, destination?: LoginDestination) => Promise<void>;
+  loginWithSupabaseToken: (
+    accessToken: string,
+    destination?: LoginDestination,
+  ) => Promise<void>;
   logout: () => void;
   ensureCloudPet: () => Promise<void>;
   restyle: () => void;
@@ -577,14 +581,19 @@ export const useGameStore = create<GameState>()(
 
       // ---- cloud ----
 
-      login: async (phone, destination = "profile") => {
+      // Bridge a verified Supabase session (Google login) into our bind-token
+      // account. Invoked by the GameRoot auth bridge once Supabase reports a
+      // session — never with a raw password; Supabase Auth owns that.
+      loginWithSupabaseToken: async (accessToken, destination = "profile") => {
+        const cur = get();
+        if (cur.cloud || cur.cloudBusy) return; // already bound / in flight
         set({ cloudBusy: true, cloudError: null });
         try {
-          const res = await cloud.login(phone);
+          const res = await cloud.loginSupabase(accessToken);
           set({
             cloud: {
               userId: res.user.id,
-              phone: res.user.phone,
+              email: res.user.email,
               bindToken: res.bindToken,
               rev: res.save.rev,
             },
@@ -658,7 +667,10 @@ export const useGameStore = create<GameState>()(
           });
       },
 
-      logout: () =>
+      logout: () => {
+        // Drop the Supabase session too, otherwise the GameRoot auth bridge
+        // would see a live session and re-bind us straight back in.
+        void supabaseSignOut();
         set({
           companion: null,
           capyState: DEFAULT_CAPY,
@@ -675,10 +687,12 @@ export const useGameStore = create<GameState>()(
           pendingPostcardId: null,
           cloud: null,
           connectUrl: null,
+          cloudBusy: false,
           cloudError: null,
           loginDestination: "profile",
           screen: "login",
-        }),
+        });
+      },
 
       cloudPull: async () => {
         const s = get();

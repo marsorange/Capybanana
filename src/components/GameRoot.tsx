@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect } from "react";
 
+import { getSupabase } from "@/lib/supabaseClient";
 import { useGameStore, type Screen } from "@/state/gameStore";
 import AlbumScreen from "./screens/AlbumScreen";
 import ConnectAgentScreen from "./screens/ConnectAgentScreen";
@@ -25,6 +26,33 @@ function Splash() {
       <p className="font-hand text-xl">Capybanana</p>
     </div>
   );
+}
+
+// Watch the Supabase Auth session and bridge it into our bind-token account.
+// Fires after the Google OAuth round-trip lands back on this origin (and on any
+// later session that appears while we're not yet bound). The bridge itself
+// guards against double-binding, so this can fire freely.
+function useSupabaseAuthBridge() {
+  const loginWithSupabaseToken = useGameStore((s) => s.loginWithSupabaseToken);
+  useEffect(() => {
+    const sb = getSupabase();
+    if (!sb) return;
+    let active = true;
+    const bridge = (token?: string | null) => {
+      if (!active || !token) return;
+      const st = useGameStore.getState();
+      if (st.cloud || st.cloudBusy) return; // already bound / in flight
+      void loginWithSupabaseToken(token, st.loginDestination);
+    };
+    sb.auth.getSession().then(({ data }) => bridge(data.session?.access_token));
+    const { data: sub } = sb.auth.onAuthStateChange((_event, session) =>
+      bridge(session?.access_token),
+    );
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [loginWithSupabaseToken]);
 }
 
 function renderScreen(screen: Screen) {
@@ -59,7 +87,6 @@ export default function GameRoot() {
   const screen = useGameStore((s) => s.screen);
   const selectedPostcardId = useGameStore((s) => s.selectedPostcardId);
   const lastResult = useGameStore((s) => s.lastResult);
-  const tick = useGameStore((s) => s.tick);
   const cloudPull = useGameStore((s) => s.cloudPull);
   const ensureCloudPet = useGameStore((s) => s.ensureCloudPet);
   const cloudBusy = useGameStore((s) => s.cloudBusy);
@@ -72,14 +99,16 @@ export default function GameRoot() {
     void useGameStore.persist.rehydrate();
   }, [hasHydrated]);
 
-  // Global lifecycle clock. Guests tick locally every second; bound accounts
-  // poll the server (which resolves the lifecycle) on a slower cadence.
+  // Bridge a Supabase (Google) session into a bound account when one appears.
+  useSupabaseAuthBridge();
+
+  // Lifecycle clock. Only bound accounts have a pet to advance; the server
+  // resolves the lifecycle, so the web client just polls it.
   useEffect(() => {
-    if (!hasHydrated) return;
-    const run = bound ? cloudPull : tick;
-    run();
-    const id = setInterval(() => run(), bound ? 5000 : 1000);
-    const onWake = () => run();
+    if (!hasHydrated || !bound) return;
+    cloudPull();
+    const id = setInterval(() => cloudPull(), 5000);
+    const onWake = () => cloudPull();
     window.addEventListener("focus", onWake);
     document.addEventListener("visibilitychange", onWake);
     return () => {
@@ -87,7 +116,7 @@ export default function GameRoot() {
       window.removeEventListener("focus", onWake);
       document.removeEventListener("visibilitychange", onWake);
     };
-  }, [hasHydrated, bound, tick, cloudPull]);
+  }, [hasHydrated, bound, cloudPull]);
 
   // A bound account with no pet means the server pet hasn't been adopted yet
   // (legacy account). Adopt one so the owner isn't stranded on the connect
@@ -105,9 +134,21 @@ export default function GameRoot() {
     );
   }
 
+  // Login is mandatory: until a Supabase (Google) session is bridged into a
+  // bound account, the only screen is login. (Guest / local-only play removed.)
+  if (!bound) {
+    return (
+      <PortraitFrame>
+        <ErrorBoundary>
+          <LoginScreen />
+        </ErrorBoundary>
+      </PortraitFrame>
+    );
+  }
+
   // Bound but petless: a capybara is being adopted. Show the splash rather than
   // the connect screen (whose "enter" button is disabled without a pet).
-  if (bound && !companion && !cloudError) {
+  if (!companion && !cloudError) {
     return (
       <PortraitFrame>
         <Splash />
@@ -118,9 +159,8 @@ export default function GameRoot() {
   let effective: Screen = screen;
   if (!companion) {
     // No pet: a failed adoption falls back to the connect screen so the owner
-    // can retry/attach an agent; guests see login (or local create).
-    if (bound) effective = "connect";
-    else effective = screen === "create" ? "create" : "login";
+    // can retry / attach an agent.
+    effective = "connect";
   } else if (screen === "login" || screen === "create") {
     effective = "home";
   } else if (

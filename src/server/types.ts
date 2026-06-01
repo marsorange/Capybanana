@@ -12,7 +12,8 @@ import type {
 
 export interface User {
   id: string;
-  phone: string;
+  supabaseUserId: string; // Supabase Auth user id — the owner's verified identity
+  email: string | null; // from the OAuth provider (Google); for display only
   bindToken: string; // the agent's secret; also used by the owner's web client
   petId: string;
   createdAt: string;

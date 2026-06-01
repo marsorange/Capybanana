@@ -1,16 +1,21 @@
 // Compose the text prompt for the AI postcard art. Combines the companion's
-// look (low-poly capybara variant + color + accessory) with a famous landmark
-// as the background scenery, so the generated image is "我家宝贝站在埃菲尔铁塔前".
+// look (one of the six roster characters + color + accessory) with a famous
+// landmark as the background scenery, so the generated image is
+// "我家宝贝站在埃菲尔铁塔前".
+import { normalizeSpecies } from "./characters";
 import { ACCESSORIES } from "./labels";
 import { PRIMARY_COLORS } from "./labels";
 import type { Companion, CompanionType, DestinationTheme } from "./types";
 
+// Each value is the full creature noun phrase so the prompt reads naturally for
+// any species (not just the capybara).
 const TYPE_FLAVOR: Record<CompanionType, string> = {
-  animal: "毛茸茸的",
-  sprite: "身上带点微光的",
-  robot: "略带机械感的",
-  mushroom: "头顶圆圆像小蘑菇的",
-  dumpling: "软乎乎像小团子的",
+  capybara: "圆滚滚的卡皮巴拉",
+  rabbit: "竖着长耳朵的小兔子",
+  duck: "戴草帽的小鸭子",
+  raccoon: "戴圆框眼镜的小浣熊",
+  shiba: "笑眯眯的小柴犬",
+  sheep: "毛茸茸的小绵羊",
 };
 
 const THEME_BG: Record<DestinationTheme, string> = {
@@ -37,7 +42,7 @@ export function buildPostcardImagePrompt(
   companion: Companion,
   opts: { landmark: string; theme: DestinationTheme; scene?: string },
 ): string {
-  const flavor = TYPE_FLAVOR[companion.type] ?? "";
+  const flavor = TYPE_FLAVOR[normalizeSpecies(companion.type)];
   const color = colorName(companion.primaryColor);
   const acc = ACCESSORIES.find((a) => a.value === companion.accessory);
   const accPart =
@@ -46,7 +51,7 @@ export function buildPostcardImagePrompt(
 
   return [
     "一张治愈系旅行明信片插画。",
-    `画面主角是一只圆滚滚、可爱的低多边形（low-poly）3D ${flavor}卡皮巴拉，`,
+    `画面主角是一只可爱的低多边形（low-poly）3D ${flavor}，`,
     `${color}的身体，${accPart}`,
     `站在标志性地标「${opts.landmark}」前面。`,
     // Foreground the recognizable landmark as the main backdrop so it actually

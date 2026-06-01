@@ -11,7 +11,7 @@ import {
 } from "@/game/labels";
 import type { CapyState } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
-import Companion3D from "../scenes3d/Companion3D";
+import Character3D from "../scenes3d/character/Character3D";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import Button from "../ui/Button";
 
@@ -105,7 +105,7 @@ export default function ProfileScreen() {
       <div className="relative h-[44%] shrink-0 overflow-hidden bg-gradient-to-b from-cream-soft to-cream-deep">
         <SceneCanvas controls="spin">
           <Pedestal />
-          <Companion3D
+          <Character3D
             type={companion.type}
             color={companion.primaryColor}
             accessory={companion.accessory}

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ACCESSORIES, PERSONALITY_LABELS, TYPE_LABELS } from "@/game/labels";
 import { randomCompanion, type CompanionDraft } from "@/game/randomCompanion";
 import { useGameStore } from "@/state/gameStore";
-import Companion3D from "../scenes3d/Companion3D";
+import Character3D from "../scenes3d/character/Character3D";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import Button from "../ui/Button";
 
@@ -41,7 +41,7 @@ export default function CreateScreen() {
       <div className="relative h-[46%] shrink-0 overflow-hidden bg-gradient-to-b from-cream-soft to-cream-deep">
         <SceneCanvas controls="spin">
           <Pedestal />
-          <Companion3D
+          <Character3D
             type={draft.type}
             color={draft.primaryColor}
             accessory={draft.accessory}

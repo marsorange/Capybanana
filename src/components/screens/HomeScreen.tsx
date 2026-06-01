@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { OutcomeKind } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
-import HomeScene from "../scenes3d/HomeScene";
+import HomeScene from "../scenes3d/home/HomeScene";
 import InteractionLayer from "../scenes3d/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
