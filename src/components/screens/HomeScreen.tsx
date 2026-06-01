@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import type { OutcomeKind } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import HomeModel from "../scenes3d/home/HomeModel";
+import HomeColliders from "../scenes3d/home/HomeColliders";
+import PhysicsToy from "../scenes3d/home/PhysicsToy";
 import InteractionLayer from "../scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
@@ -82,6 +84,7 @@ export default function HomeScreen() {
         controls="orbit"
         orthographic
         sun
+        physics
         cameraPosition={[9, 8.4, 9]}
         target={[-0.4, 2.4, -0.4]}
         zoom={45}
@@ -91,12 +94,17 @@ export default function HomeScreen() {
         minPolar={0.6}
         maxPolar={1.32}
       >
+        {/* visual diorama (throwaway art) */}
         <HomeModel
           mode="home"
           postcardThemes={wallThemes}
           onOpenPack={() => goTo("pack")}
           onOpenAlbum={() => goTo("album")}
         />
+        {/* lean physical proxy the pet + props collide against; also the
+            tap-to-move ground catcher */}
+        <HomeColliders />
+        {/* physics pet (tap to move) + a reference physics prop (tap to toss) */}
         <RoamingCompanion
           type={companion.type}
           color={companion.primaryColor}
@@ -104,6 +112,7 @@ export default function HomeScreen() {
           seed={companion.id}
           clickLines={companionState === "ready" ? READY_LINES : IDLE_LINES}
         />
+        <PhysicsToy />
         <InteractionLayer onDiary={() => setShowDiary(true)} />
       </SceneCanvas>
 
