@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 
 import type { OutcomeKind } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
-import HomeScene from "../scenes3d/home/HomeScene";
-import InteractionLayer from "../scenes3d/InteractionLayer";
+import HomeModel from "../scenes3d/home/HomeModel";
+import InteractionLayer from "../scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import DiaryPanel from "../ui/DiaryPanel";
@@ -91,7 +91,7 @@ export default function HomeScreen() {
         minPolar={0.6}
         maxPolar={1.32}
       >
-        <HomeScene
+        <HomeModel
           mode="home"
           postcardThemes={wallThemes}
           onOpenPack={() => goTo("pack")}

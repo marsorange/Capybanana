@@ -11,7 +11,7 @@ import {
 } from "@/game/labels";
 import type { CapyState } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
-import Character3D from "../scenes3d/character/Character3D";
+import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import Button from "../ui/Button";
 
@@ -79,8 +79,10 @@ export default function ProfileScreen() {
   const capy = useGameStore((s) => s.capyState);
   const goTo = useGameStore((s) => s.goTo);
   const restyle = useGameStore((s) => s.restyle);
+  const logout = useGameStore((s) => s.logout);
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const bound = useGameStore((s) => !!s.cloud);
+  const email = useGameStore((s) => s.cloud?.email ?? null);
 
   const typeInfo = COMPANION_TYPES.find((t) => t.type === companion.type);
   const persInfo = PERSONALITIES.find(
@@ -105,7 +107,7 @@ export default function ProfileScreen() {
       <div className="relative h-[44%] shrink-0 overflow-hidden bg-gradient-to-b from-cream-soft to-cream-deep">
         <SceneCanvas controls="spin">
           <Pedestal />
-          <Character3D
+          <CharacterModel
             type={companion.type}
             color={companion.primaryColor}
             accessory={companion.accessory}
@@ -223,6 +225,18 @@ export default function ProfileScreen() {
         <Button size="lg" className="w-full" onClick={() => goTo("home")}>
           进入小屋 →
         </Button>
+        {bound && (
+          <div className="flex items-center justify-center gap-2 pt-0.5 text-xs text-ink-soft/70">
+            {email && <span className="truncate">{email}</span>}
+            {email && <span aria-hidden>·</span>}
+            <button
+              onClick={() => logout()}
+              className="shrink-0 underline underline-offset-4 transition hover:text-accent"
+            >
+              退出登录
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

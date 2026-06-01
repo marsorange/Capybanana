@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 import type { DayOutcome, OutcomeKind } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
-import Character3D from "../scenes3d/character/Character3D";
+import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import Button from "../ui/Button";
 
@@ -173,7 +173,7 @@ export default function ResultScreen() {
 
         <SceneCanvas controls="spin">
           <Pedestal color={theme.pedestal} />
-          <Character3D
+          <CharacterModel
             type={companion.type}
             color={companion.primaryColor}
             accessory={companion.accessory}

@@ -3,7 +3,7 @@
 import { useGameStore } from "@/state/gameStore";
 import { commandWalk } from "./commandBus";
 import InteractionMarker from "./InteractionMarker";
-import { FLOOR_H, type Vec3 } from "./home/villaLayout";
+import { FLOOR_H, type Vec3 } from "../layout";
 
 // All the labelled, tap-to-move interaction points in the home scene. Tapping a
 // label sends the pet walking there, then opens a screen or plays an activity.

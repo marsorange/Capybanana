@@ -10,10 +10,12 @@ import { CHARACTER_BY_SPECIES, normalizeSpecies } from "@/game/characters";
 import type { Accessory, CompanionType } from "@/game/types";
 import { darkenColor, lightenColor } from "../materials";
 
-// The shared low-poly placeholder body. Until each roster character gets its own
-// generated 3D asset (see characters.ts / the reference art), every species
-// renders this one parametric creature, tinted and proportioned per the roster.
-interface CreatureModelProps {
+// The protagonist's single 3D model. It resolves `type` to one of the six
+// roster characters and draws it. Today every species shares this one low-poly
+// placeholder body (tinted/proportioned per the roster in characters.ts) until
+// each character's own generated 3D asset replaces it — when that happens, swap
+// the geometry here behind the same props and nothing else in the app changes.
+interface CharacterModelProps {
   type: CompanionType;
   color: string;
   accessory: Accessory;
@@ -93,13 +95,15 @@ function rollFeatures(
   };
 }
 
-export default function CreatureModel({
+export default function CharacterModel({
   type,
   color,
   accessory,
   seed,
   onPointerDown,
-}: CreatureModelProps) {
+}: CharacterModelProps) {
+  // Resolve the stored value (incl. legacy types) to a valid roster species.
+  const species = normalizeSpecies(type);
   const entrance = useRef<THREE.Group>(null);
   const root = useRef<THREE.Group>(null);
   const leftEye = useRef<THREE.Mesh>(null);
@@ -110,8 +114,8 @@ export default function CreatureModel({
   const belly = useMemo(() => lightenColor(color, 0.5), [color]);
   const bodyColor = color;
   const feat = useMemo(
-    () => rollFeatures(seed, type, color, accessory),
-    [seed, type, color, accessory],
+    () => rollFeatures(seed, species, color, accessory),
+    [seed, species, color, accessory],
   );
   const snoutColor = useMemo(
     () => lightenColor(color, feat.snoutPale),
