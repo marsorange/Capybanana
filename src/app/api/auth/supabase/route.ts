@@ -54,6 +54,13 @@ export async function POST(req: Request): Promise<Response> {
   });
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) {
+    console.error(
+      "[auth/supabase] getUser failed:",
+      error?.status,
+      error?.message,
+      "tokenLen:",
+      accessToken.length,
+    );
     return jsonError("Google 登录校验失败，请重新登录", 401);
   }
 

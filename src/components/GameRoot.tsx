@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect } from "react";
 
-import { getSupabase } from "@/lib/supabaseClient";
+import { completeOAuthLogin, getSupabase } from "@/lib/supabaseClient";
 import { useGameStore, type Screen } from "@/state/gameStore";
 import AlbumScreen from "./screens/AlbumScreen";
 import ConnectAgentScreen from "./screens/ConnectAgentScreen";
@@ -38,15 +38,36 @@ function useSupabaseAuthBridge() {
     const sb = getSupabase();
     if (!sb) return;
     let active = true;
-    const bridge = (token?: string | null) => {
+    const bind = (token?: string | null) => {
       if (!active || !token) return;
       const st = useGameStore.getState();
       if (st.cloud || st.cloudBusy) return; // already bound / in flight
       void loginWithSupabaseToken(token, st.loginDestination);
     };
-    sb.auth.getSession().then(({ data }) => bridge(data.session?.access_token));
+
+    // On mount: finish a pending Google redirect (?code=) if there is one,
+    // otherwise pick up an existing session. Surface any OAuth/exchange error.
+    void (async () => {
+      try {
+        const token = await completeOAuthLogin();
+        if (token) {
+          bind(token);
+          return;
+        }
+        const { data } = await sb.auth.getSession();
+        bind(data.session?.access_token);
+      } catch (e) {
+        if (active)
+          useGameStore.setState({
+            cloudError: (e as Error).message,
+            cloudBusy: false,
+          });
+      }
+    })();
+
+    // React to any later sign-in (e.g. token refresh in another tab).
     const { data: sub } = sb.auth.onAuthStateChange((_event, session) =>
-      bridge(session?.access_token),
+      bind(session?.access_token),
     );
     return () => {
       active = false;
