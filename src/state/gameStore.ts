@@ -25,7 +25,7 @@ import { pick, uid } from "@/game/util";
 import { randomCuteCompanion } from "@/game/randomCompanion";
 import { cloud } from "@/lib/cloudClient";
 import { supabaseSignOut } from "@/lib/supabaseClient";
-import type { CloudSave, DiaryEntry } from "@/server/types";
+import type { CloudSave } from "@/server/types";
 
 export type Screen =
   | "login"
@@ -101,7 +101,6 @@ interface GameState {
   souvenirs: string[];
   misunderstandings: string[];
   battles: BattleRecord[]; // 对战记录 (scraps with Claw), newest-first
-  diary: DiaryEntry[]; // the agent-written diary (cloud), newest-first
   secretProgress: number;
   lastResult: DayOutcome | null;
   screen: Screen;
@@ -162,7 +161,6 @@ export const useGameStore = create<GameState>()(
       souvenirs: [],
       misunderstandings: [],
       battles: [],
-      diary: [],
       secretProgress: 0,
       lastResult: null,
       screen: "login",
@@ -548,7 +546,6 @@ export const useGameStore = create<GameState>()(
           souvenirs: [],
           misunderstandings: [],
           battles: [],
-          diary: [],
           secretProgress: 0,
           lastResult: null,
           selectedPostcardId: null,
@@ -572,7 +569,6 @@ export const useGameStore = create<GameState>()(
           souvenirs: [],
           misunderstandings: [],
           battles: [],
-          diary: [],
           lastResult: null,
           screen: "login",
           loginDestination: "profile",
@@ -717,7 +713,6 @@ export const useGameStore = create<GameState>()(
           souvenirs: [],
           misunderstandings: [],
           battles: [],
-          diary: [],
           lastResult: null,
           selectedPostcardId: null,
           pendingPostcardId: null,
@@ -782,7 +777,6 @@ export const useGameStore = create<GameState>()(
           souvenirs: save.souvenirs,
           misunderstandings: save.misunderstandings,
           battles: save.battles ?? [],
-          diary: save.diary ?? [],
           lastResult: save.lastResult,
           pendingPostcardId: save.pendingPostcardId,
           cloud: s.cloud ? { ...s.cloud, rev: save.rev } : s.cloud,
@@ -810,7 +804,6 @@ export const useGameStore = create<GameState>()(
         souvenirs: s.souvenirs,
         misunderstandings: s.misunderstandings,
         battles: s.battles,
-        diary: s.diary,
         secretProgress: s.secretProgress,
         lastResult: s.lastResult,
         screen: s.screen,

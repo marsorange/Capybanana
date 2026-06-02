@@ -4,7 +4,6 @@
 // rev + an activity-log entry.
 import { advanceLifecycle, BATTLE, NO_AUTO_DEPART } from "@/game/clock";
 import { applyOutcome, battleRecordFrom, clamp } from "@/game/applyOutcome";
-import { pickGripe } from "@/game/diaryGripes";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { DESTINATIONS } from "@/game/destinations";
 import { planTrip } from "@/game/planTrip";
@@ -26,7 +25,7 @@ import type {
   TripIntent,
 } from "@/game/types";
 import { randRange, uid } from "@/game/util";
-import type { AgentEvent, CloudSave, DiaryEntry } from "./types";
+import type { AgentEvent, CloudSave } from "./types";
 
 const DESTINATION_THEMES = new Set<string>(DESTINATIONS.map((d) => d.theme));
 const QUIET_MODES = new Set<string>(["home", "yard", "rest"]);
@@ -207,7 +206,6 @@ export function createPet(
     lastResult: null,
     pendingPostcardId: null,
     pendingMessage: null,
-    diary: [],
     lastActionDay: null,
   };
   return bump(base, now, {
@@ -453,59 +451,6 @@ export function collectPostcard(save: CloudSave, now: number): CloudSave {
   return bump({ ...save, pendingPostcardId: null }, now);
 }
 
-export const DIARY_MAX = 200;
-export const GRIPE_MAX = 200;
-
-/**
- * The agent writes today's diary in the pet's voice (<= 200 chars). At most one
- * entry per calendar day (UTC) — writing again the same day replaces it. A small
- * bond/mood bump rewards the daily ritual. Returns the unchanged save if empty.
- *
- * `gripe` is the overworked agent's behind-the-scenes grumble (the diary's flip
- * side); when the agent doesn't supply one we fall back to a procedural grumble
- * so the joke always lands.
- */
-export function writeDiary(
-  save: CloudSave,
-  text: string,
-  gripe: string | undefined,
-  now: number,
-): CloudSave {
-  const clean = text.trim().slice(0, DIARY_MAX);
-  if (!clean) return save;
-  const cleanGripe = (gripe ?? "").trim().slice(0, GRIPE_MAX) || pickGripe();
-  const day = new Date(now).toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-  const entry: DiaryEntry = {
-    id: uid("diary"),
-    day,
-    text: clean,
-    gripe: cleanGripe,
-    at: new Date(now).toISOString(),
-    mood: save.capyState.mood,
-  };
-  const prior = save.diary ?? [];
-  const existingIdx = prior.findIndex((d) => d.day === day);
-  const updated = existingIdx >= 0;
-  const diary = updated
-    ? prior.map((d, i) => (i === existingIdx ? entry : d))
-    : [entry, ...prior].slice(0, 90); // keep ~3 months of entries
-
-  // The bond/mood bump rewards the *daily ritual*, so only the first entry of
-  // the day earns it — rewriting the same day just replaces the text.
-  const capy = updated
-    ? save.capyState
-    : {
-        ...save.capyState,
-        bond: clamp(save.capyState.bond + 3),
-        mood: clamp(save.capyState.mood + 2),
-      };
-  const name = save.companion?.name ?? "它";
-  return bump({ ...save, diary, capyState: capy }, now, {
-    type: "diary",
-    text: updated ? `${name} 改了改今天的日记。` : `${name} 写下了今天的日记。`,
-  });
-}
-
 // ---- Agent-facing projection -------------------------------------------------
 
 // What the owner packed for today — surfaced to the agent so it can decide the
@@ -548,8 +493,6 @@ export interface PetSummary {
     locationName: string;
     sentAt: string;
   } | null;
-  latestDiary: { day: string; text: string; at: string } | null; // most recent diary
-  wroteDiaryToday: boolean; // already journaled today (UTC)?
   rev: number;
 }
 
@@ -576,7 +519,7 @@ function describeToday(save: CloudSave, now: number): string {
   // Today's one growth action is already spent — only gentle interactions left.
   if (actedToday(save, now)) {
     const last = save.lastResult ? `今天它${save.lastResult.title}。` : "";
-    return `${last}${name} 今天的事都忙完啦，明天再陪它出门——现在还能摸摸头、说说话、写写日记。`;
+    return `${last}${name} 今天的事都忙完啦，明天再陪它出门——现在还能摸摸头、说说话。`;
   }
 
   const decision = isHurt(save)
@@ -612,11 +555,6 @@ export function summarizePet(save: CloudSave): PetSummary | null {
       ? ["stay"] // badly hurt → can only recover at home
       : ["travel", "battle", "stay"]
     : [];
-  const diary = save.diary ?? [];
-  const latestDiary = diary[0]
-    ? { day: diary[0].day, text: diary[0].text, at: diary[0].at }
-    : null;
-  const today = dayKey(now);
   return {
     name: c.name,
     type: c.type,
@@ -650,8 +588,6 @@ export function summarizePet(save: CloudSave): PetSummary | null {
           sentAt: latest.sentAt,
         }
       : null,
-    latestDiary,
-    wroteDiaryToday: latestDiary?.day === today,
     rev: save.rev,
   };
 }

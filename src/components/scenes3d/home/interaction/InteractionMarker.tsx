@@ -4,7 +4,7 @@ import { Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
-import type { Vec3 } from "./home/villaLayout";
+import type { Vec3 } from "../layout";
 
 interface Props {
   pos: Vec3;

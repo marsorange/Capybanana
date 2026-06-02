@@ -26,7 +26,6 @@ export function emptySave(): CloudSave {
     lastResult: null,
     pendingPostcardId: null,
     pendingMessage: null,
-    diary: [],
     lastActionDay: null,
     rev: 0,
     updatedAt: new Date().toISOString(),

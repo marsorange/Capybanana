@@ -22,6 +22,23 @@ export function getToonGradient(): THREE.DataTexture {
   return gradient;
 }
 
+// Shared, cached flat-shaded material. Lambert (matte diffuse) gives the chunky
+// low-poly toon look for cheaper than MeshStandardMaterial's PBR, and caching by
+// color means N same-colored meshes share ONE material instance (fewer shader
+// programs, less memory, faster scene build) — useful headroom now that the
+// scene also runs a physics step each frame. New 3D should reach for this via
+// `<mesh material={flatMaterial(color)}>` instead of minting a material per mesh.
+const flatMaterialCache = new Map<string, THREE.MeshLambertMaterial>();
+
+export function flatMaterial(hex: string): THREE.MeshLambertMaterial {
+  let mat = flatMaterialCache.get(hex);
+  if (!mat) {
+    mat = new THREE.MeshLambertMaterial({ color: hex, flatShading: true });
+    flatMaterialCache.set(hex, mat);
+  }
+  return mat;
+}
+
 export function lightenColor(hex: string, amt: number): string {
   return new THREE.Color(hex)
     .lerp(new THREE.Color("#ffffff"), amt)

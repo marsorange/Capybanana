@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { tripProgress } from "@/game/clock";
 import { useGameStore } from "@/state/gameStore";
-import HomeScene from "../scenes3d/home/HomeScene";
+import HomeModel from "../scenes3d/home/HomeModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import JournalMap from "../ui/JournalMap";
 
@@ -54,7 +54,7 @@ export default function TravelingScreen() {
           target={[-1.1, 1.4, -1.1]}
           zoom={35}
         >
-          <HomeScene mode="away" postcardThemes={wallThemes} />
+          <HomeModel mode="away" postcardThemes={wallThemes} />
         </SceneCanvas>
         <div className="pointer-events-none absolute inset-x-0 top-0 px-5 pt-5">
           <h1 className="font-hand text-2xl text-ink">{companion.name} 的今天</h1>

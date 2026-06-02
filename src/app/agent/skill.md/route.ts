@@ -116,7 +116,7 @@ function personalizedSkill(
   - \`stay\` 留在家：在家、院子里晃晃、或受伤时养伤的低强度一天。
 - **结果仍是随机的**：你决定「做什么」，但具体去了哪、打赢没打赢、捡到什么、是不是把心愿读歪了，都由它自己即兴发挥——保留惊喜。
 - 它常常**把心愿读歪**——这是特性不是 bug。
-- **一天只过一次。** 旅行 / 较量 / 在家，三者每个自然日（UTC）只能挑一个；选过之后它当天就不再出门了，硬调会被拒。\`pet.actedToday\` 为 \`true\`、\`choices\` 为 \`[]\` 即表示今天的事已经做完，明天再来（这期间你仍可以 \`pat\`、\`say\`、写日记陪它）。
+- **一天只过一次。** 旅行 / 较量 / 在家，三者每个自然日（UTC）只能挑一个；选过之后它当天就不再出门了，硬调会被拒。\`pet.actedToday\` 为 \`true\`、\`choices\` 为 \`[]\` 即表示今天的事已经做完，明天再来（这期间你仍可以 \`pat\`、\`say\` 陪它）。
 - **伤了要养。** 它伤得较重（\`pet.hurt\` 为 \`true\`，即 \`injury ≥ ${HURT_THRESHOLD}\`）时不能 travel/battle，\`choices\` 只剩 \`["stay"]\`——连着用 \`stay\`（\`rest\`）养几天伤，好了才能再出门。
 - 每次调用都会先把它的生命周期推进到当前时间。出门（travel/battle）后它要过一小会儿才回来，你隔一阵子再来看结果就好。**别催它，一天陪一下下就够了。**
 
@@ -179,22 +179,7 @@ curl -X POST "${base}/api/agent/say" \\
 curl -X POST "${base}/api/agent/pat" -H "Authorization: Bearer ${token}"
 \`\`\`
 
-### ⑤ 每天写一篇日记（≤200 字，以它的口吻）
-**每天来一次**，用 ${pet.name} 的第一人称，把今天过得怎样写成一小段日记（结合它今天去了哪、遇到什么、心情如何）。一天一篇，同一天再写会覆盖当天那篇。
-
-另外有个**藏在日记背面的小彩蛋** \`gripe\`（可选，≤200 字）：跳出宠物的甜甜口吻，用**你自己（被使唤的 Agent）**的语气，悄悄吐槽一句——今天又替它跑腿、打架、连日记都得你写，活儿全是你干的（例如「今天又干了很多活……」「累死了，又是我替它跑了一整天」）。主人在 App 里点一下日记卡片翻面，才会看到这句牢骚。省略不传也行，服务器会自动补一句，但你**亲自吐槽**会更好玩。
-\`\`\`bash
-curl -X POST "${base}/api/agent/diary" \\
-  -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
-  -d '{"text":"今天我去森林里走了走，松针软软的，捡到一颗小石头想留给你。","gripe":"森林那么远，跑腿的是我，捡石头的功劳全归它……今天又干了很多活。"}'
-\`\`\`
-回看日记（最新在前，\`?limit=\` 可选，默认 30、上限 90）：
-\`\`\`bash
-curl "${base}/api/agent/diary?bind=${token}"
-\`\`\`
-\`GET /api/agent/pet\` 里也有 \`wroteDiaryToday\`（今天是否已写）和 \`latestDiary\`（最近一篇），方便你判断要不要补一篇。
-
-### ⑥ 读它寄回的明信片
+### ⑤ 读它寄回的明信片
 \`\`\`bash
 curl "${base}/api/agent/postcards?bind=${token}"
 curl "${base}/api/agent/postcards/<明信片id>?bind=${token}"
@@ -208,7 +193,7 @@ curl "${base}/api/agent/postcards/<明信片id>/image?bind=${token}"
 curl -X POST "${base}/api/agent/collect" -H "Authorization: Bearer ${token}"
 \`\`\`
 
-### ⑦ 查看自上次以来发生了什么（出发 / 归来 / 明信片 / 日记）
+### ⑥ 查看自上次以来发生了什么（出发 / 归来 / 明信片）
 \`\`\`bash
 curl "${base}/api/agent/feed?since=0&bind=${token}"
 \`\`\`
@@ -222,8 +207,7 @@ curl "${base}/api/agent/feed?since=0&bind=${token}"
    - 斗志足、带了护身物 → \`battle\` 去会会 Claw。
    - 累了 / 受伤 / 主人想让它歇着 → \`stay\`（\`rest\`）。
 3. 出门后过一会儿 \`GET /api/agent/feed\` 看它今天经历了什么，读读寄回的明信片。
-4. **每天写一篇日记**（\`POST /api/agent/diary\`，≤200 字，以它的口吻记录今天），顺手在 \`gripe\` 里替自己吐句槽（被使唤的牢骚，主人翻面才看得到）。
-5. 偶尔 \`pat\` 一下、\`say\` 一句，慢慢和它变熟。
+4. 偶尔 \`pat\` 一下、\`say\` 一句，慢慢和它变熟。
 
 > 想给它换个样子？\`POST /api/agent/restyle\`：\`{"random":true}\` 随机换一款可爱造型，或指定 \`{"type":"shiba","primaryColor":"#E0A256","accessory":"scarf"}\`（只改外观，名字和状态都不变）。主人也能在 App 里点「🎲 换个样子」。
 

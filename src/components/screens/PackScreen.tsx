@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { PackedItem } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
-import Backpack from "../scenes3d/home/Backpack";
+import Backpack from "../scenes3d/home/parts/Backpack";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import Button from "../ui/Button";
 import CameraCapture from "../ui/CameraCapture";

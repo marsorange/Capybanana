@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 
 import type { OutcomeKind } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
-import HomeScene from "../scenes3d/home/HomeScene";
-import InteractionLayer from "../scenes3d/InteractionLayer";
+import HomeModel from "../scenes3d/home/HomeModel";
+import HomeColliders from "../scenes3d/home/HomeColliders";
+import PhysicsToy from "../scenes3d/home/PhysicsToy";
+import InteractionLayer from "../scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
-import DiaryPanel from "../ui/DiaryPanel";
 import MusicToggle from "../ui/MusicToggle";
 
 const IDLE_LINES = [
@@ -48,7 +49,6 @@ export default function HomeScreen() {
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const cloudError = useGameStore((s) => s.cloudError);
   const bound = useGameStore((s) => !!s.cloud);
-  const [showDiary, setShowDiary] = useState(false);
   const [showTest, setShowTest] = useState(false);
   // "preview" = pure local look-see (repeatable, no mutation);
   // "run" = actually resolve the day (guest: local apply / cloud: real server).
@@ -82,6 +82,7 @@ export default function HomeScreen() {
         controls="orbit"
         orthographic
         sun
+        physics
         cameraPosition={[9, 8.4, 9]}
         target={[-0.4, 2.4, -0.4]}
         zoom={45}
@@ -91,12 +92,17 @@ export default function HomeScreen() {
         minPolar={0.6}
         maxPolar={1.32}
       >
-        <HomeScene
+        {/* visual diorama (throwaway art) */}
+        <HomeModel
           mode="home"
           postcardThemes={wallThemes}
           onOpenPack={() => goTo("pack")}
           onOpenAlbum={() => goTo("album")}
         />
+        {/* lean physical proxy the pet + props collide against; also the
+            tap-to-move ground catcher */}
+        <HomeColliders />
+        {/* physics pet (tap to move) + a reference physics prop (tap to toss) */}
         <RoamingCompanion
           type={companion.type}
           color={companion.primaryColor}
@@ -104,10 +110,9 @@ export default function HomeScreen() {
           seed={companion.id}
           clickLines={companionState === "ready" ? READY_LINES : IDLE_LINES}
         />
-        <InteractionLayer onDiary={() => setShowDiary(true)} />
+        <PhysicsToy />
+        <InteractionLayer />
       </SceneCanvas>
-
-      {showDiary && <DiaryPanel onClose={() => setShowDiary(false)} />}
 
       {/* top bar: name + simple state */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-5 pt-5">

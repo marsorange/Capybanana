@@ -2,6 +2,7 @@
 
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Physics } from "@react-three/rapier";
 import type { ReactNode } from "react";
 import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
@@ -21,6 +22,12 @@ interface SceneCanvasProps {
   minPolar?: number;
   maxPolar?: number;
   sun?: boolean; // enable a real shadow-casting sun
+  // Opt into a Rapier (Rust→WASM) physics world wrapping the scene content.
+  // Only scenes with rigid bodies / colliders (the home scene) need this; the
+  // portrait turntables stay non-physics.
+  physics?: boolean;
+  gravity?: [number, number, number];
+  debugPhysics?: boolean; // draw collider wireframes while tuning
   className?: string;
 }
 
@@ -109,6 +116,9 @@ export default function SceneCanvas({
   minPolar = 1.05,
   maxPolar = 1.5,
   sun = false,
+  physics = false,
+  gravity = [0, -9.81, 0],
+  debugPhysics = false,
   className,
 }: SceneCanvasProps) {
   const camera = orthographic
@@ -150,7 +160,15 @@ export default function SceneCanvas({
       <directionalLight position={[-8, 6, -3]} intensity={0.45} color="#dbe6f6" />
       <directionalLight position={[1, 3, -9]} intensity={0.28} color="#ffe2d0" />
 
-      <Suspense fallback={null}>{children}</Suspense>
+      <Suspense fallback={null}>
+        {physics ? (
+          <Physics gravity={gravity} debug={debugPhysics}>
+            {children}
+          </Physics>
+        ) : (
+          children
+        )}
+      </Suspense>
 
       {orthographic && <ZoomApplier min={minZoom} max={maxZoom} />}
 

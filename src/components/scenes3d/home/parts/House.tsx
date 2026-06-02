@@ -7,8 +7,8 @@ import * as THREE from "three";
 import { getDestination } from "@/game/destinations";
 import type { DestinationTheme } from "@/game/types";
 import Backpack from "./Backpack";
-import { commandWalk } from "../commandBus";
-import { FLOOR_H, STAIR_HIGH, STAIR_LOW, type Vec3 } from "./villaLayout";
+import { commandWalk } from "../interaction/commandBus";
+import { FLOOR_H, STAIR_HIGH, STAIR_LOW, type Vec3 } from "../layout";
 
 const BACKPACK_SPOT: Vec3 = [-1.0, 0, -0.3];
 const POSTCARD_SPOT: Vec3 = [-3.9, 0, -0.8];
@@ -20,7 +20,7 @@ interface HouseProps {
   onOpenAlbum?: () => void;
 }
 
-// footprint — kept in sync with villaLayout so the pet roams correctly.
+// footprint — kept in sync with ../layout so the pet roams correctly.
 const XL = -4.6;
 const XR = 0.4;
 const ZB = -4.6;
