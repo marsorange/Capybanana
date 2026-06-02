@@ -3,7 +3,7 @@
 // holds its bind token in the persisted store.
 import type { CompanionDraft } from "@/game/randomCompanion";
 import type { Gesture, PackedItem } from "@/game/types";
-import type { CloudSave, DiaryEntry } from "@/server/types";
+import type { CloudSave } from "@/server/types";
 
 export interface LoginResult {
   user: { id: string; email: string | null };
@@ -87,15 +87,6 @@ export const cloud = {
     token: string,
     opts?: { random?: boolean; type?: string; primaryColor?: string; accessory?: string },
   ) => call<MutationResult>("POST", "/api/agent/restyle", token, opts ?? { random: true }),
-  // The pet's daily diary (agent writes it in the pet's voice).
-  writeDiary: (token: string, text: string) =>
-    call<MutationResult>("POST", "/api/agent/diary", token, { text }),
-  diary: (token: string, limit?: number) =>
-    call<{ ok: boolean; rev: number; diary: DiaryEntry[] }>(
-      "GET",
-      `/api/agent/diary${limit ? `?limit=${limit}` : ""}`,
-      token,
-    ),
   postcardImage: (token: string, id: string) =>
     call<{ ok: boolean; status: string; url: string | null }>(
       "GET",

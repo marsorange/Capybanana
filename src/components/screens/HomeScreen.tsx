@@ -10,7 +10,6 @@ import PhysicsToy from "../scenes3d/home/PhysicsToy";
 import InteractionLayer from "../scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
-import DiaryPanel from "../ui/DiaryPanel";
 import MusicToggle from "../ui/MusicToggle";
 
 const IDLE_LINES = [
@@ -50,7 +49,6 @@ export default function HomeScreen() {
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const cloudError = useGameStore((s) => s.cloudError);
   const bound = useGameStore((s) => !!s.cloud);
-  const [showDiary, setShowDiary] = useState(false);
   const [showTest, setShowTest] = useState(false);
   // "preview" = pure local look-see (repeatable, no mutation);
   // "run" = actually resolve the day (guest: local apply / cloud: real server).
@@ -113,10 +111,8 @@ export default function HomeScreen() {
           clickLines={companionState === "ready" ? READY_LINES : IDLE_LINES}
         />
         <PhysicsToy />
-        <InteractionLayer onDiary={() => setShowDiary(true)} />
+        <InteractionLayer />
       </SceneCanvas>
-
-      {showDiary && <DiaryPanel onClose={() => setShowDiary(false)} />}
 
       {/* top bar: name + simple state */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-5 pt-5">

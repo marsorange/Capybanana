@@ -7,7 +7,7 @@ import { FLOOR_H, type Vec3 } from "../layout";
 
 // All the labelled, tap-to-move interaction points in the home scene. Tapping a
 // label sends the pet walking there, then opens a screen or plays an activity.
-export default function InteractionLayer({ onDiary }: { onDiary: () => void }) {
+export default function InteractionLayer() {
   const goTo = useGameStore((s) => s.goTo);
 
   const walk = (
@@ -29,11 +29,6 @@ export default function InteractionLayer({ onDiary }: { onDiary: () => void }) {
         pos={[-3.9, 0, -1.05]}
         label="明信片"
         onClick={() => walk([-3.9, 0, -1.05], 0, () => goTo("album"))}
-      />
-      <InteractionMarker
-        pos={[-2.85, 0, -0.55]}
-        label="日记"
-        onClick={() => walk([-2.6, 0, -0.6], 0, onDiary)}
       />
 
       {/* in-scene activities */}
