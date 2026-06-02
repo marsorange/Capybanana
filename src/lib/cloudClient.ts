@@ -55,6 +55,11 @@ export const cloud = {
     call<LoginResult & { ok: true }>("POST", "/api/auth/supabase", undefined, {
       accessToken,
     }),
+  // Local dev-only auth bridge (no Supabase needed).
+  loginDev: (identity?: string) =>
+    call<LoginResult & { ok: true }>("POST", "/api/auth/dev", undefined, {
+      identity,
+    }),
   pet: (token: string) => call<MutationResult>("GET", "/api/agent/pet", token),
   create: (token: string, companion: CompanionDraft) =>
     call<MutationResult>("POST", "/api/agent/create", token, { companion }),

@@ -2,6 +2,7 @@
 //
 // Key layout:
 //   sb:<supabaseUserId> -> userId      (login lookup — Supabase Auth identity)
+//   dev:<identity>      -> userId      (local debug login identity)
 //   user:<userId>       -> User
 //   bind:<token>        -> userId      (auth resolution)
 //   pet:<petId>         -> CloudSave    (the authoritative game state)
@@ -33,15 +34,11 @@ export function emptySave(): CloudSave {
   };
 }
 
-/**
- * Find or create the account for a verified Supabase Auth user. The Supabase
- * user id is the stable identity; email is stored for display and kept fresh.
- */
-export async function loginBySupabase(
-  supabaseUserId: string,
+async function loginByIdentity(
+  idKey: string,
+  identity: string,
   email: string | null,
 ): Promise<{ user: User; save: CloudSave; isNew: boolean }> {
-  const idKey = `sb:${supabaseUserId}`;
   const existingId = await kv.getJSON<string>(idKey);
   if (existingId) {
     const user = await kv.getJSON<User>(`user:${existingId}`);
@@ -59,7 +56,7 @@ export async function loginBySupabase(
 
   const user: User = {
     id: uid("usr"),
-    supabaseUserId,
+    supabaseUserId: identity,
     email,
     bindToken: newToken(),
     petId: uid("pet"),
@@ -71,6 +68,28 @@ export async function loginBySupabase(
   await kv.setJSON(idKey, user.id);
   await kv.setJSON(`bind:${user.bindToken}`, user.id);
   return { user, save, isNew: true };
+}
+
+/**
+ * Find or create the account for a verified Supabase Auth user. The Supabase
+ * user id is the stable identity; email is stored for display and kept fresh.
+ */
+export async function loginBySupabase(
+  supabaseUserId: string,
+  email: string | null,
+): Promise<{ user: User; save: CloudSave; isNew: boolean }> {
+  return loginByIdentity(`sb:${supabaseUserId}`, supabaseUserId, email);
+}
+
+/**
+ * Local debug login without a third-party auth provider. This is only meant for
+ * local development where the identity is supplied by the developer.
+ */
+export async function loginByDevIdentity(
+  identity: string,
+  email: string | null,
+): Promise<{ user: User; save: CloudSave; isNew: boolean }> {
+  return loginByIdentity(`dev:${identity}`, `dev:${identity}`, email);
 }
 
 /** Resolve a bind token to its owner + current pet save. */

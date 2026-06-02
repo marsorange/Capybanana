@@ -11,10 +11,13 @@ export default function LoginScreen() {
   const loginDestination = useGameStore((s) => s.loginDestination);
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const cloudError = useGameStore((s) => s.cloudError);
+  const loginWithDevIdentity = useGameStore((s) => s.loginWithDevIdentity);
+  const devAuthEnabled = process.env.NEXT_PUBLIC_CAPY_DEV_LOCAL_AUTH === "1";
 
   // `redirecting` covers the moment between the click and the browser leaving
   // for Google; `cloudBusy` covers the bridge after we land back here.
   const [redirecting, setRedirecting] = useState(false);
+  const [devIdentity, setDevIdentity] = useState("local-dev");
   const [error, setError] = useState<string | null>(null);
   const busy = redirecting || cloudBusy;
   const agentOnboarding = loginDestination === "connect";
@@ -26,6 +29,15 @@ export default function LoginScreen() {
       await signInWithGoogle(); // navigates away to Google on success
     } catch (e) {
       setRedirecting(false);
+      setError((e as Error).message);
+    }
+  };
+
+  const onDev = async () => {
+    setError(null);
+    try {
+      await loginWithDevIdentity(devIdentity, loginDestination);
+    } catch (e) {
       setError((e as Error).message);
     }
   };
@@ -82,6 +94,29 @@ export default function LoginScreen() {
           {busy ? "登录中…" : "用 Google 登录"}
         </button>
 
+        {devAuthEnabled && (
+          <>
+            <div className="rounded-sticker border-2 border-ink/10 bg-paper/70 p-2.5">
+              <label className="mb-1 block text-[11px] text-ink-soft/80">
+                本地调试身份（同名会复用同一云存档）
+              </label>
+              <input
+                value={devIdentity}
+                onChange={(e) => setDevIdentity(e.target.value)}
+                placeholder="local-dev"
+                className="w-full rounded-xl border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none ring-accent/40 transition focus:ring-2"
+              />
+            </div>
+            <button
+              onClick={onDev}
+              disabled={busy}
+              className="flex w-full items-center justify-center gap-2 rounded-sticker border-2 border-ink/15 bg-cream-soft px-4 py-3 text-sm font-medium text-ink shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? "登录中…" : "本地调试登录（无需 Supabase）"}
+            </button>
+          </>
+        )}
+
         {(error || cloudError) && (
           <p className="text-center text-sm text-accent">
             {error || cloudError}
@@ -91,6 +126,10 @@ export default function LoginScreen() {
         {isSupabaseConfigured ? (
           <p className="text-center text-[11px] text-ink-soft/70">
             首次登录即自动领养 · 云端存档
+          </p>
+        ) : devAuthEnabled ? (
+          <p className="text-center text-[11px] text-ink-soft/75">
+            Supabase 未配置，当前使用本地调试登录。
           </p>
         ) : (
           <p className="text-center text-[11px] leading-relaxed text-accent/90">

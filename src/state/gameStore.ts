@@ -138,6 +138,10 @@ interface GameState {
     accessToken: string,
     destination?: LoginDestination,
   ) => Promise<void>;
+  loginWithDevIdentity: (
+    identity?: string,
+    destination?: LoginDestination,
+  ) => Promise<void>;
   logout: () => void;
   ensureCloudPet: () => Promise<void>;
   restyle: () => void;
@@ -608,6 +612,38 @@ export const useGameStore = create<GameState>()(
           }
           // Legacy/edge case: account exists without a pet. Adopt one now so
           // the owner can play instead of being stuck on the connect screen.
+          await get().ensureCloudPet();
+          if (destination === "connect" && get().companion) {
+            set({ screen: "connect" });
+          }
+        } catch (e) {
+          set({ cloudBusy: false, cloudError: (e as Error).message });
+        }
+      },
+
+      // Local dev bridge (no Supabase). Works with /api/auth/dev and a local
+      // identity string so developers can debug cloud flows on localhost.
+      loginWithDevIdentity: async (identity, destination = "profile") => {
+        const cur = get();
+        if (cur.cloud || cur.cloudBusy) return;
+        set({ cloudBusy: true, cloudError: null });
+        try {
+          const res = await cloud.loginDev(identity);
+          set({
+            cloud: {
+              userId: res.user.id,
+              email: res.user.email,
+              bindToken: res.bindToken,
+              rev: res.save.rev,
+            },
+            connectUrl: res.connectUrl,
+            cloudBusy: false,
+          });
+          get().adoptSave(res.save);
+          if (res.save.companion) {
+            set({ screen: destination });
+            return;
+          }
           await get().ensureCloudPet();
           if (destination === "connect" && get().companion) {
             set({ screen: "connect" });

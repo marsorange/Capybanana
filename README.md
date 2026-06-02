@@ -32,6 +32,33 @@ Open `http://localhost:3000`.
 
 Camera-based interactions require a secure context, such as `localhost` or HTTPS.
 
+## Local PostgreSQL Debug (no Supabase access)
+
+If you cannot access the project's Supabase/Vercel, you can still run the full
+"cloud save + bind token" flow on localhost:
+
+1. Create `.env.local` with:
+
+```bash
+POSTGRES_URL=postgres://postgres:postgres@127.0.0.1:5432/capybanana
+CAPY_DEV_LOCAL_AUTH=1
+NEXT_PUBLIC_CAPY_DEV_LOCAL_AUTH=1
+```
+
+2. Start local PostgreSQL (example with Docker):
+
+```bash
+docker run --name capybanana-pg \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=capybanana \
+  -p 5432:5432 -d postgres:16
+```
+
+3. Run `npm run dev`, open `http://localhost:3000`, then use
+   "本地调试登录（无需 Supabase）" on the login screen.
+
+The app auto-creates `capy_kv` and `capy_kv_set` tables on first request.
+
 ## Scripts
 
 ```bash
@@ -49,4 +76,3 @@ This first public version focuses on the base companion loop:
 - Prepare small items or photo-based inputs
 - Let the companion grow through short daily-style interactions
 - Collect generated cards and memories
-
