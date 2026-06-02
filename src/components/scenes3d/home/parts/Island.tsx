@@ -1,9 +1,10 @@
 "use client";
 
 import { RoundedBox } from "@react-three/drei";
+import { toonMaterial } from "../../materials";
 
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
+  <primitive object={toonMaterial(c)} attach="material" />
 );
 
 const GRASS = "#9ec56f";

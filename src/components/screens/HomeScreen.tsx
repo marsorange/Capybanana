@@ -91,6 +91,7 @@ export default function HomeScreen() {
         maxZoom={95}
         minPolar={0.6}
         maxPolar={1.32}
+        bendStrength={0.15}
       >
         {/* visual diorama (throwaway art) */}
         <HomeModel

@@ -1,20 +1,38 @@
 "use client";
 
-import { RoundedBox } from "@react-three/drei";
+import { RoundedBox, useAnimations, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import gsap from "gsap";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { clone as skeletonClone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { CHARACTER_BY_SPECIES, normalizeSpecies } from "@/game/characters";
 import type { Accessory, CompanionType } from "@/game/types";
-import { darkenColor, lightenColor } from "../materials";
+import {
+  darkenColor,
+  lightenColor,
+  toonFromStandard,
+  toonMaterial,
+} from "../materials";
+import {
+  COMPANION_DRACO_PATH,
+  COMPANION_MODELS,
+  COMPANION_TARGET_HEIGHT,
+} from "./companionModels";
+
+type CharacterMotion = "idle" | "walk" | "wave";
 
 // The protagonist's single 3D model. It resolves `type` to one of the six
 // roster characters and draws it. Today every species shares this one low-poly
-// placeholder body (tinted/proportioned per the roster in characters.ts) until
-// each character's own generated 3D asset replaces it — when that happens, swap
-// the geometry here behind the same props and nothing else in the app changes.
+// body (tinted/proportioned per the roster in characters.ts) until each
+// character's own generated 3D asset replaces it — when that happens, swap the
+// geometry here behind the same props and nothing else in the app changes.
+//
+// The body is modeled on the Capybanana reference art: a tall egg torso, a big
+// blocky brown muzzle with a Y-shaped philtrum, faceted black gem eyes, small
+// brown ears, stubby arms with brown paws, and — for the capybara specifically —
+// a green acorn beret. Other species reuse the silhouette via color/earScale.
 interface CharacterModelProps {
   type: CompanionType;
   color: string;
@@ -22,12 +40,23 @@ interface CharacterModelProps {
   // Stable seed for the per-pet random markings (pet id, or a draft hash).
   // Same seed → same freckles/cowlick/tail, so a pet always looks like itself.
   seed?: string;
+  // Small built-in rig motions. Callers can keep omitting this; future home
+  // actions can pass `walk`/`wave` without splitting the model into new files.
+  motion?: CharacterMotion;
   onPointerDown?: (e: { stopPropagation: () => void }) => void;
 }
 
 const INK = "#3a2e2a";
+// Signature avocado green of the beret + neckerchief in the reference art.
+const GREEN = "#8fa03c";
+const GREEN_DARK = "#6c7d2b";
+const GREEN_LIGHT = "#a6b74f";
+const GREEN_STEM = "#5f7327";
+const BLUSH = "#f0a3ad";
+const EYE_SCALE_Y = 1.12;
+
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
+  <primitive object={toonMaterial(c)} attach="material" />
 );
 
 // Tiny deterministic PRNG so the random features are stable per pet (no flicker
@@ -63,7 +92,6 @@ interface Features {
   brows: boolean;
   earSize: number;
   chonk: number;
-  snoutPale: number;
 }
 
 function rollFeatures(
@@ -76,8 +104,8 @@ function rollFeatures(
   const spotCount = Math.floor(rnd() * 5); // 0..4 fur freckles
   const spots: Spot[] = Array.from({ length: spotCount }, () => ({
     x: (rnd() - 0.5) * 0.62,
-    y: 0.74 + rnd() * 0.3,
-    z: -0.12 - rnd() * 0.32,
+    y: 0.78 + rnd() * 0.3,
+    z: -0.12 - rnd() * 0.34,
     s: 0.045 + rnd() * 0.035,
   }));
   // Ear proportion comes from the roster (e.g. the rabbit's tall ears); a small
@@ -90,41 +118,180 @@ function rollFeatures(
     tail: rnd() < 0.65,
     brows: rnd() < 0.4,
     earSize,
-    chonk: 0.96 + rnd() * 0.16,
-    snoutPale: 0.26 + rnd() * 0.16,
+    chonk: 0.98 + rnd() * 0.08,
   };
 }
 
-export default function CharacterModel({
+// The protagonist entry point. Picks the GLB path for any species that has a
+// real asset (see companionModels.ts) and otherwise draws the procedural body.
+// Same props either way — callers never learn which path ran, so dropping in a
+// new asset is a one-line manifest edit with zero call-site churn.
+export default function CharacterModel(props: CharacterModelProps) {
+  const species = normalizeSpecies(props.type);
+  const url = COMPANION_MODELS[species];
+  if (url) {
+    return (
+      <GltfCharacter
+        url={url}
+        motion={props.motion}
+        onPointerDown={props.onPointerDown}
+      />
+    );
+  }
+  return <ProceduralCharacter {...props} />;
+}
+
+// Preload every listed asset (+ wire the Draco decoder path) so the first mount
+// doesn't pop in. Safe to call at module scope — drei dedupes.
+for (const u of Object.values(COMPANION_MODELS)) {
+  if (u) useGLTF.preload(u, COMPANION_DRACO_PATH);
+}
+
+// Loads a species GLB and renders it the toon way: each authored material is
+// converted to a toon material that KEEPS its own baseColor (so an 11-material
+// rigged model stays multi-colored), the skeleton is cloned properly so skinning
+// survives, the model's own idle/walk clips play, and the whole thing is
+// normalized to a consistent height with feet on the ground.
+function GltfCharacter({
+  url,
+  motion = "idle",
+  onPointerDown,
+}: {
+  url: string;
+  motion?: CharacterMotion;
+  onPointerDown?: (e: { stopPropagation: () => void }) => void;
+}) {
+  const gltf = useGLTF(url, COMPANION_DRACO_PATH);
+  const entrance = useRef<THREE.Group>(null);
+
+  // SkeletonUtils.clone (not scene.clone) so SkinnedMesh bones rebind to the
+  // CLONED skeleton — a plain clone leaves them pointing at the shared original
+  // and the animation warps. Convert each material once (cached) to toon.
+  const model = useMemo(() => {
+    const c = skeletonClone(gltf.scene);
+    const toonCache = new Map<THREE.Material, THREE.Material>();
+    const convert = (src: THREE.Material) => {
+      let toon = toonCache.get(src);
+      if (!toon) {
+        toon = toonFromStandard(src as THREE.MeshStandardMaterial);
+        toonCache.set(src, toon);
+      }
+      return toon;
+    };
+    c.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(convert)
+        : convert(mesh.material);
+    });
+    return c;
+  }, [gltf.scene]);
+
+  // Normalize scale + seat feet at y=0, centered — works for any unit-ish export.
+  const fit = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const scale = COMPANION_TARGET_HEIGHT / (size.y || 1);
+    return {
+      scale,
+      position: [
+        -center.x * scale,
+        -box.min.y * scale,
+        -center.z * scale,
+      ] as [number, number, number],
+    };
+  }, [model]);
+
+  // Play the model's OWN clips (idle by default, walk when asked). The clip
+  // animates the body, so we don't add a manual bob on top.
+  const { actions } = useAnimations(gltf.animations, model);
+  useEffect(() => {
+    const action =
+      (motion === "walk" && actions.walk) ||
+      actions.idle ||
+      Object.values(actions)[0];
+    action?.reset().fadeIn(0.25).play();
+    return () => {
+      action?.fadeOut(0.25);
+    };
+  }, [actions, motion]);
+
+  useEffect(() => {
+    if (entrance.current) {
+      gsap.fromTo(
+        entrance.current.scale,
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 1, z: 1, duration: 0.7, ease: "back.out(1.7)" },
+      );
+    }
+  }, []);
+
+  return (
+    <group ref={entrance}>
+      {/* same soft grounding shadow as the procedural body */}
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.6, 24]} />
+        <meshBasicMaterial color="#3a2e2a" transparent opacity={0.16} />
+      </mesh>
+      <group
+        onPointerDown={onPointerDown}
+        onPointerOver={() => (document.body.style.cursor = "pointer")}
+        onPointerOut={() => (document.body.style.cursor = "auto")}
+      >
+        <group scale={fit.scale} position={fit.position}>
+          <primitive object={model} />
+        </group>
+      </group>
+    </group>
+  );
+}
+
+function ProceduralCharacter({
   type,
   color,
   accessory,
   seed,
+  motion = "idle",
   onPointerDown,
 }: CharacterModelProps) {
   // Resolve the stored value (incl. legacy types) to a valid roster species.
   const species = normalizeSpecies(type);
   const entrance = useRef<THREE.Group>(null);
   const root = useRef<THREE.Group>(null);
+  const head = useRef<THREE.Group>(null);
+  const leftArm = useRef<THREE.Group>(null);
+  const rightArm = useRef<THREE.Group>(null);
+  const leftFoot = useRef<THREE.Group>(null);
+  const rightFoot = useRef<THREE.Group>(null);
   const leftEye = useRef<THREE.Mesh>(null);
   const rightEye = useRef<THREE.Mesh>(null);
   const nextBlink = useRef(2.5);
   const blinking = useRef(0);
 
-  const belly = useMemo(() => lightenColor(color, 0.5), [color]);
   const bodyColor = color;
   const feat = useMemo(
     () => rollFeatures(seed, species, color, accessory),
     [seed, species, color, accessory],
   );
-  const snoutColor = useMemo(
-    () => lightenColor(color, feat.snoutPale),
-    [color, feat.snoutPale],
-  );
-  const earInner = useMemo(() => lightenColor(color, 0.45), [color]);
+  // The reference muzzle / ears / paws are a distinctly *darker* brown than the
+  // orange body — derive them by darkening so any species color stays coherent.
+  const belly = useMemo(() => lightenColor(color, 0.24), [color]);
+  const muzzleColor = useMemo(() => darkenColor(color, 0.25), [color]);
+  const earColor = useMemo(() => darkenColor(color, 0.36), [color]);
+  const earInner = useMemo(() => darkenColor(color, 0.52), [color]);
+  const pawColor = useMemo(() => darkenColor(color, 0.38), [color]);
   const spotColor = useMemo(() => darkenColor(color, 0.22), [color]);
-  // A cowlick would poke through a hat, so skip it there.
-  const showCowlick = feat.cowlick && accessory !== "hat";
+
+  // Capybara wears its signature acorn beret; it sits where a top hat would, so
+  // suppress it (and the cowlick) when an actual hat accessory is requested.
+  const showBeret = species === "capybara" && accessory !== "hat";
+  const showCowlick = feat.cowlick && accessory !== "hat" && !showBeret;
+  const showSpots = species !== "capybara";
+  const showTail = feat.tail && species !== "capybara";
 
   useEffect(() => {
     nextBlink.current = 2 + Math.random() * 3;
@@ -145,6 +312,29 @@ export default function CharacterModel({
       const s = 1 + Math.sin(t * 1.6) * 0.018;
       root.current.scale.set(s, s, s);
     }
+    if (head.current) {
+      head.current.rotation.x = Math.sin(t * 0.85) * 0.025;
+      head.current.rotation.z = Math.sin(t * 0.65) * 0.018;
+    }
+    const limb = Math.sin(t * (motion === "walk" ? 5.8 : 1.7));
+    if (leftArm.current) {
+      leftArm.current.rotation.z =
+        motion === "walk" ? 0.18 + limb * 0.18 : 0.2 + limb * 0.07;
+    }
+    if (rightArm.current) {
+      if (motion === "wave") {
+        rightArm.current.rotation.z = -0.82 + Math.sin(t * 5) * 0.16;
+      } else {
+        rightArm.current.rotation.z =
+          motion === "walk" ? -0.18 - limb * 0.18 : -0.2 - limb * 0.07;
+      }
+    }
+    if (leftFoot.current) {
+      leftFoot.current.rotation.x = Math.max(0, limb) * (motion === "walk" ? 0.28 : 0.08);
+    }
+    if (rightFoot.current) {
+      rightFoot.current.rotation.x = Math.max(0, -limb) * (motion === "walk" ? 0.28 : 0.08);
+    }
     nextBlink.current -= dt;
     if (nextBlink.current <= 0 && blinking.current <= 0) {
       blinking.current = 0.13;
@@ -155,15 +345,15 @@ export default function CharacterModel({
       blinking.current -= dt;
       ey = 0.12;
     }
-    if (leftEye.current) leftEye.current.scale.y = ey;
-    if (rightEye.current) rightEye.current.scale.y = ey;
+    if (leftEye.current) leftEye.current.scale.y = EYE_SCALE_Y * ey;
+    if (rightEye.current) rightEye.current.scale.y = EYE_SCALE_Y * ey;
   });
 
   return (
     <group ref={entrance}>
       {/* soft grounding shadow that follows the companion */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.58, 24]} />
+        <circleGeometry args={[0.6, 24]} />
         <meshBasicMaterial color="#3a2e2a" transparent opacity={0.16} />
       </mesh>
       <group
@@ -172,203 +362,333 @@ export default function CharacterModel({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "auto")}
       >
-        {/* stubby capybara feet — two front paws + two little hind ones */}
-        <mesh position={[-0.24, 0.08, 0.3]}>
-          <sphereGeometry args={[0.14, 8, 6]} />
-          {m(belly)}
-        </mesh>
-        <mesh position={[0.24, 0.08, 0.3]}>
-          <sphereGeometry args={[0.14, 8, 6]} />
-          {m(belly)}
-        </mesh>
-        <mesh position={[-0.26, 0.07, -0.26]}>
-          <sphereGeometry args={[0.11, 8, 6]} />
-          {m(belly)}
-        </mesh>
-        <mesh position={[0.26, 0.07, -0.26]}>
-          <sphereGeometry args={[0.11, 8, 6]} />
-          {m(belly)}
-        </mesh>
+        {/* ---- feet: separate pivots, ready for simple walk/tap actions ---- */}
+        {[-1, 1].map((s) => (
+          <group
+            key={`f${s}`}
+            ref={s < 0 ? leftFoot : rightFoot}
+            position={[s * 0.22, 0.08, 0.31]}
+          >
+            <mesh scale={[1.16, 0.58, 1.08]}>
+              <dodecahedronGeometry args={[0.145, 0]} />
+              {m(pawColor)}
+            </mesh>
+            {[-0.045, 0.045].map((x) => (
+              <mesh key={x} position={[x, 0.004, 0.095]}>
+                <boxGeometry args={[0.014, 0.05, 0.055]} />
+                {m(INK)}
+              </mesh>
+            ))}
+          </group>
+        ))}
+        {[-1, 1].map((s) => (
+          <mesh key={`h${s}`} position={[s * 0.28, 0.07, -0.2]} scale={[1, 0.62, 0.88]}>
+            <dodecahedronGeometry args={[0.095, 0]} />
+            {m(pawColor)}
+          </mesh>
+        ))}
 
-        {/* body — a rounded loaf */}
-        <mesh position={[0, 0.6, 0]} scale={[1.04 * feat.chonk, 0.92, 1.06]}>
-          <sphereGeometry args={[0.58, 14, 10]} />
+        {/* ---- body: compact low-poly dumpling under the scarf ---- */}
+        <mesh position={[0, 0.42, -0.02]} scale={[0.84 * feat.chonk, 0.7, 0.7]}>
+          <icosahedronGeometry args={[0.6, 2]} />
           {m(bodyColor)}
         </mesh>
 
-        {/* lighter belly patch */}
-        <mesh position={[0, 0.5, 0.46]} scale={[0.8, 0.92, 0.4]}>
-          <sphereGeometry args={[0.4, 12, 9]} />
+        {/* subtle low-poly belly plane, kept close to body color like the art */}
+        <mesh position={[0, 0.34, 0.4]} scale={[0.48, 0.46, 0.13]}>
+          <icosahedronGeometry args={[0.42, 2]} />
           {m(belly)}
         </mesh>
 
-        {/* fur freckles scattered over the back */}
-        {feat.spots.map((sp, i) => (
-          <mesh key={i} position={[sp.x, sp.y, sp.z]} scale={[1, 1, 0.4]}>
-            <sphereGeometry args={[sp.s, 6, 5]} />
-            {m(spotColor)}
-          </mesh>
-        ))}
-
-        {/* blunt rectangular muzzle */}
-        <group position={[0, 0.6, 0.46]}>
-          <RoundedBox args={[0.42, 0.36, 0.32]} radius={0.13} smoothness={2}>
-            {m(snoutColor)}
-          </RoundedBox>
-          {/* nostrils */}
-          <mesh position={[-0.09, 0.08, 0.17]}>
-            <sphereGeometry args={[0.03, 8, 6]} />
-            {m(INK)}
-          </mesh>
-          <mesh position={[0.09, 0.08, 0.17]}>
-            <sphereGeometry args={[0.03, 8, 6]} />
-            {m(INK)}
-          </mesh>
-          {/* soft mouth line + a hint of buck teeth */}
-          <mesh position={[0, -0.09, 0.16]}>
-            <boxGeometry args={[0.16, 0.022, 0.02]} />
-            {m(INK)}
-          </mesh>
-          <mesh position={[0, -0.13, 0.15]}>
-            <boxGeometry args={[0.075, 0.06, 0.03]} />
-            {m("#fffdf4")}
-          </mesh>
-        </group>
-
-        {/* small rounded ears, set high and wide */}
-        {[-1, 1].map((s) => (
-          <group key={s} position={[s * 0.34, 0.96, -0.04]}>
-            <mesh scale={[1, 1.15, 0.7]}>
-              <sphereGeometry args={[0.12 * feat.earSize, 8, 6]} />
-              {m(bodyColor)}
-            </mesh>
-            <mesh position={[0, -0.01, 0.05]} scale={[1, 1.05, 0.5]}>
-              <sphereGeometry args={[0.07 * feat.earSize, 8, 6]} />
-              {m(earInner)}
-            </mesh>
-          </group>
-        ))}
-
-        {/* eyes set high on the head, with a glossy alive highlight */}
-        <mesh ref={leftEye} position={[-0.2, 0.82, 0.46]}>
-          <sphereGeometry args={[0.1, 14, 12]} />
-          {m(INK)}
-          <mesh position={[0.032, 0.04, 0.058]}>
-            <sphereGeometry args={[0.034, 8, 8]} />
-            <meshBasicMaterial color="#fffdf8" />
-          </mesh>
-        </mesh>
-        <mesh ref={rightEye} position={[0.2, 0.82, 0.46]}>
-          <sphereGeometry args={[0.1, 14, 12]} />
-          {m(INK)}
-          <mesh position={[0.032, 0.04, 0.058]}>
-            <sphereGeometry args={[0.034, 8, 8]} />
-            <meshBasicMaterial color="#fffdf8" />
-          </mesh>
-        </mesh>
-
-        {/* optional little eyebrow tufts */}
-        {feat.brows &&
-          [-1, 1].map((s) => (
-            <mesh
-              key={s}
-              position={[s * 0.2, 0.95, 0.42]}
-              rotation={[0, 0, s * -0.3]}
-            >
-              <boxGeometry args={[0.1, 0.02, 0.02]} />
-              {m(spotColor)}
-            </mesh>
-          ))}
-
-        {/* round rosy blush cheeks */}
-        <mesh position={[-0.34, 0.6, 0.37]} scale={[1, 0.82, 0.45]}>
-          <sphereGeometry args={[0.088, 10, 8]} />
-          {m("#f6a3b0")}
-        </mesh>
-        <mesh position={[0.34, 0.6, 0.37]} scale={[1, 0.82, 0.45]}>
-          <sphereGeometry args={[0.088, 10, 8]} />
-          {m("#f6a3b0")}
-        </mesh>
-
-        {/* a cowlick tuft of fur on the crown */}
-        {showCowlick && (
-          <mesh position={[0.05, 1.04, 0]} rotation={[0.2, 0, 0.35]}>
-            <coneGeometry args={[0.06, 0.18, 6]} />
-            {m(darkenColor(color, 0.1))}
-          </mesh>
-        )}
-
         {/* a stubby little tail at the back */}
-        {feat.tail && (
-          <mesh position={[0, 0.46, -0.56]}>
-            <sphereGeometry args={[0.08, 8, 6]} />
+        {showTail && (
+          <mesh position={[0, 0.43, -0.45]}>
+            <dodecahedronGeometry args={[0.065, 0]} />
             {m(belly)}
           </mesh>
         )}
 
-        {/* ---- accessories ---- */}
-        {accessory === "scarf" && (
-          <mesh position={[0, 0.34, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.5, 0.1, 8, 18]} />
-            {m("#d95f59")}
+        {/* ---- arms: shoulder pivots for future wave/pat actions ---- */}
+        {[-1, 1].map((s) => (
+          <group
+            key={`arm${s}`}
+            ref={s < 0 ? leftArm : rightArm}
+            position={[s * 0.4, 0.55, 0.02]}
+          >
+            <mesh
+              position={[s * 0.035, -0.16, 0.025]}
+              rotation={[0, 0, s * 0.12]}
+              scale={[0.58, 0.98, 0.58]}
+            >
+              <dodecahedronGeometry args={[0.15, 0]} />
+              {m(bodyColor)}
+            </mesh>
+            <mesh position={[s * 0.05, -0.32, 0.13]} scale={[1.05, 0.86, 0.95]}>
+              <dodecahedronGeometry args={[0.11, 0]} />
+              {m(pawColor)}
+            </mesh>
+          </group>
+        ))}
+
+        {/* ---- head rig: face, ears and headwear share one pivot ---- */}
+        <group ref={head} position={[0, 0.62, 0]}>
+          <mesh position={[0, 0.28, 0.01]} scale={[0.93 * feat.chonk, 0.8, 0.75]}>
+            <icosahedronGeometry args={[0.58, 2]} />
+            {m(bodyColor)}
           </mesh>
-        )}
-        {accessory === "hat" && (
-          <group position={[0, 1.02, 0]}>
-            <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.5, 0.5, 0.04, 18]} />
-              {m("#5b6b8a")}
+
+          {/* fur freckles scattered over the back for non-capybara variants */}
+          {showSpots &&
+            feat.spots.map((sp, i) => (
+              <mesh
+                key={i}
+                position={[sp.x, sp.y - 0.62, sp.z]}
+                scale={[1, 1, 0.4]}
+              >
+                <dodecahedronGeometry args={[sp.s, 0]} />
+                {m(spotColor)}
+              </mesh>
+            ))}
+
+          {/* soft short muzzle: cute from both front and side angles */}
+          <group position={[0, 0.24, 0.39]}>
+            <RoundedBox args={[0.42, 0.3, 0.2]} radius={0.11} smoothness={2}>
+              {m(muzzleColor)}
+            </RoundedBox>
+            <mesh position={[0, 0.06, 0.12]} scale={[0.76, 0.38, 0.16]}>
+              <icosahedronGeometry args={[0.2, 1]} />
+              {m(lightenColor(muzzleColor, 0.14))}
             </mesh>
-            <mesh position={[0, 0.18, 0]}>
-              <cylinderGeometry args={[0.3, 0.32, 0.34, 16]} />
-              {m("#5b6b8a")}
+            {[-1, 1].map((s) => (
+              <mesh
+                key={s}
+                position={[s * 0.067, 0.06, 0.145]}
+                rotation={[0, 0, s * 0.55]}
+              >
+                <boxGeometry args={[0.026, 0.052, 0.022]} />
+                {m(INK)}
+              </mesh>
+            ))}
+            <mesh position={[0, -0.05, 0.145]}>
+              <boxGeometry args={[0.016, 0.13, 0.02]} />
+              {m(INK)}
             </mesh>
+            {[-1, 1].map((s) => (
+              <mesh
+                key={`y${s}`}
+                position={[s * 0.036, -0.15, 0.145]}
+                rotation={[0, 0, s * 0.6]}
+              >
+                <boxGeometry args={[0.016, 0.08, 0.02]} />
+                {m(INK)}
+              </mesh>
+            ))}
           </group>
-        )}
-        {accessory === "glasses" && (
-          <group position={[0, 0.82, 0.46]}>
-            <mesh position={[-0.2, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.12, 0.022, 8, 16]} />
-              {m(INK)}
+
+          {/* soft round ears, tucked into the head instead of hard rings */}
+          {[-1, 1].map((s) => (
+            <group
+              key={`ear${s}`}
+              position={[s * 0.38, 0.61, 0.01]}
+              rotation={[0, s * -0.18, s * 0.35]}
+              scale={[feat.earSize, feat.earSize, feat.earSize]}
+            >
+              <mesh scale={[1, 1.08, 0.55]}>
+                <dodecahedronGeometry args={[0.13, 0]} />
+                {m(earColor)}
+              </mesh>
+              <mesh position={[0, -0.004, 0.045]} scale={[0.62, 0.7, 0.28]}>
+                <dodecahedronGeometry args={[0.105, 0]} />
+                {m(earInner)}
+              </mesh>
+            </group>
+          ))}
+
+          {/* faceted black gem eyes, set at the top corners of the muzzle */}
+          <mesh
+            ref={leftEye}
+            position={[-0.25, 0.4, 0.43]}
+            rotation={[0, -0.06, 0.04]}
+            scale={[0.78, EYE_SCALE_Y, 0.48]}
+          >
+            <icosahedronGeometry args={[0.115, 1]} />
+            {m(INK)}
+            <mesh position={[0.033, 0.045, 0.078]}>
+              <sphereGeometry args={[0.024, 8, 8]} />
+              <meshBasicMaterial color="#fffdf8" />
             </mesh>
-            <mesh position={[0.2, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.12, 0.022, 8, 16]} />
-              {m(INK)}
+          </mesh>
+          <mesh
+            ref={rightEye}
+            position={[0.25, 0.4, 0.43]}
+            rotation={[0, 0.06, -0.04]}
+            scale={[0.78, EYE_SCALE_Y, 0.48]}
+          >
+            <icosahedronGeometry args={[0.115, 1]} />
+            {m(INK)}
+            <mesh position={[0.033, 0.045, 0.078]}>
+              <sphereGeometry args={[0.024, 8, 8]} />
+              <meshBasicMaterial color="#fffdf8" />
             </mesh>
-            <mesh>
-              <boxGeometry args={[0.16, 0.02, 0.02]} />
-              {m(INK)}
+          </mesh>
+
+          {feat.brows &&
+            [-1, 1].map((s) => (
+              <mesh
+                key={s}
+                position={[s * 0.24, 0.52, 0.39]}
+                rotation={[0, 0, s * -0.3]}
+              >
+                <boxGeometry args={[0.09, 0.018, 0.018]} />
+                {m(spotColor)}
+              </mesh>
+            ))}
+
+          {[-1, 1].map((s) => (
+            <mesh
+              key={`c${s}`}
+              position={[s * 0.32, 0.24, 0.38]}
+              scale={[1, 0.78, 0.32]}
+            >
+              <icosahedronGeometry args={[0.072, 1]} />
+              {m(BLUSH)}
             </mesh>
-          </group>
-        )}
-        {accessory === "flower" && (
-          <group position={[0.34, 1.0, 0.16]}>
-            {[0, 1, 2, 3, 4].map((i) => {
-              const a = (i / 5) * Math.PI * 2;
-              return (
+          ))}
+
+          {showCowlick && (
+            <mesh position={[0.05, 0.72, 0.02]} rotation={[0.2, 0, 0.35]}>
+              <coneGeometry args={[0.06, 0.18, 6]} />
+              {m(darkenColor(color, 0.1))}
+            </mesh>
+          )}
+
+          {showBeret && (
+            <group position={[0.03, 0.72, 0.01]} rotation={[0.08, 0.2, -0.12]}>
+              <mesh scale={[1.18, 0.32, 1.06]}>
+                <icosahedronGeometry args={[0.31, 2]} />
+                {m(GREEN)}
+              </mesh>
+              <mesh position={[0, -0.045, 0.01]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[0.34, 0.37, 0.055, 12]} />
+                {m(GREEN_DARK)}
+              </mesh>
+              {[0, 1, 2].map((i) => (
                 <mesh
                   key={i}
-                  position={[Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0]}
+                  position={[0, 0.035, 0]}
+                  rotation={[0, (i * Math.PI) / 3, 0]}
                 >
-                  <sphereGeometry args={[0.06, 8, 6]} />
-                  {m("#f1a6ad")}
+                  <boxGeometry args={[0.025, 0.014, 0.48]} />
+                  {m(GREEN_LIGHT)}
                 </mesh>
-              );
-            })}
-            <mesh>
-              <sphereGeometry args={[0.06, 8, 6]} />
-              {m("#f4d35e")}
+              ))}
+              <mesh position={[0.02, 0.14, 0.01]} rotation={[0.28, 0, -0.18]}>
+                <coneGeometry args={[0.038, 0.13, 6]} />
+                {m(GREEN_STEM)}
+              </mesh>
+              <mesh position={[0.04, 0.21, 0.02]}>
+                <dodecahedronGeometry args={[0.028, 0]} />
+                {m(GREEN_STEM)}
+              </mesh>
+            </group>
+          )}
+
+          {accessory === "hat" && (
+            <group position={[0, 0.74, 0]}>
+              <mesh rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[0.38, 0.4, 0.04, 14]} />
+                {m("#5b6b8a")}
+              </mesh>
+              <mesh position={[0, 0.14, 0]}>
+                <cylinderGeometry args={[0.24, 0.27, 0.28, 14]} />
+                {m("#5b6b8a")}
+              </mesh>
+            </group>
+          )}
+          {accessory === "glasses" && (
+            <group position={[0, 0.4, 0.46]}>
+              {[-1, 1].map((s) => (
+                <mesh
+                  key={s}
+                  position={[s * 0.25, 0, 0]}
+                  rotation={[Math.PI / 2, 0, 0]}
+                >
+                  <torusGeometry args={[0.105, 0.018, 8, 14]} />
+                  {m(INK)}
+                </mesh>
+              ))}
+              <mesh>
+                <boxGeometry args={[0.26, 0.018, 0.018]} />
+                {m(INK)}
+              </mesh>
+            </group>
+          )}
+          {accessory === "flower" && (
+            <group position={[0.28, 0.58, 0.14]}>
+              {[0, 1, 2, 3, 4].map((i) => {
+                const a = (i / 5) * Math.PI * 2;
+                return (
+                  <mesh
+                    key={i}
+                    position={[Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0]}
+                  >
+                    <dodecahedronGeometry args={[0.055, 0]} />
+                    {m("#f1a6ad")}
+                  </mesh>
+                );
+              })}
+              <mesh>
+                <dodecahedronGeometry args={[0.055, 0]} />
+                {m("#f4d35e")}
+              </mesh>
+            </group>
+          )}
+        </group>
+
+        {/* ---- accessories ---- */}
+        {accessory === "scarf" && (
+          <group>
+            {/* neckerchief band hugging the neck */}
+            <mesh position={[0, 0.58, -0.01]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.43, 0.075, 6, 16]} />
+              {m(GREEN)}
             </mesh>
+            <mesh position={[-0.2, 0.58, 0.34]} rotation={[0.05, 0.15, -0.16]}>
+              <boxGeometry args={[0.3, 0.105, 0.1]} />
+              {m(GREEN_DARK)}
+            </mesh>
+            <mesh position={[0.19, 0.58, 0.34]} rotation={[0.05, -0.15, 0.16]}>
+              <boxGeometry args={[0.3, 0.105, 0.1]} />
+              {m(GREEN)}
+            </mesh>
+            {/* knot at the front */}
+            <mesh position={[0.02, 0.53, 0.42]}>
+              <RoundedBox args={[0.145, 0.14, 0.11]} radius={0.045} smoothness={2}>
+                {m(GREEN_DARK)}
+              </RoundedBox>
+            </mesh>
+            {/* two pointed tails hanging from the knot */}
+            {[-1, 1].map((s) => (
+              <mesh
+                key={s}
+                position={[0.02 + s * 0.065, 0.37, 0.41]}
+                rotation={[0.3, 0, s * 0.34]}
+                scale={[1, s === 1 ? 1.12 : 0.98, 1]}
+              >
+                <coneGeometry args={[0.06, 0.22, 4]} />
+                {m(s === 1 ? GREEN : GREEN_LIGHT)}
+              </mesh>
+            ))}
           </group>
         )}
         {accessory === "bell" && (
           <>
-            <mesh position={[0, 0.32, 0]} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.5, 0.05, 8, 18]} />
+            <mesh position={[0, 0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.42, 0.04, 8, 16]} />
               {m("#caa25a")}
             </mesh>
-            <mesh position={[0, 0.28, 0.48]}>
-              <sphereGeometry args={[0.1, 8, 6]} />
+            <mesh position={[0, 0.41, 0.4]}>
+              <dodecahedronGeometry args={[0.085, 0]} />
               {m("#f4d35e")}
             </mesh>
           </>

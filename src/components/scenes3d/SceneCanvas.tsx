@@ -6,6 +6,7 @@ import { Physics } from "@react-three/rapier";
 import type { ReactNode } from "react";
 import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
+import { sceneBend } from "./materials";
 import { zoomBus } from "./zoomBus";
 
 interface SceneCanvasProps {
@@ -28,8 +29,40 @@ interface SceneCanvasProps {
   physics?: boolean;
   gravity?: [number, number, number];
   debugPhysics?: boolean; // draw collider wireframes while tuning
+  // "Tiny-planet" curl of the shared toon materials. 0 = flat (the turntables);
+  // the home diorama dials in a subtle curl so the island edges droop like a
+  // little planet. See sceneBend in materials.ts.
+  bendStrength?: number;
+  bendCenter?: [number, number, number];
+  bendFalloff?: number;
   className?: string;
 }
+
+// Drives the module-level bend uniforms from props and, crucially, resets the
+// curl to flat on unmount — the toon materials are a shared cache, so without
+// this a turntable mounted after the home scene would inherit its bend.
+function BendApplier({
+  strength,
+  center,
+  falloff,
+}: {
+  strength: number;
+  center: [number, number, number];
+  falloff: number;
+}) {
+  useEffect(() => {
+    sceneBend.strength.value = strength;
+    sceneBend.center.value.set(center[0], center[1], center[2]);
+    sceneBend.falloff.value = falloff;
+    return () => {
+      sceneBend.strength.value = 0;
+    };
+  }, [strength, center, falloff]);
+  return null;
+}
+
+// Stable default so SceneCanvas re-renders don't churn the BendApplier effect.
+const FLAT_CENTER: [number, number, number] = [0, 0, 0];
 
 function ZoomApplier({ min, max }: { min: number; max: number }) {
   // Read the camera from the per-frame state (not a hook return) so applying the
@@ -119,6 +152,9 @@ export default function SceneCanvas({
   physics = false,
   gravity = [0, -9.81, 0],
   debugPhysics = false,
+  bendStrength = 0,
+  bendCenter = FLAT_CENTER,
+  bendFalloff = 0.05,
   className,
 }: SceneCanvasProps) {
   const camera = orthographic
@@ -136,6 +172,7 @@ export default function SceneCanvas({
       style={{ touchAction: "none" }}
     >
       <WebGLContextGuard />
+      <BendApplier strength={bendStrength} center={bendCenter} falloff={bendFalloff} />
       {sun && <ShadowEnabler />}
       {/* bright, airy "日系" low-poly light: high soft sky fill keeps it fresh
           while a warm sun key sculpts the facets and casts real shadows. */}
