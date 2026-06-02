@@ -2,6 +2,7 @@
 // without Supabase by providing a stable local identity string.
 import { randomCuteCompanion } from "@/game/randomCompanion";
 import { baseUrl, jsonError } from "@/server/api";
+import { SQL_PERSISTENT } from "@/server/db";
 import { createPet, summarizePet, tickSave } from "@/server/engine";
 import { loginByDevIdentity, savePet } from "@/server/store";
 
@@ -21,6 +22,9 @@ function normalizeIdentity(raw: unknown): string {
 export async function POST(req: Request): Promise<Response> {
   if (!DEV_AUTH_ENABLED) {
     return jsonError("本地调试登录未开启（设置 CAPY_DEV_LOCAL_AUTH=1）", 404);
+  }
+  if (!SQL_PERSISTENT) {
+    return jsonError("本地调试登录需要 POSTGRES_URL，并先运行 supabase/migrations。", 503);
   }
 
   let body: { identity?: unknown } = {};

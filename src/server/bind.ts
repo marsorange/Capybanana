@@ -1,9 +1,21 @@
-import { randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 
-// High-entropy opaque token (40 hex chars). This is the only credential the
-// agent (and the owner's web client) presents, so it must be unguessable.
+export const TOKEN_PREFIX = "capy_ag_";
+
+// High-entropy opaque token. This is the only credential the agent (and the
+// owner's web client) presents, so it must be unguessable.
 export function newToken(): string {
-  return randomBytes(20).toString("hex");
+  return `${TOKEN_PREFIX}${randomBytes(32).toString("base64url")}`;
+}
+
+export function tokenHash(token: string): string {
+  const secret = process.env.AGENT_TOKEN_SECRET;
+  if (secret) return createHmac("sha256", secret).update(token).digest("hex");
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AGENT_TOKEN_SECRET is required in production.");
+  }
+  return createHash("sha256").update(token).digest("hex");
 }
 
 // Accept the bind token either as `?bind=<token>` (so a plain `Read <url>` /

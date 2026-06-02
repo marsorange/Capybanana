@@ -7,8 +7,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { randomCuteCompanion } from "@/game/randomCompanion";
-import { KV_PERSISTENT } from "@/lib/kv";
 import { baseUrl, jsonError } from "@/server/api";
+import { SQL_PERSISTENT } from "@/server/db";
 import { createPet, summarizePet, tickSave } from "@/server/engine";
 import { loginBySupabase, savePet } from "@/server/store";
 
@@ -26,12 +26,10 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  // Same guard as before: on Vercel without a hosted KV, accounts/tokens live in
-  // per-instance memory and won't survive the next request (→ 401 loop). Fail
-  // loudly instead of handing back a doomed session.
-  if (!KV_PERSISTENT && process.env.VERCEL) {
+  // Cloud accounts now require the SQL schema from supabase/migrations.
+  if (!SQL_PERSISTENT) {
     return jsonError(
-      "服务器未配置数据库（KV），云存档不可用。请在 Vercel/Supabase 配置 Storage（Redis 或 Postgres）后重试。",
+      "服务器未配置 PostgreSQL（POSTGRES_URL），云存档不可用。请先配置数据库并运行 supabase/migrations。",
       503,
     );
   }
