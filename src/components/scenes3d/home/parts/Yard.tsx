@@ -3,12 +3,13 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
+import { toonMaterial } from "../../materials";
 
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
+  <primitive object={toonMaterial(c)} attach="material" />
 );
 const glow = (c: string, e: string, i = 0.85) => (
-  <meshStandardMaterial color={c} emissive={e} emissiveIntensity={i} roughness={1} metalness={0} flatShading />
+  <primitive object={toonMaterial(c, { emissive: e, emissiveIntensity: i })} attach="material" />
 );
 
 const WOOD = "#b9844f";

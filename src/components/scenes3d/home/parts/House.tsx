@@ -9,6 +9,7 @@ import type { DestinationTheme } from "@/game/types";
 import Backpack from "./Backpack";
 import { commandWalk } from "../interaction/commandBus";
 import { FLOOR_H, STAIR_HIGH, STAIR_LOW, type Vec3 } from "../layout";
+import { toonMaterial } from "../../materials";
 
 const BACKPACK_SPOT: Vec3 = [-1.0, 0, -0.3];
 const POSTCARD_SPOT: Vec3 = [-3.9, 0, -0.8];
@@ -53,10 +54,10 @@ const PINK = "#f1a6bd";
 const RED = "#d95f59";
 
 const m = (c: string) => (
-  <meshStandardMaterial color={c} roughness={1} metalness={0} flatShading />
+  <primitive object={toonMaterial(c)} attach="material" />
 );
 const glow = (c: string, e: string, i = 0.85) => (
-  <meshStandardMaterial color={c} emissive={e} emissiveIntensity={i} roughness={1} metalness={0} flatShading />
+  <primitive object={toonMaterial(c, { emissive: e, emissiveIntensity: i })} attach="material" />
 );
 
 function Box({
