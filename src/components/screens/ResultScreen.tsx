@@ -72,10 +72,8 @@ const KIND_THEME: Record<
 const EFFECT_META: Record<string, { label: string; emoji: string }> = {
   mood: { label: "心情", emoji: "💛" },
   energy: { label: "体力", emoji: "⚡" },
-  curiosity: { label: "好奇", emoji: "🔍" },
-  bravery: { label: "勇敢", emoji: "⛰️" },
+  courage: { label: "勇气", emoji: "⛰️" },
   injury: { label: "伤痛", emoji: "🩹" },
-  bond: { label: "羁绊", emoji: "🤝" },
 };
 
 function Pedestal({ color }: { color: string }) {

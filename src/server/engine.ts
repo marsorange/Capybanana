@@ -386,12 +386,11 @@ export function decideDay(
   return stayHome(save, decision, now);
 }
 
-/** A gentle head pat: small bond + mood. */
+/** A gentle head pat: a small mood lift. */
 export function patHead(save: CloudSave, now: number): CloudSave {
   const capy = {
     ...save.capyState,
-    bond: clamp(save.capyState.bond + 3),
-    mood: clamp(save.capyState.mood + 2),
+    mood: clamp(save.capyState.mood + 3),
   };
   const name = save.companion?.name ?? "它";
   return bump({ ...save, capyState: capy }, now, {
@@ -442,10 +441,8 @@ export interface PetSummary {
   stats: {
     mood: number;
     energy: number;
-    curiosity: number;
-    bravery: number;
+    courage: number;
     injury: number;
-    bond: number;
   };
   traits: string[];
   recentMemories: string[];
@@ -535,10 +532,8 @@ export function summarizePet(save: CloudSave): PetSummary | null {
     stats: {
       mood: cap.mood,
       energy: cap.energy,
-      curiosity: cap.curiosity,
-      bravery: cap.bravery,
+      courage: cap.courage,
       injury: cap.injury,
-      bond: cap.bond,
     },
     traits: cap.traits,
     recentMemories: cap.memories.slice(0, 5),

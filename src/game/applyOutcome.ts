@@ -11,10 +11,8 @@ export function applyEffects(
     ...capy,
     mood: clamp(capy.mood + (eff.mood ?? 0)),
     energy: clamp(capy.energy + (eff.energy ?? 0)),
-    curiosity: clamp(capy.curiosity + (eff.curiosity ?? 0)),
-    bravery: clamp(capy.bravery + (eff.bravery ?? 0)),
+    courage: clamp(capy.courage + (eff.courage ?? 0)),
     injury: clamp(capy.injury + (eff.injury ?? 0)),
-    bond: clamp(capy.bond + (eff.bond ?? 0)),
   };
 }
 
@@ -45,8 +43,7 @@ export function applyOutcome(
   if (patted)
     capy = {
       ...capy,
-      bond: clamp(capy.bond + 3),
-      mood: clamp(capy.mood + 2),
+      mood: clamp(capy.mood + 3),
     };
 
   return {

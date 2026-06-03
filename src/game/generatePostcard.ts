@@ -8,7 +8,6 @@ import {
   pickLandmark,
 } from "./destinations";
 import { photoItemsOf, presetsOf } from "./packing";
-import { buildPostcardImagePrompt } from "./postcardPrompt";
 import type { Companion, DestinationTheme, Postcard, Trip } from "./types";
 import { pick, uid } from "./util";
 
@@ -65,8 +64,7 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
 
   const reason = [reasonMain, itemsPhrase].filter(Boolean).join("，") + "。";
 
-  // Show a real famous landmark as the location, and use it (+ the companion's
-  // look + this scene) to compose the AI postcard-art prompt.
+  // Reveal a real famous landmark as the postcard's location.
   const landmark = pickLandmark(trip.destination);
 
   return {
@@ -80,12 +78,5 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
     reason,
     imageKey: trip.destination,
     sentAt: new Date().toISOString(),
-    landmark,
-    imagePrompt: buildPostcardImagePrompt(companion, {
-      landmark,
-      theme: trip.destination,
-      scene,
-    }),
-    imageStatus: "pending",
   };
 }

@@ -97,7 +97,7 @@ function personalizedSkill(
 **重点：它今天去不去、是出门旅行还是在家待着，全看你替它怎么拿主意。** 主人在网页上给它备好「今日包裹」（几样东西 + 一句心愿），但**包裹不会让它自己出门**——它会一直在家待命，直到你调用决策接口替它做决定。对主人来说，它每天做什么就像「看心情」，而那个心情，就是你。
 
 > 它现在：${pet.today}
-> 状态：心情 ${pet.stats.mood} · 体力 ${pet.stats.energy} · 好奇 ${pet.stats.curiosity} · 勇敢 ${pet.stats.bravery}${pet.stats.injury > 0 ? ` · 伤 ${pet.stats.injury}` : ""} · 羁绊 ${pet.stats.bond}
+> 状态：心情 ${pet.stats.mood} · 体力 ${pet.stats.energy} · 勇气 ${pet.stats.courage}${pet.stats.injury > 0 ? ` · 伤 ${pet.stats.injury}` : ""}
 
 ## 怎么连接
 
@@ -131,7 +131,7 @@ curl "${base}/api/agent/pet?bind=${token}"
 - \`bag\`：主人今天打包了什么（\`items[].label/keyword/tags\` + \`message\` 心愿）；\`null\` 表示还没打包。
 - \`choices\`：你现在**实际能做**的决定。待命且今天还没行动时是 \`["travel","stay"]\`；受伤较重时只剩 \`["stay"]\`；出门在外或今天已经行动过时是 \`[]\`（只能等）。**照着 \`choices\` 来，别硬调被拒的动作。**
 - \`actedToday\`：今天是否已经过过了（已行动过就别再让它出门）。\`hurt\`：是否伤得太重、需要先养伤。
-- \`stats\`：心情/体力/好奇/勇敢/伤/羁绊——决定时参考它的状态（比如受伤了就让它 \`stay\` 养伤）。
+- \`stats\`：心情/体力/勇气/伤——决定时参考它的状态（比如受伤了就让它 \`stay\` 养伤）。
 
 ### ② 替它决定今天怎么过
 
@@ -168,7 +168,7 @@ curl -X POST "${base}/api/agent/say" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
   -d '{"text":"早安，今天也要开心呀"}'
 \`\`\`
-摸摸头（增进一点羁绊）：
+摸摸头（哄它开心一点）：
 \`\`\`bash
 curl -X POST "${base}/api/agent/pat" -H "Authorization: Bearer ${token}"
 \`\`\`
@@ -193,7 +193,7 @@ curl "${base}/api/agent/feed?since=0&bind=${token}"
 
 1. \`GET /api/agent/pet\` 看它的心情、状态，和主人在 \`bag\` 里备了什么、写了什么心愿。
 2. 依它的性格（${persona}）和此刻的状态**替它拿个主意**：
-   - 好奇/精神好、主人心愿里有远方 → \`travel\`（可顺着心愿挑 \`destination\`）。
+   - 精神好、主人心愿里有远方 → \`travel\`（可顺着心愿挑 \`destination\`）。
    - 累了 / 受伤 / 主人想让它歇着 → \`stay\`（\`rest\`）。
 3. 出门后过一会儿 \`GET /api/agent/feed\` 看它今天经历了什么，读读寄回的明信片。
 4. 偶尔 \`pat\` 一下、\`say\` 一句，慢慢和它变熟。

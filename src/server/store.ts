@@ -43,10 +43,8 @@ interface PetRow {
   accessory: Companion["accessory"];
   mood: number;
   energy: number;
-  curiosity: number;
-  bravery: number;
+  courage: number;
   injury: number;
-  bond: number;
   traits: string[];
   memories: string[];
   souvenirs: string[];
@@ -89,14 +87,10 @@ interface PostcardRow {
   trip_legacy_id: string | null;
   destination_theme: Postcard["destinationTheme"];
   location_name: string;
-  landmark: string | null;
   title: string;
   message: string;
   reason: string | null;
   image_key: string | null;
-  image_prompt: string | null;
-  image_status: Postcard["imageStatus"] | null;
-  image_path: string | null;
   collected: boolean;
   sent_at: Date | string;
 }
@@ -307,10 +301,8 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     capyState: {
       mood: pet.mood,
       energy: pet.energy,
-      curiosity: pet.curiosity,
-      bravery: pet.bravery,
+      courage: pet.courage,
       injury: pet.injury,
-      bond: pet.bond,
       traits: pet.traits ?? [],
       memories: pet.memories ?? [],
     },
@@ -373,10 +365,6 @@ function postcardFromRow(row: PostcardRow): Postcard {
     reason: row.reason ?? "",
     imageKey: row.image_key ?? row.destination_theme,
     sentAt: iso(row.sent_at),
-    landmark: row.landmark ?? undefined,
-    imagePrompt: row.image_prompt ?? undefined,
-    imageStatus: row.image_status ?? undefined,
-    imageUrl: row.image_path ?? undefined,
   };
 }
 
@@ -486,9 +474,8 @@ async function syncPostcards(
     const tripId = await tripUuidForLegacy(tx, petId, card.tripId);
     await tx`
       insert into postcards (
-        legacy_id, pet_id, trip_id, destination_theme, location_name, landmark,
-        title, message, reason, image_key, image_prompt, image_status, image_path,
-        collected, sent_at
+        legacy_id, pet_id, trip_id, destination_theme, location_name,
+        title, message, reason, image_key, collected, sent_at
       )
       values (
         ${card.id},
@@ -496,14 +483,10 @@ async function syncPostcards(
         ${tripId ? tx`${tripId}::uuid` : null},
         ${card.destinationTheme},
         ${card.locationName},
-        ${card.landmark ?? null},
         ${card.title},
         ${card.message},
         ${card.reason},
         ${card.imageKey},
-        ${card.imagePrompt ?? null},
-        ${card.imageStatus ?? "pending"},
-        ${card.imageUrl ?? null},
         ${card.id !== pendingPostcardId},
         ${new Date(card.sentAt)}
       )
@@ -511,14 +494,10 @@ async function syncPostcards(
         trip_id = excluded.trip_id,
         destination_theme = excluded.destination_theme,
         location_name = excluded.location_name,
-        landmark = excluded.landmark,
         title = excluded.title,
         message = excluded.message,
         reason = excluded.reason,
         image_key = excluded.image_key,
-        image_prompt = excluded.image_prompt,
-        image_status = excluded.image_status,
-        image_path = excluded.image_path,
         collected = excluded.collected,
         sent_at = excluded.sent_at
     `;
@@ -686,9 +665,9 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
     await tx`
       insert into pets (
         id, legacy_companion_id, owner_id, name, species, primary_color,
-        personality, accessory, mood, energy, curiosity, bravery, injury, bond,
+        personality, accessory, mood, energy, courage, injury,
         traits, memories, souvenirs, misunderstandings, last_result, state,
-        rating, wins, losses, draws, last_action_day, pending_message, rev,
+        last_action_day, pending_message, rev,
         created_at, updated_at
       )
       values (
@@ -702,20 +681,14 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         ${c.accessory},
         ${cap.mood},
         ${cap.energy},
-        ${cap.curiosity},
-        ${cap.bravery},
+        ${cap.courage},
         ${cap.injury},
-        ${cap.bond},
         ${cap.traits}::text[],
         ${cap.memories}::text[],
         ${save.souvenirs ?? []}::text[],
         ${save.misunderstandings ?? []}::text[],
         ${save.lastResult ? tx.json(save.lastResult as never) : null},
         ${save.companionState},
-        1000,
-        0,
-        0,
-        0,
         ${save.lastActionDay ? tx`${save.lastActionDay}::date` : null},
         ${save.pendingMessage},
         ${save.rev},
@@ -731,10 +704,8 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         accessory = excluded.accessory,
         mood = excluded.mood,
         energy = excluded.energy,
-        curiosity = excluded.curiosity,
-        bravery = excluded.bravery,
+        courage = excluded.courage,
         injury = excluded.injury,
-        bond = excluded.bond,
         traits = excluded.traits,
         memories = excluded.memories,
         souvenirs = excluded.souvenirs,

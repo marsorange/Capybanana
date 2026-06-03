@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored, minified third-party assets (e.g. the Draco decoder) — not ours
+    // to lint.
+    "public/**",
   ]),
 ]);
 

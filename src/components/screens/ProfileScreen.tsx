@@ -25,19 +25,14 @@ function Pedestal() {
 }
 
 const STATS: {
-  key: keyof Pick<
-    CapyState,
-    "mood" | "energy" | "curiosity" | "bravery" | "bond"
-  >;
+  key: keyof Pick<CapyState, "mood" | "energy" | "courage">;
   label: string;
   emoji: string;
   color: string;
 }[] = [
   { key: "mood", label: "心情", emoji: "💛", color: "#E9A23B" },
   { key: "energy", label: "体力", emoji: "⚡", color: "#8AA978" },
-  { key: "curiosity", label: "好奇", emoji: "🔍", color: "#6FA8C9" },
-  { key: "bravery", label: "勇敢", emoji: "⛰️", color: "#D95F59" },
-  { key: "bond", label: "羁绊", emoji: "🤝", color: "#C9B6D6" },
+  { key: "courage", label: "勇气", emoji: "⛰️", color: "#D95F59" },
 ];
 
 function StatBar({

@@ -2,24 +2,23 @@
 
 > 每天一分钟，陪它长大一点。
 
-Capybanana 是一个随心陪伴养成小游戏。用户每天通过一个很短的小互动，喂养一只低边形卡皮巴拉伙伴，收集心情种子、每日卡片和成长变化。
+Capybanana 是一个竖屏 Web 随心陪伴养成小游戏。用户每天花一分钟，给一只低多边形卡皮巴拉伙伴**准备包裹和心愿**，由绑定的 **AI Agent** 替它决定今天怎么过（出门旅行 / 在家），宠物把这一天变成一张可收藏的明信片或一段成长记录。完整玩法设计见 [`docs/core-gameplay.md`](docs/core-gameplay.md)。
 
 ## Product
 
-- 低压力、短平快的每日陪伴体验
-- 低边形 3D 卡皮巴拉伙伴
-- 每日心情种子、卡片收藏和成长进度
-- 移动端优先，适合 1 分钟左右打开一次
-- 可逐步接入摄像头、声音、动作和重力感应作为小游戏输入
+- 低压力、短平快的每日陪伴体验：打包 → Agent 决策 → 结算 → 收藏
+- 全程序化低多边形 3D 卡皮巴拉伙伴（无外部美术素材）
+- 每个登录用户拥有唯一一只云端宠物；AI Agent 通过 bind token 操作同一只宠物
+- 明信片、纪念品、误解词典、成长 traits 等收藏内容
+- 移动端优先，适合 1 分钟左右打开一次；拍照打包可接入摄像头识别
 
 ## Tech Stack
 
-- Next.js 16
-- React 19
-- Three.js / React Three Fiber
-- Zustand
-- Tailwind CSS v4
-- Framer Motion
+- Next.js 16 / React 19
+- Three.js / React Three Fiber / drei；物理用 @react-three/rapier
+- Zustand（客户端状态）
+- Tailwind CSS v4 / Framer Motion
+- Supabase Auth（Google 登录）+ PostgreSQL 云存档
 
 ## Getting Started
 
@@ -70,10 +69,13 @@ npm run lint
 
 ## Initial Scope
 
-This first public version focuses on the base companion loop:
+This first version focuses on the Agent-driven daily loop (see
+[`docs/core-gameplay.md`](docs/core-gameplay.md)):
 
-- Create a companion
-- Interact with the 3D home scene
-- Prepare small items or photo-based inputs
-- Let the companion grow through short daily-style interactions
-- Collect generated cards and memories
+- Sign in with Google; the app mints an Agent **bind token**
+- Adopt a companion (the bound AI Agent generates one)
+- Each day the owner packs up to 3 items + a wish; the pet waits in `ready`
+- The Agent calls `POST /api/agent/day` to decide the day — `travel` or `stay`
+  (battle is on the roadmap, not yet implemented)
+- Travel may send back a postcard; collect cards, souvenirs and memories
+- Four core stats drive the day: energy / mood / courage / injury

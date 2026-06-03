@@ -17,12 +17,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "growth", label: "🌱 成长" },
 ];
 
-const STATS: { key: "mood" | "energy" | "curiosity" | "bravery" | "injury" | "bond"; label: string }[] = [
+const STATS: { key: "mood" | "energy" | "courage" | "injury"; label: string }[] = [
   { key: "mood", label: "心情" },
   { key: "energy", label: "体力" },
-  { key: "curiosity", label: "好奇" },
-  { key: "bravery", label: "勇敢" },
-  { key: "bond", label: "羁绊" },
+  { key: "courage", label: "勇气" },
   { key: "injury", label: "伤痛" },
 ];
 
@@ -96,16 +94,7 @@ export default function AlbumScreen() {
                   className="relative overflow-hidden rounded-sticker border-2 border-ink/15 bg-paper text-left shadow-[0_2px_0_rgba(58,46,42,0.08)] active:translate-y-0.5"
                 >
                   <div className="relative aspect-[4/3] w-full">
-                    {card.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={card.imageUrl}
-                        alt={card.locationName}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <PostcardArt theme={card.destinationTheme} rounded={false} />
-                    )}
+                    <PostcardArt theme={card.destinationTheme} rounded={false} />
                     {card.id === pendingId && (
                       <span className="absolute right-1.5 top-1.5 rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-paper">
                         new

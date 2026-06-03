@@ -15,26 +15,11 @@ function fmtDate(iso: string): string {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 }
 
-function Front({
-  card,
-  imageUrl,
-}: {
-  card: Postcard;
-  imageUrl?: string | null;
-}) {
+function Front({ card }: { card: Postcard }) {
   return (
     <div className="absolute inset-0 overflow-hidden rounded-2xl border-2 border-ink bg-paper shadow-[0_6px_0_rgba(58,46,42,0.18)] [backface-visibility:hidden]">
       <div className="absolute inset-0">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={card.locationName}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <PostcardArt theme={card.destinationTheme} rounded={false} />
-        )}
+        <PostcardArt theme={card.destinationTheme} rounded={false} />
       </div>
       {/* stamp */}
       <div className="absolute right-3 top-3 flex h-14 w-12 flex-col items-center justify-center rounded-[4px] border-2 border-dashed border-ink/70 bg-paper/90 text-center">
@@ -96,10 +81,6 @@ export default function PostcardScreen() {
   const isFresh = pendingId != null && card?.id === pendingId;
   const [flipped, setFlipped] = useState(false);
 
-  // AI postcard art will later be stored in Supabase. Until then, real cards
-  // render the deterministic procedural artwork.
-  const imageUrl = card?.imageUrl ?? null;
-
   if (!card) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
@@ -145,7 +126,7 @@ export default function PostcardScreen() {
             animate={{ rotateY: flipped ? 180 : 0 }}
             transition={{ type: "spring", stiffness: 140, damping: 17 }}
           >
-            <Front card={card} imageUrl={imageUrl} />
+            <Front card={card} />
             <Back card={card} companionName={companion.name} />
           </motion.div>
         </div>

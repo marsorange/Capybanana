@@ -1,4 +1,4 @@
-// POST a head pat — a small bond + mood bump.
+// POST a head pat — a small mood lift.
 import { authed, commit, jsonError } from "@/server/api";
 import { patHead, tickSave } from "@/server/engine";
 

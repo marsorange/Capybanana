@@ -1,10 +1,21 @@
 # Capybanana 存储重构设计
 
-> 状态：执行前设计稿。本文合并原 `docs/data-model.md` 与 `docs/storage-redesign-issues.md`，作为后续建表、迁移、repository 重构和社交功能扩展的单一评审基准。
+> **状态：已实施（2026-06）。** 本文是存储层从单一 KV blob 迁到 Postgres 关系表的设计稿，迁移**已完成**——`src/lib/kv.ts` 已删除。权威实现见 `supabase/migrations/0001_storage_refactor.sql`（schema）与 `src/server/store.ts`（repository）。下文保留作设计依据与 ER/字段参考。原合并自 `docs/data-model.md` 与 `docs/storage-redesign-issues.md`。
 
-## 0. 当前事实
+## 0. 现状（重构后）
 
-当前真实持久化入口是 `src/lib/kv.ts`。
+存储层已从单一 KV blob 迁到 Postgres 关系表，**`src/lib/kv.ts` 已删除**，不再支持 Upstash / Vercel KV 或进程内存作为账号存储。
+
+- **唯一后端**：PostgreSQL（Supabase Postgres 或本地 Docker）。只认 `POSTGRES_URL` / `POSTGRES_PRISMA_URL` / `POSTGRES_URL_NON_POOLING`；没有连接串时登录 route 直接 503。
+- **建表真源**：`supabase/migrations/0001_storage_refactor.sql`（`psql "$POSTGRES_URL" -f ...` 或 Supabase CLI 跑）。
+- **repository**：`src/server/store.ts` 用这些关系表组装兼容旧前端的 `CloudSave` DTO。
+- **与本设计稿的差异（以代码/迁移为准）**：① 宠物状态已精简为 4 个核心值 `mood / energy / courage / injury`（原 `curiosity` / `bravery` / `bond` 移除、`bravery`→`courage`，见 `docs/core-gameplay.md`）；② 对战（`battles` 表、`pets.rating/wins/losses/draws`）与 `friendships` 已建好作占位，但**应用层尚未写入**（对战后置）；③ 明信片 AI 生图已下线，`postcards.image_prompt/image_status/image_path/landmark` 列保留但代码不再写，明信片统一用程序化 `PostcardArt`；④ §2 / §8 / §9 的旧 KV 回填已无意义（kv.ts 不存在，demo 数据直接丢弃）。
+
+> 下面 §0′–§13 是迁移当时的设计依据与字段/ER 参考，按原样保留；个别 DDL 片段早于上面的 4 值精简，**一律以 `0001_storage_refactor.sql` 为准**。
+
+## 0′. 重构前的起点（历史）
+
+重构前真实持久化入口是 `src/lib/kv.ts`。
 
 支持三种后端：
 
@@ -170,12 +181,11 @@ create table pets (
   personality text not null,
   accessory text not null default 'none',
 
-  mood int not null default 60,
-  energy int not null default 60,
-  curiosity int not null default 50,
-  bravery int not null default 50,
+  -- 4 个核心状态值（见 docs/core-gameplay.md §8）
+  mood int not null default 65,
+  energy int not null default 70,
+  courage int not null default 40,
   injury int not null default 0,
-  bond int not null default 0,
   traits text[] not null default '{}',
   memories text[] not null default '{}',
   souvenirs text[] not null default '{}',
@@ -183,6 +193,7 @@ create table pets (
   last_result jsonb,
 
   state text not null default 'idle_home',
+  -- 对战占位列：已建好，应用层暂不写入（对战后置）
   rating int not null default 1000,
   wins int not null default 0,
   losses int not null default 0,
@@ -202,10 +213,8 @@ create table pets (
   check (primary_color ~ '^#[0-9a-fA-F]{6}$'),
   check (mood between 0 and 100),
   check (energy between 0 and 100),
-  check (curiosity between 0 and 100),
-  check (bravery between 0 and 100),
-  check (injury between 0 and 100),
-  check (bond between 0 and 100)
+  check (courage between 0 and 100),
+  check (injury between 0 and 100)
 );
 
 create index on pets(rating);
@@ -343,6 +352,7 @@ where collected = false;
 - 第一阶段按当前 UI 语义，一宠最多一张待拆明信片。
 - 明信片 AI 图写入 Storage，表里只存 `image_path`。
 - `image_status` 独立更新，不触碰 `pets.rev`。
+- **当前**：明信片 AI 生图已下线，`image_prompt` / `image_status` / `image_path` / `landmark` 列保留但代码不再写，统一渲染程序化 `PostcardArt`（按 `destination_theme`）。
 
 ### 4.7 `battles`
 
@@ -375,6 +385,7 @@ create index on battles(defender_pet_id, created_at desc);
 
 说明：
 
+- **当前**：对战玩法后置，本表已建好但**应用层尚未写入**（`POST /api/agent/day` 的 `action:"battle"` 会被拒）。
 - NPC Claw：`is_npc=true`、`defender_pet_id=null`。
 - 幽灵 PvP：只更新发起方；防守方不受伤、不扣分，只获得 `challenged` activity。
 - 双方 snapshot 不可变，避免对方后续改外观/数值影响历史记录。

@@ -56,13 +56,13 @@ function microVariant(
   if (r < 0.15 && labels.length) {
     return {
       story: `它把你给的「${pick(labels)}」弄丢了，回来时一脸无辜地看着你。`,
-      effects: { mood: -4, bond: -2 },
+      effects: { mood: -4 },
     };
   }
   if (r < 0.32 && labels.length >= 2) {
     return {
       story: `它把「${labels[0]}」和「${labels[1]}」拼成了${pick(WEIRD_USES)}，还挺得意。`,
-      effects: { mood: 6, curiosity: 5 },
+      effects: { mood: 6, courage: 3 },
       memory: `${labels[0]} + ${labels[1]} = 某种神秘装置`,
     };
   }
@@ -167,10 +167,9 @@ export function resolveDay(
       title: "它真的出门啦",
       story: `它背上包裹走了挺远，寄回了一张明信片：「${postcard.title}」。`,
       effects: {
-        curiosity: 10,
         energy: -10,
-        bravery: 4,
-        bond: 6,
+        mood: 5,
+        courage: 6,
         injury: Math.random() < 0.25 ? 6 : 0,
       },
       souvenir,
@@ -185,7 +184,7 @@ export function resolveDay(
       ...base,
       title: mv ? "院子里出了点意外" : "它在院子里晃了晃",
       story: mv?.story ?? yardStory(tags),
-      effects: mv?.effects ?? { mood: 8, energy: -3, curiosity: 3, bond: 3 },
+      effects: mv?.effects ?? { mood: 8, energy: -3 },
       memory: mv?.memory,
       misunderstanding: misread,
     };
@@ -199,7 +198,7 @@ export function resolveDay(
       story: hurt
         ? "它窝在角落舔了舔爪子，把你给的东西垫在身下，睡了好久。"
         : "它赖在窝里一整天，谁叫都只是哼哼两声。",
-      effects: { injury: -15, energy: 18, mood: 4, bond: 2 },
+      effects: { injury: -15, energy: 18, mood: 4 },
       misunderstanding: misread,
     };
   }
@@ -210,7 +209,7 @@ export function resolveDay(
       ...base,
       title: "有点不对劲…",
       story: hint,
-      effects: { curiosity: 8, mood: 2 },
+      effects: { courage: 4, mood: 2 },
       memory: hint,
       misunderstanding: misread,
     };
@@ -226,7 +225,6 @@ export function resolveDay(
       mood: 6,
       energy: Math.round(randRange(8, 16)),
       injury: -8,
-      bond: 4,
     },
     memory: mv?.memory,
     misunderstanding: misread,

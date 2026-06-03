@@ -48,12 +48,11 @@ create table pets (
   personality text not null,
   accessory text not null default 'none',
 
-  mood int not null default 60,
-  energy int not null default 60,
-  curiosity int not null default 50,
-  bravery int not null default 50,
+  -- Four core stats (see docs/core-gameplay.md §8).
+  mood int not null default 65,
+  energy int not null default 70,
+  courage int not null default 40,
   injury int not null default 0,
-  bond int not null default 0,
   traits text[] not null default '{}',
   memories text[] not null default '{}',
   souvenirs text[] not null default '{}',
@@ -61,6 +60,7 @@ create table pets (
   last_result jsonb,
 
   state text not null default 'idle_home',
+  -- Reserved for the postponed battle feature (not yet written by the app).
   rating int not null default 1000,
   wins int not null default 0,
   losses int not null default 0,
@@ -80,10 +80,8 @@ create table pets (
   check (primary_color ~ '^#[0-9a-fA-F]{6}$'),
   check (mood between 0 and 100),
   check (energy between 0 and 100),
-  check (curiosity between 0 and 100),
-  check (bravery between 0 and 100),
-  check (injury between 0 and 100),
-  check (bond between 0 and 100)
+  check (courage between 0 and 100),
+  check (injury between 0 and 100)
 );
 
 create index pets_rating_idx on pets(rating);

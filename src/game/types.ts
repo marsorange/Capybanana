@@ -64,14 +64,14 @@ export interface PackedItem {
   tags?: ItemTag[]; // story-seed tags (from preset map or photo VLM/heuristic)
 }
 
-// The capybara's simple evolving state.
+// The capybara's simple evolving state. Four core stats (see
+// docs/core-gameplay.md §8): mood, energy, courage, injury — plus the lightweight
+// growth tags (traits) and a short memory log.
 export interface CapyState {
   mood: number; // 0..100
   energy: number;
-  curiosity: number;
-  bravery: number;
+  courage: number;
   injury: number;
-  bond: number;
   traits: string[];
   memories: string[];
 }
@@ -90,10 +90,7 @@ export interface DayOutcome {
   story: string; // what it did with your package
   reason: string; // references your message / items
   effects: Partial<
-    Pick<
-      CapyState,
-      "mood" | "energy" | "curiosity" | "bravery" | "injury" | "bond"
-    >
+    Pick<CapyState, "mood" | "energy" | "courage" | "injury">
   >;
   souvenir?: string; // a brought-back trinket name
   misunderstanding?: string; // a "误解词典" entry
@@ -147,15 +144,8 @@ export interface Postcard {
   title: string;
   message: string;
   reason: string;
-  imageKey: string; // === destinationTheme
+  imageKey: string; // === destinationTheme; selects the procedural PostcardArt
   sentAt: string;
-  // AI postcard art: a prompt combining the companion's look + the landmark
-  // scenery, generated on demand (server-side, MiniMax) and cached. Falls back
-  // to procedural SVG art when generation is unavailable.
-  landmark?: string;
-  imagePrompt?: string;
-  imageStatus?: "pending" | "ready" | "error";
-  imageUrl?: string;
 }
 
 // Bag prepared by the player; the companion decides on its own when to leave.
