@@ -27,7 +27,6 @@ export default function TravelingScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const activeTrip = useGameStore((s) => s.activeTrip);
   const postcards = useGameStore((s) => s.postcards);
-  const devFastForward = useGameStore((s) => s.devFastForward);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -87,12 +86,6 @@ export default function TravelingScreen() {
           今天它会把你的包裹玩成什么呢？回来看看就知道。
         </p>
 
-        <button
-          onClick={devFastForward}
-          className="mx-auto mt-2 rounded-full px-3 py-1 text-[11px] text-ink-soft/40 transition hover:text-ink-soft"
-        >
-          ﹒催它快点回来﹒
-        </button>
       </div>
     </div>
   );

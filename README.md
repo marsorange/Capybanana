@@ -57,7 +57,8 @@ docker run --name capybanana-pg \
 3. Run `npm run dev`, open `http://localhost:3000`, then use
    "本地调试登录（无需 Supabase）" on the login screen.
 
-The app auto-creates `capy_kv` and `capy_kv_set` tables on first request.
+Run the SQL in `supabase/migrations/0001_storage_refactor.sql` before logging
+in. The app now uses the relational tables directly; there is no KV fallback.
 
 ## Scripts
 

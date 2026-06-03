@@ -1,9 +1,7 @@
-// Server-side game engine. Reuses the exact same pure logic as the client
-// (advanceLifecycle / resolveDay / applyOutcome) so the cloud pet behaves
-// identically to a local one, and folds results into a CloudSave with a bumped
-// rev + an activity-log entry.
-import { advanceLifecycle, BATTLE, NO_AUTO_DEPART } from "@/game/clock";
-import { applyOutcome, battleRecordFrom, clamp } from "@/game/applyOutcome";
+// Server-side game engine. The cloud save is authoritative; clients only pull
+// the folded result.
+import { advanceLifecycle, NO_AUTO_DEPART } from "@/game/clock";
+import { applyOutcome, clamp } from "@/game/applyOutcome";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { DESTINATIONS } from "@/game/destinations";
 import { planTrip } from "@/game/planTrip";
@@ -24,14 +22,14 @@ import type {
   Trip,
   TripIntent,
 } from "@/game/types";
-import { randRange, uid } from "@/game/util";
+import { uid } from "@/game/util";
 import type { AgentEvent, CloudSave } from "./types";
 
 const DESTINATION_THEMES = new Set<string>(DESTINATIONS.map((d) => d.theme));
 const QUIET_MODES = new Set<string>(["home", "yard", "rest"]);
 
-// At/above this injury the pet is "badly hurt" — it can't travel or battle, only
-// stay home and recover (rest heals ~15/day, so a couple of quiet days fixes it).
+// At/above this injury the pet is "badly hurt" — it can't travel, only stay
+// home and recover (rest heals ~15/day, so a couple of quiet days fixes it).
 export const HURT_THRESHOLD = 45;
 
 /** The UTC calendar day a timestamp falls on (YYYY-MM-DD). */
@@ -39,7 +37,7 @@ export function dayKey(now: number): string {
   return new Date(now).toISOString().slice(0, 10);
 }
 
-/** Already spent today's one growth action (travel / battle / stay)? */
+/** Already spent today's one growth action (travel / stay)? */
 export function actedToday(save: CloudSave, now: number): boolean {
   return !!save.lastActionDay && save.lastActionDay === dayKey(now);
 }
@@ -57,13 +55,13 @@ export function isHurt(save: CloudSave): boolean {
 export function dayBlockedReason(
   save: CloudSave,
   now: number,
-  action: "travel" | "battle" | "stay",
+  action: "travel" | "stay",
 ): string | null {
   if (save.companionState === "traveling")
     return "它已经出门了，等它回来再说";
   if (actedToday(save, now))
     return "今天它已经过完啦——一天陪它一次就好，明天再来吧";
-  if ((action === "travel" || action === "battle") && isHurt(save))
+  if (action === "travel" && isHurt(save))
     return "它伤得不轻，先让它在家用 stay（rest）养几天伤，好了再出门";
   return null;
 }
@@ -85,15 +83,11 @@ function foldOutcome(
     o,
     patted,
   );
-  const battle = battleRecordFrom(o);
   let next: CloudSave = {
     ...save,
     capyState: merged.capy,
     souvenirs: merged.souvenirs,
     misunderstandings: merged.misunderstandings,
-    battles: battle
-      ? [battle, ...(save.battles ?? [])].slice(0, 60)
-      : save.battles ?? [],
     lastResult: o,
   };
   if (o.postcard) {
@@ -202,7 +196,6 @@ export function createPet(
     postcards: [],
     souvenirs: [],
     misunderstandings: [],
-    battles: [],
     lastResult: null,
     pendingPostcardId: null,
     pendingMessage: null,
@@ -251,7 +244,7 @@ export function restyleCompanion(
 
 /**
  * Pack today's bag. The cloud pet is agent-driven: it does NOT leave on its own
- * — it waits in `ready` until the agent decides (travel / battle / stay), so
+ * — it waits in `ready` until the agent decides the day, so
  * `departAt` is the never-fires sentinel.
  */
 export function packBag(
@@ -283,7 +276,7 @@ export function packBag(
   });
 }
 
-// ---- Agent-driven decisions (travel / battle / stay) -------------------------
+// ---- Agent-driven decisions (travel / stay) ----------------------------------
 
 /** What the agent provides when sending the pet out (all optional). */
 function bagSnapshot(save: CloudSave): {
@@ -340,43 +333,6 @@ export function startTravel(
   );
 }
 
-/** Agent decides: go scrap with Claw. Resolves into win/lose/draw on return. */
-export function startBattle(
-  save: CloudSave,
-  opts: { note?: string },
-  now: number,
-): CloudSave {
-  const companion = save.companion!;
-  const { items, message, gesture } = bagSnapshot(save);
-  const durationMs = Math.round(randRange(BATTLE.awayMin, BATTLE.awayMax));
-  const trip: Trip = {
-    id: uid("trip"),
-    companionId: companion.id,
-    items,
-    message,
-    gesture,
-    status: "traveling",
-    destination: "town", // not surfaced for a battle
-    intent: "claw",
-    note: opts.note?.slice(0, 80),
-    startedAt: now,
-    durationMs,
-    returnsAt: now + durationMs,
-  };
-  return bump(
-    {
-      ...save,
-      activeTrip: trip,
-      companionState: "traveling",
-      packedBag: null,
-      pendingMessage: null,
-      lastActionDay: dayKey(now),
-    },
-    now,
-    { type: "departed", text: `${companion.name} 气鼓鼓地出门，去找 Claw 较量了。` },
-  );
-}
-
 /** Agent decides: a low-key day at home/yard/rest. Resolves immediately. */
 export function stayHome(
   save: CloudSave,
@@ -415,6 +371,19 @@ export function stayHome(
     now,
   );
   return next;
+}
+
+export type DayDecision =
+  | { action: "travel"; destination?: string; note?: string }
+  | { action: "stay"; mode?: string; note?: string };
+
+export function decideDay(
+  save: CloudSave,
+  decision: DayDecision,
+  now: number,
+): CloudSave {
+  if (decision.action === "travel") return startTravel(save, decision, now);
+  return stayHome(save, decision, now);
 }
 
 /** A gentle head pat: small bond + mood. */
@@ -484,8 +453,8 @@ export interface PetSummary {
   bag: PetBag | null; // today's packed supplies (null if nothing packed)
   canDecide: boolean; // true when you can still start today's action (home/ready, not yet acted, not too hurt to do anything)
   choices: string[]; // the actions allowed right now ([] while traveling / already acted; ["stay"] only when badly hurt)
-  actedToday: boolean; // already spent today's one growth action (travel/battle/stay)?
-  hurt: boolean; // too injured to travel/battle — needs to rest at home first
+  actedToday: boolean; // already spent today's one growth action (travel/stay)?
+  hurt: boolean; // too injured to travel — needs to rest at home first
   pendingPostcard: { id: string; title: string } | null;
   latestPostcard: {
     id: string;
@@ -524,7 +493,7 @@ function describeToday(save: CloudSave, now: number): string {
 
   const decision = isHurt(save)
     ? `它伤得不轻，今天先让它 stay（rest）在家养伤吧。`
-    : `等你替它拿主意：今天去旅行、去找 Claw 较量、还是在家待着？`;
+    : `等你替它拿主意：今天去旅行，还是在家待着？`;
   if (save.companionState === "ready") {
     const b = save.packedBag;
     const things =
@@ -553,7 +522,7 @@ export function summarizePet(save: CloudSave): PetSummary | null {
   const choices = canDecide
     ? hurt
       ? ["stay"] // badly hurt → can only recover at home
-      : ["travel", "battle", "stay"]
+      : ["travel", "stay"]
     : [];
   return {
     name: c.name,

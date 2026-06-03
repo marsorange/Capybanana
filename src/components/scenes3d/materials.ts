@@ -53,16 +53,25 @@ interface ToonOpts {
   emissiveIntensity?: number;
   // Rim light strength (0 = off). Default gives a gentle edge glow.
   rim?: number;
+  // Opt OUT of the shared "tiny-planet" bend. Default true (curls with the
+  // scene). The home cottage sets this false so its rigid structure stands
+  // straight while the island ground domes around it.
+  bend?: boolean;
+  // Render side. Default FrontSide; the domed grass disc uses DoubleSide so its
+  // hand-built ring geometry shows regardless of triangle winding.
+  side?: THREE.Side;
 }
 
 const toonCache = new Map<string, THREE.MeshToonMaterial>();
 
 export function toonMaterial(hex: string, opts: ToonOpts = {}): THREE.MeshToonMaterial {
   const rim = opts.rim ?? 0.45;
-  const key = `${hex}|${opts.emissive ?? ""}|${opts.emissiveIntensity ?? 0}|${rim}`;
+  const bend = opts.bend ?? true;
+  const side = opts.side ?? THREE.FrontSide;
+  const key = `${hex}|${opts.emissive ?? ""}|${opts.emissiveIntensity ?? 0}|${rim}|${bend}|${side}`;
   let mat = toonCache.get(key);
   if (!mat) {
-    mat = new THREE.MeshToonMaterial({ color: hex, gradientMap: getToonGradient() });
+    mat = new THREE.MeshToonMaterial({ color: hex, gradientMap: getToonGradient(), side });
     // three's TS types omit `flatShading` on MeshToonMaterial even though the
     // renderer honors it; a narrow cast keeps the chunky faceted low-poly look.
     (mat as unknown as { flatShading: boolean }).flatShading = true;
@@ -70,7 +79,7 @@ export function toonMaterial(hex: string, opts: ToonOpts = {}): THREE.MeshToonMa
       mat.emissive = new THREE.Color(opts.emissive);
       mat.emissiveIntensity = opts.emissiveIntensity ?? 1;
     }
-    applyToonShaderPatch(mat, rim);
+    applyToonShaderPatch(mat, rim, bend);
     toonCache.set(key, mat);
   }
   return mat;
@@ -79,33 +88,37 @@ export function toonMaterial(hex: string, opts: ToonOpts = {}): THREE.MeshToonMa
 // The shared cel rim + planet-bend injection. Applied to EVERY toon material
 // (procedural meshes and converted GLB materials alike) so the edge glow and the
 // home bend read consistently across the whole scene.
-function applyToonShaderPatch(mat: THREE.MeshToonMaterial, rim: number) {
+function applyToonShaderPatch(mat: THREE.MeshToonMaterial, rim: number, bend = true) {
   mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uBendStrength = sceneBend.strength;
-    shader.uniforms.uBendCenter = sceneBend.center;
-    shader.uniforms.uBendFalloff = sceneBend.falloff;
     shader.uniforms.uRim = { value: rim };
 
     // Vertex: curl world-space Y down by horizontal distance² from center. We
     // re-derive mvPosition/gl_Position here; the stock `vViewPosition = -
     // mvPosition.xyz;` line that follows still picks up our bent mvPosition.
     // `transformed` already includes skinning, so this works for SkinnedMesh too.
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        "#include <common>",
-        `#include <common>
-         uniform float uBendStrength;
-         uniform vec3 uBendCenter;
-         uniform float uBendFalloff;`,
-      )
-      .replace(
-        "#include <project_vertex>",
-        `vec4 worldPos = modelMatrix * vec4( transformed, 1.0 );
-         vec2 bendDelta = worldPos.xz - uBendCenter.xz;
-         worldPos.y -= dot( bendDelta, bendDelta ) * uBendFalloff * uBendStrength;
-         vec4 mvPosition = viewMatrix * worldPos;
-         gl_Position = projectionMatrix * mvPosition;`,
-      );
+    // Skipped entirely for bend-exempt materials (the rigid cottage) so they
+    // stand straight while the ground domes around them.
+    if (bend) {
+      shader.uniforms.uBendStrength = sceneBend.strength;
+      shader.uniforms.uBendCenter = sceneBend.center;
+      shader.uniforms.uBendFalloff = sceneBend.falloff;
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+           uniform float uBendStrength;
+           uniform vec3 uBendCenter;
+           uniform float uBendFalloff;`,
+        )
+        .replace(
+          "#include <project_vertex>",
+          `vec4 worldPos = modelMatrix * vec4( transformed, 1.0 );
+           vec2 bendDelta = worldPos.xz - uBendCenter.xz;
+           worldPos.y -= dot( bendDelta, bendDelta ) * uBendFalloff * uBendStrength;
+           vec4 mvPosition = viewMatrix * worldPos;
+           gl_Position = projectionMatrix * mvPosition;`,
+        );
+    }
 
     // Fragment: add a soft Fresnel rim toward white at grazing angles.
     shader.fragmentShader = shader.fragmentShader

@@ -17,7 +17,7 @@ import SpeechBubble from "../ui/SpeechBubble";
 import CharacterModel from "./character/CharacterModel";
 import { commandBus } from "./home/interaction/commandBus";
 import { navBus } from "./home/interaction/navBus";
-import { SPOTS, type Vec3 } from "./home/layout";
+import { LOFT_PIVOT, LOFT_STEP, SPAWN, SPOTS, STAIR_BOTTOM, type Vec3 } from "./home/layout";
 
 // The pet as a physics CHARACTER, not a scripted lerp. It's a kinematic-position
 // rigid body whose movement runs through a Rapier KinematicCharacterController:
@@ -31,15 +31,39 @@ const GRAVITY = -14; // a touch snappier than 9.81 — reads better in a toy wor
 const SPEED = 1.6;
 const ARRIVE = 0.14;
 
-// Loft/stairs are deferred until the home art is redesigned with real ramps;
-// for now the pet roams the ground floor.
-const GROUND_SPOTS = SPOTS.filter((s) => s.floor === 0);
+const START = SPAWN; // floor-0 centre-front spawn anchor
+const LOFT_Y = 1.1; // y above which the pet counts as "on the loft"
 
 function shortestAngle(from: number, to: number): number {
   let d = (to - from) % (Math.PI * 2);
   if (d > Math.PI) d -= Math.PI * 2;
   if (d < -Math.PI) d += Math.PI * 2;
   return d;
+}
+
+function vecOf(v: Vec3): THREE.Vector3 {
+  return new THREE.Vector3(v[0], 0, v[2]);
+}
+
+// A walk path to (x,z) on floor `destFloor`, routed up/down the stairs when the
+// pet is on a different floor — so it never walks straight through the loft slab.
+function buildPath(
+  x: number,
+  z: number,
+  destFloor: 0 | 1,
+  fromFloor: 0 | 1,
+): THREE.Vector3[] {
+  const dest = new THREE.Vector3(x, 0, z);
+  if (destFloor === fromFloor) return [dest];
+  const bottom = vecOf(STAIR_BOTTOM);
+  const step = vecOf(LOFT_STEP); // deep on the landing (past the stair-top edge)
+  const pivot = vecOf(LOFT_PIVOT); // inner corner, clear of the edge curb
+  // Climb up the ramp fully onto the landing (step), round the inner corner
+  // (pivot), then to the destination — and the reverse to descend. Keeps the
+  // chunky capsule on solid floor the whole way (never across the void).
+  return destFloor === 1
+    ? [bottom, step, pivot, dest] // climb
+    : [pivot, step, bottom, dest]; // descend
 }
 
 interface Props {
@@ -69,9 +93,8 @@ export default function RoamingCompanion({
 
   const vy = useRef(0);
   const seenNav = useRef(navBus.version);
-  const target = useRef(
-    new THREE.Vector3(GROUND_SPOTS[0].pos[0], 0, GROUND_SPOTS[0].pos[2]),
-  );
+  const target = useRef(new THREE.Vector3(START.pos[0], 0, START.pos[2]));
+  const queue = useRef<THREE.Vector3[]>([]);
   const dwell = useRef(randRange(2, 4));
   const face = useRef(0);
   const pendingArrive = useRef<(() => void) | null>(null);
@@ -83,8 +106,13 @@ export default function RoamingCompanion({
   // One character controller for this pet, created against the live world.
   useEffect(() => {
     const c = world.createCharacterController(0.01);
-    c.enableAutostep(0.5, 0.2, true); // hop small ledges
-    c.enableSnapToGround(0.5); // stick to the floor on descents
+    c.enableAutostep(0.45, 0.1, true); // clear the ramp/landing lip — safe now
+    //   that the loft curbs are 0.8 tall (taller than this) so it can't ride them
+    c.enableSnapToGround(0.45); // stick to the floor/ramp on descents
+    // The straight stair is a ~34° ramp: allow climbing well past it, and don't
+    // auto-slide on it, so the pet walks up/down instead of sliding back down.
+    c.setMaxSlopeClimbAngle((50 * Math.PI) / 180);
+    c.setMinSlopeSlideAngle((55 * Math.PI) / 180);
     c.setApplyImpulsesToDynamicBodies(true); // can nudge the toy when bumping it
     controller.current = c;
     return () => {
@@ -110,20 +138,26 @@ export default function RoamingCompanion({
     const dt = Math.min(delta, 1 / 30);
     const collider = b.collider(0);
     const p = b.translation();
+    const fromFloor: 0 | 1 = p.y > LOFT_Y ? 1 : 0;
 
-    // an in-scene marker tap (commandBus) takes priority and may carry a callback
+    // an in-scene marker tap (commandBus) takes priority and may carry a callback.
+    // Markers live on the ground floor — route down the stairs first if upstairs.
     if (commandBus.pending) {
       const cmd = commandBus.pending;
       commandBus.pending = null;
-      target.current.set(cmd.target[0], 0, cmd.target[2]);
+      const path = buildPath(cmd.target[0], cmd.target[2], cmd.floor, fromFloor);
+      target.current.copy(path[0]);
+      queue.current = path.slice(1);
       pendingArrive.current = cmd.onArrive ?? null;
       pendingSay.current = cmd.say ?? null;
       dwell.current = randRange(2.5, 4.5);
     } else if (navBus.version !== seenNav.current) {
-      // a floor tap (navBus): walk to that point
+      // a floor tap (navBus): walk to that point (descending first if upstairs)
       seenNav.current = navBus.version;
       if (navBus.target) {
-        target.current.set(navBus.target[0], 0, navBus.target[2]);
+        const path = buildPath(navBus.target[0], navBus.target[2], 0, fromFloor);
+        target.current.copy(path[0]);
+        queue.current = path.slice(1);
         pendingArrive.current = null;
         pendingSay.current = null;
         dwell.current = randRange(2.5, 4.5);
@@ -135,6 +169,37 @@ export default function RoamingCompanion({
     const horiz = Math.hypot(dx, dz);
     const moving = horiz > ARRIVE;
 
+    if (!moving) {
+      // reached the current waypoint
+      if (queue.current.length > 0) {
+        // advance to the next leg (don't fire callbacks yet)
+        target.current.copy(queue.current.shift()!);
+      } else {
+        // final arrival: fire any pending marker callback once, then idle + wander
+        if (pendingSay.current) {
+          sayText(pendingSay.current);
+          pendingSay.current = null;
+        }
+        if (pendingArrive.current) {
+          const cb = pendingArrive.current;
+          pendingArrive.current = null;
+          cb();
+        }
+        dwell.current -= dt;
+        if (dwell.current <= 0) {
+          const next = pick(SPOTS);
+          const path = buildPath(next.pos[0], next.pos[2], next.floor, fromFloor);
+          target.current.copy(path[0]);
+          queue.current = path.slice(1);
+          dwell.current = randRange(2.5, 4.5);
+        }
+      }
+    }
+
+    // Move toward the current waypoint. The character controller resolves the
+    // horizontal step + gravity against the colliders (including the staircase
+    // ramp), so the pet climbs and descends the stairs as real physics — no
+    // scripted glide. Floor changes are routed up/down the ramp by buildPath.
     let mx = 0;
     let mz = 0;
     if (moving) {
@@ -142,35 +207,13 @@ export default function RoamingCompanion({
       mx = (dx / horiz) * s;
       mz = (dz / horiz) * s;
       face.current = Math.atan2(mx, mz);
-    } else {
-      // arrived: fire any pending marker callback once, then idle + wander
-      if (pendingSay.current) {
-        sayText(pendingSay.current);
-        pendingSay.current = null;
-      }
-      if (pendingArrive.current) {
-        const cb = pendingArrive.current;
-        pendingArrive.current = null;
-        cb();
-      }
-      dwell.current -= dt;
-      if (dwell.current <= 0) {
-        const next = pick(GROUND_SPOTS);
-        target.current.set(next.pos[0], 0, next.pos[2]);
-        dwell.current = randRange(2.5, 4.5);
-      }
     }
-
     // gravity, resolved by the controller (zeroed once grounded)
     vy.current += GRAVITY * dt;
     c.computeColliderMovement(collider, { x: mx, y: vy.current * dt, z: mz });
     if (c.computedGrounded()) vy.current = 0;
     const mv = c.computedMovement();
-    b.setNextKinematicTranslation({
-      x: p.x + mv.x,
-      y: p.y + mv.y,
-      z: p.z + mv.z,
-    });
+    b.setNextKinematicTranslation({ x: p.x + mv.x, y: p.y + mv.y, z: p.z + mv.z });
 
     // turn smoothly to face the direction of travel
     if (inner.current) {
@@ -186,7 +229,7 @@ export default function RoamingCompanion({
     speechTimer.current = window.setTimeout(() => setSpeech(null), 3600);
   };
 
-  const startPos: Vec3 = [GROUND_SPOTS[0].pos[0], 0.2, GROUND_SPOTS[0].pos[2]];
+  const startPos: Vec3 = [START.pos[0], 0.2, START.pos[2]];
 
   return (
     <RigidBody
@@ -195,8 +238,11 @@ export default function RoamingCompanion({
       colliders={false}
       position={startPos}
     >
-      {/* collision capsule (bottom at the feet, y=0) — render mesh ≠ collider */}
-      <CapsuleCollider args={[0.3, 0.45]} position={[0, 0.75, 0]} />
+      {/* collision capsule (bottom at the feet, y=0) — render mesh ≠ collider.
+          Slim (radius 0.3) on purpose: the VISUAL pet stays chunky (scale 1.28),
+          but a slimmer collider clears the stair width, the ramp/landing junction
+          and the loft's L corner instead of wedging on them. */}
+      <CapsuleCollider args={[0.5, 0.3]} position={[0, 0.8, 0]} />
       <group ref={inner} scale={1.28}>
         <CharacterModel
           type={type}

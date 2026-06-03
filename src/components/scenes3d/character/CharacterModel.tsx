@@ -19,6 +19,7 @@ import {
   COMPANION_DRACO_PATH,
   COMPANION_MODELS,
   COMPANION_TARGET_HEIGHT,
+  GLB_PIPELINE_ENABLED,
 } from "./companionModels";
 
 type CharacterMotion = "idle" | "walk" | "wave";
@@ -128,7 +129,7 @@ function rollFeatures(
 // new asset is a one-line manifest edit with zero call-site churn.
 export default function CharacterModel(props: CharacterModelProps) {
   const species = normalizeSpecies(props.type);
-  const url = COMPANION_MODELS[species];
+  const url = GLB_PIPELINE_ENABLED ? COMPANION_MODELS[species] : undefined;
   if (url) {
     return (
       <GltfCharacter
@@ -142,9 +143,12 @@ export default function CharacterModel(props: CharacterModelProps) {
 }
 
 // Preload every listed asset (+ wire the Draco decoder path) so the first mount
-// doesn't pop in. Safe to call at module scope — drei dedupes.
-for (const u of Object.values(COMPANION_MODELS)) {
-  if (u) useGLTF.preload(u, COMPANION_DRACO_PATH);
+// doesn't pop in. Safe to call at module scope — drei dedupes. No-op while the
+// pipeline is disabled, so nothing is fetched.
+if (GLB_PIPELINE_ENABLED) {
+  for (const u of Object.values(COMPANION_MODELS)) {
+    if (u) useGLTF.preload(u, COMPANION_DRACO_PATH);
+  }
 }
 
 // Loads a species GLB and renders it the toon way: each authored material is

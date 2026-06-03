@@ -7,7 +7,6 @@ import { completeOAuthLogin, getSupabase } from "@/lib/supabaseClient";
 import { useGameStore, type Screen } from "@/state/gameStore";
 import AlbumScreen from "./screens/AlbumScreen";
 import ConnectAgentScreen from "./screens/ConnectAgentScreen";
-import CreateScreen from "./screens/CreateScreen";
 import HomeScreen from "./screens/HomeScreen";
 import LoginScreen from "./screens/LoginScreen";
 import PackScreen from "./screens/PackScreen";
@@ -80,8 +79,6 @@ function renderScreen(screen: Screen) {
   switch (screen) {
     case "login":
       return <LoginScreen />;
-    case "create":
-      return <CreateScreen />;
     case "connect":
       return <ConnectAgentScreen />;
     case "profile":
@@ -182,7 +179,7 @@ export default function GameRoot() {
     // No pet: a failed adoption falls back to the connect screen so the owner
     // can retry / attach an agent.
     effective = "connect";
-  } else if (screen === "login" || screen === "create") {
+  } else if (screen === "login") {
     effective = "home";
   } else if (
     companionState === "traveling" &&

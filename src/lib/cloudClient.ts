@@ -75,16 +75,18 @@ export const cloud = {
       gesture,
     }),
   pat: (token: string) => call<MutationResult>("POST", "/api/agent/pat", token),
-  // Agent-driven day decisions (the web client can drive them too).
+  // Agent-driven day decision. Current supported actions: travel / stay.
+  day: (
+    token: string,
+    body:
+      | { action: "travel"; destination?: string; note?: string }
+      | { action: "stay"; mode?: string; note?: string },
+  ) => call<MutationResult>("POST", "/api/agent/day", token, body),
+  // Backward-compatible helpers for older callers.
   travel: (token: string, destination?: string, note?: string) =>
-    call<MutationResult>("POST", "/api/agent/travel", token, {
-      destination,
-      note,
-    }),
-  battle: (token: string, note?: string) =>
-    call<MutationResult>("POST", "/api/agent/battle", token, { note }),
+    cloud.day(token, { action: "travel", destination, note }),
   stay: (token: string, mode?: string, note?: string) =>
-    call<MutationResult>("POST", "/api/agent/stay", token, { mode, note }),
+    cloud.day(token, { action: "stay", mode, note }),
   collect: (token: string) =>
     call<MutationResult>("POST", "/api/agent/collect", token),
   // Re-roll / set the pet's look (type/color/accessory). Empty opts → random.
@@ -92,10 +94,4 @@ export const cloud = {
     token: string,
     opts?: { random?: boolean; type?: string; primaryColor?: string; accessory?: string },
   ) => call<MutationResult>("POST", "/api/agent/restyle", token, opts ?? { random: true }),
-  postcardImage: (token: string, id: string) =>
-    call<{ ok: boolean; status: string; url: string | null }>(
-      "GET",
-      `/api/agent/postcards/${id}/image`,
-      token,
-    ),
 };

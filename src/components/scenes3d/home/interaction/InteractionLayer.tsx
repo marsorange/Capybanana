@@ -3,7 +3,15 @@
 import { useGameStore } from "@/state/gameStore";
 import { commandWalk } from "./commandBus";
 import InteractionMarker from "./InteractionMarker";
-import { FLOOR_H, type Vec3 } from "../layout";
+import {
+  BED,
+  PACK,
+  PACK_BENCH,
+  POSTCARD,
+  POSTCARD_BOARD,
+  REST,
+  type Vec3,
+} from "../layout";
 
 // All the labelled, tap-to-move interaction points in the home scene. Tapping a
 // label sends the pet walking there, then opens a screen or plays an activity.
@@ -19,50 +27,27 @@ export default function InteractionLayer() {
 
   return (
     <group>
-      {/* screen actions */}
+      {/* 打包 — on the bench at the front-left of the ground floor */}
       <InteractionMarker
-        pos={[-1.5, 0, -0.7]}
+        pos={PACK_BENCH}
         label="打包"
-        onClick={() => walk([-1.0, 0, -0.3], 0, () => goTo("pack"))}
+        onClick={() => walk(PACK.pos, 0, () => goTo("pack"))}
       />
+      {/* 明信片 — on the postcard board out in the yard (right of the house) */}
       <InteractionMarker
-        pos={[-3.9, 0, -1.05]}
+        pos={POSTCARD_BOARD}
         label="明信片"
-        onClick={() => walk([-3.9, 0, -1.05], 0, () => goTo("album"))}
+        labelY={1.1}
+        onClick={() => walk(POSTCARD.pos, 0, () => goTo("album"))}
       />
-
-      {/* in-scene activities */}
+      {/* 休息 — the bed up in the loft (the pet climbs the stairs to get there) */}
       <InteractionMarker
-        pos={[0.7, 0, 2.0]}
-        label="种田"
-        color="#7caf58"
-        onClick={() =>
-          walk([0.7, 0, 2.0], 0, undefined, {
-            activity: "clean",
-            say: "帮菜地松松土～",
-            dwell: 4,
-          })
-        }
-      />
-      <InteractionMarker
-        pos={[3.0, 0, 1.85]}
-        label="采摘"
-        color="#7caf58"
-        onClick={() =>
-          walk([2.9, 0, 1.6], 0, undefined, {
-            activity: "look",
-            say: "摘点果子～",
-            dwell: 3.5,
-          })
-        }
-      />
-      <InteractionMarker
-        pos={[-3.6, FLOOR_H, -3.4]}
-        label="睡觉"
+        pos={BED}
+        label="休息"
         color="#9aa6c8"
         labelY={1.05}
         onClick={() =>
-          walk([-3.6, FLOOR_H, -3.5], 1, undefined, {
+          walk(REST.pos, 1, undefined, {
             activity: "sleep",
             say: "困了，眯一会儿…",
             dwell: 5,

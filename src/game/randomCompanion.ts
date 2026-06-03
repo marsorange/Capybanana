@@ -1,7 +1,6 @@
-// Roll a brand-new travel companion. Used by both the client (the "🎲 换一只"
-// reroll on the create screen) and the server (a new account's first pet), so a
-// fresh pet looks the same wherever it is born. A roll now lands on one of the
-// six roster characters, wearing that character's signature color + accessory.
+// Roll a brand-new travel companion (the server mints a new account's first
+// pet). The product ships a single fixed character now, so the species is always
+// the capybara — `CHARACTERS` holds one entry — and only the cute name varies.
 import { CHARACTERS, isSpecies, normalizeSpecies } from "./characters";
 import { ACCESSORIES, PERSONALITIES } from "./labels";
 import type { Accessory, CompanionType, Personality } from "./types";

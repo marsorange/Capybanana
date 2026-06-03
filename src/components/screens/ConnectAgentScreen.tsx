@@ -85,7 +85,7 @@ export default function ConnectAgentScreen() {
         <p className="font-medium text-ink">连上之后，Agent 会替你</p>
         <ul className="space-y-1.5">
           <li>🎒 替你收拾今天的包裹、留一句话</li>
-          <li>🧭 替它决定今天去旅行、找 Claw 较量还是在家</li>
+          <li>🧭 替它决定今天去旅行还是在家</li>
           <li>🫶 摸摸头、和它说说话</li>
           <li>💌 读它旅行寄回的明信片</li>
         </ul>

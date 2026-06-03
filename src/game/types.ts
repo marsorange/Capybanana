@@ -1,9 +1,9 @@
 // Core domain types for Capybanana.
 
-// The protagonist roster: six fixed characters, each its own species. The
-// reference art lives in src/asset/Character/*.png; their dedicated 3D assets
-// get generated later (until then the shared low-poly placeholder stands in).
-// See src/game/characters.ts for the per-species metadata.
+// Protagonist species. The product ships a SINGLE fixed character (the
+// capybara); this union stays wider only so legacy saves and agent-supplied
+// `type` strings still type-check — characters.ts collapses them all back to the
+// capybara via normalizeSpecies. See src/game/characters.ts.
 export type CompanionType =
   | "capybara"
   | "rabbit"
@@ -80,11 +80,8 @@ export type OutcomeKind =
   | "home"
   | "yard"
   | "travel"
-  | "claw"
   | "rest"
   | "secret";
-
-export type BattleResult = "win" | "lose" | "draw";
 
 export interface DayOutcome {
   id: string;
@@ -103,20 +100,7 @@ export interface DayOutcome {
   memory?: string; // appended to CapyState.memories (secrets build suspense)
   trait?: string; // a personality trait it picked up
   postcard?: Postcard; // only for travel outcomes
-  battle?: BattleResult; // only for claw outcomes — win/lose/draw (seeds 对战记录)
   resolvedAt: string;
-}
-
-// A persisted record of one scrap with Claw — the "对战记录" counterpart to
-// postcards (travel records). Derived from a resolved claw DayOutcome.
-export interface BattleRecord {
-  id: string;
-  result: BattleResult;
-  title: string; // e.g. "它赢下了和 Claw 的对决"
-  story: string; // the battle report
-  spoils?: string; // 战利品 brought back (the outcome's souvenir)
-  injury: number; // 受伤值 taken this fight (effects.injury, for flavor)
-  at: string; // ISO timestamp it resolved
 }
 
 export type DestinationTheme =
@@ -136,9 +120,8 @@ export type TripStatus = "traveling" | "returned";
 export type Gesture = "pat"; // optional 摸头/手势
 
 // What the agent decided the pet should do with the day. A concrete OutcomeKind
-// forces that ending; "auto" lets the pet pick for itself (weighted random, the
-// legacy autonomous behavior); "quiet" is a low-key day (home/yard/rest).
-export type TripIntent = OutcomeKind | "auto" | "quiet";
+// forces that ending; "quiet" is a low-key day (home/yard/rest).
+export type TripIntent = OutcomeKind | "quiet";
 
 export interface Trip {
   id: string;

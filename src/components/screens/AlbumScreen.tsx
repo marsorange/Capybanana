@@ -2,33 +2,20 @@
 
 import { useState } from "react";
 
-import type { BattleResult } from "@/game/types";
 import { getDestination } from "@/game/destinations";
-import { MOCK_POSTCARDS } from "@/game/mockPostcards";
 import { useGameStore } from "@/state/gameStore";
 import Button from "../ui/Button";
 import { cn } from "../ui/cn";
 import PostcardArt from "../ui/PostcardArt";
 
-type Tab = "cards" | "battle" | "souvenir" | "misread" | "growth";
+type Tab = "cards" | "souvenir" | "misread" | "growth";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "cards", label: "📮 明信片" },
-  { id: "battle", label: "⚔️ 对战" },
   { id: "souvenir", label: "🎁 纪念品" },
   { id: "misread", label: "📖 误解词典" },
   { id: "growth", label: "🌱 成长" },
 ];
-
-// Win/lose/draw flavor for a 对战记录 card.
-const BATTLE_META: Record<
-  BattleResult,
-  { emoji: string; label: string; ring: string; chip: string }
-> = {
-  win: { emoji: "🟢", label: "胜", ring: "border-leaf/50", chip: "bg-leaf/15 text-leaf" },
-  lose: { emoji: "🔴", label: "负", ring: "border-accent/45", chip: "bg-accent/12 text-accent" },
-  draw: { emoji: "🟡", label: "平", ring: "border-ink/15", chip: "bg-ink/8 text-ink-soft" },
-};
 
 const STATS: { key: "mood" | "energy" | "curiosity" | "bravery" | "injury" | "bond"; label: string }[] = [
   { key: "mood", label: "心情" },
@@ -53,7 +40,6 @@ export default function AlbumScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const capy = useGameStore((s) => s.capyState);
   const postcards = useGameStore((s) => s.postcards);
-  const battles = useGameStore((s) => s.battles);
   const souvenirs = useGameStore((s) => s.souvenirs);
   const misunderstandings = useGameStore((s) => s.misunderstandings);
   const pendingId = useGameStore((s) => s.pendingPostcardId);
@@ -62,8 +48,7 @@ export default function AlbumScreen() {
 
   const [tab, setTab] = useState<Tab>("cards");
 
-  // The user's own postcards (newest first) followed by the shared demo cards.
-  const cards = [...postcards, ...MOCK_POSTCARDS];
+  const cards = postcards;
 
   return (
     <div className="flex h-full flex-col">
@@ -139,72 +124,9 @@ export default function AlbumScreen() {
             </div>
           ))}
 
-        {tab === "battle" &&
-          (battles.length === 0 ? (
-            <Empty text="还没有对战记录。让它去找 Claw 较量一场吧。" />
-          ) : (
-            <div className="space-y-3">
-              {/* W-L-D tally */}
-              <div className="flex gap-2 text-[13px]">
-                {(["win", "draw", "lose"] as BattleResult[]).map((r) => {
-                  const n = battles.filter((b) => b.result === r).length;
-                  const m = BATTLE_META[r];
-                  return (
-                    <span
-                      key={r}
-                      className={cn(
-                        "flex-1 rounded-sticker border-2 border-ink/10 px-2 py-1.5 text-center",
-                        m.chip,
-                      )}
-                    >
-                      {m.label} {n}
-                    </span>
-                  );
-                })}
-              </div>
-              {battles.map((b) => {
-                const m = BATTLE_META[b.result];
-                return (
-                  <div
-                    key={b.id}
-                    className={cn(
-                      "rounded-sticker border-2 bg-paper px-4 py-3 shadow-[0_2px_0_rgba(58,46,42,0.08)]",
-                      m.ring,
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 font-hand text-[15px] text-ink">
-                        <span>{m.emoji}</span>
-                        <span>{m.label} · vs Claw</span>
-                      </span>
-                      <span className="text-[11px] text-ink-soft">
-                        {fmtDate(b.at)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
-                      {b.story}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
-                      {b.spoils && (
-                        <span className="rounded-full bg-cream-soft px-2 py-0.5 text-ink-soft">
-                          🎁 {b.spoils}
-                        </span>
-                      )}
-                      {b.injury > 0 && (
-                        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">
-                          负伤 {b.injury}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-
         {tab === "souvenir" &&
           (souvenirs.length === 0 ? (
-            <Empty text="还没带回纪念品。出门或遇到 Claw 时也许会有。" />
+            <Empty text="还没带回纪念品。等它哪天出门，也许会带回一点小东西。" />
           ) : (
             <ul className="space-y-2">
               {souvenirs.map((s, i) => (

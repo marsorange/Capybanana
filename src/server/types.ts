@@ -1,6 +1,5 @@
-// Server-side persistence shapes (stored in KV).
+// Server-side persistence shapes (stored in Supabase/Postgres).
 import type {
-  BattleRecord,
   CapyState,
   Companion,
   CompanionState,
@@ -50,11 +49,10 @@ export interface CloudSave {
   postcards: Postcard[];
   souvenirs: string[];
   misunderstandings: string[];
-  battles: BattleRecord[]; // newest-first; the pet's 对战记录 (scraps with Claw)
   lastResult: DayOutcome | null;
   pendingPostcardId: string | null;
   pendingMessage: string | null; // a thing the agent "said"; seeds the next trip
-  lastActionDay: string | null; // YYYY-MM-DD (UTC) the day's growth action (travel/battle/stay) was spent — caps the pet to one a day
+  lastActionDay: string | null; // YYYY-MM-DD (UTC) the day's growth action (travel/stay) was spent — caps the pet to one a day
   rev: number;
   updatedAt: string;
   events: AgentEvent[];

@@ -174,28 +174,30 @@ export default function SceneCanvas({
       <WebGLContextGuard />
       <BendApplier strength={bendStrength} center={bendCenter} falloff={bendFalloff} />
       {sun && <ShadowEnabler />}
-      {/* bright, airy "日系" low-poly light: high soft sky fill keeps it fresh
-          while a warm sun key sculpts the facets and casts real shadows. */}
-      <hemisphereLight args={["#fffdf6", "#ece1cd", 1.05]} />
-      <ambientLight intensity={0.52} color="#fff7ee" />
+      {/* warm "日系" low-poly light with real form: a softer sky fill + lower
+          ambient so the directional SUN key actually sculpts the facets and lays
+          down soft contact shadows (the depth the scene was missing). */}
+      <hemisphereLight args={["#fffdf6", "#e7d8be", 0.72]} />
+      <ambientLight intensity={0.32} color="#fff4e6" />
       <directionalLight
-        position={[9, 13, 6]}
-        intensity={2.1}
-        color="#fff0cf"
+        position={[8, 12, 5]}
+        intensity={sun ? 2.9 : 2.2}
+        color="#ffeec6"
         castShadow={sun}
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-camera-near={0.5}
         shadow-camera-far={48}
-        shadow-camera-left={-11}
-        shadow-camera-right={11}
-        shadow-camera-top={11}
-        shadow-camera-bottom={-11}
-        shadow-bias={-0.0012}
-        shadow-normalBias={0.02}
+        shadow-camera-left={-12}
+        shadow-camera-right={12}
+        shadow-camera-top={12}
+        shadow-camera-bottom={-12}
+        shadow-bias={-0.0011}
+        shadow-normalBias={0.025}
       />
-      <directionalLight position={[-8, 6, -3]} intensity={0.45} color="#dbe6f6" />
-      <directionalLight position={[1, 3, -9]} intensity={0.28} color="#ffe2d0" />
+      {/* cool sky bounce + a warm back rim so shadowed faces still read */}
+      <directionalLight position={[-7, 5, -3]} intensity={0.5} color="#cdddf2" />
+      <directionalLight position={[-2, 3, -9]} intensity={0.32} color="#ffd9bc" />
 
       <Suspense fallback={null}>
         {physics ? (

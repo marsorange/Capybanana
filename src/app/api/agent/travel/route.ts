@@ -4,7 +4,7 @@
 //   the packed bag + the owner's wish. The result (and its postcard) still
 //   surprises everyone.
 import { authed, commit, commitError, jsonError } from "@/server/api";
-import { dayBlockedReason, startTravel, tickSave } from "@/server/engine";
+import { dayBlockedReason, decideDay, tickSave } from "@/server/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,5 +30,8 @@ export async function POST(req: Request): Promise<Response> {
     typeof body.destination === "string" ? body.destination : undefined;
   const note = typeof body.note === "string" ? body.note : undefined;
 
-  return commit(a.user.petId, startTravel(save, { destination, note }, now));
+  return commit(
+    a.user.petId,
+    decideDay(save, { action: "travel", destination, note }, now),
+  );
 }

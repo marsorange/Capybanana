@@ -2,11 +2,11 @@
 // The route layer still speaks the old CloudSave shape while storage is now split
 // across the relational tables in supabase/migrations/0001_storage_refactor.sql.
 import { createHash, randomUUID } from "node:crypto";
+import type { Sql, TransactionSql } from "postgres";
 
 import { NO_AUTO_DEPART } from "@/game/clock";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import type {
-  BattleRecord,
   Companion,
   CompanionState,
   DayOutcome,
@@ -23,10 +23,7 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DEV_UUID_NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 
-type Sql = ReturnType<typeof sqlDb>;
-// postgres.js exposes a transaction-specific tagged-template type that is
-// awkward to extract from overloads. These helpers only need the query shape.
-type Query = any;
+type Query = Sql | TransactionSql;
 
 interface UserRow {
   id: string;
@@ -74,7 +71,7 @@ interface BagRow {
 interface TripRow {
   id: string;
   legacy_id: string | null;
-  kind: "travel" | "battle" | "stay";
+  kind: "travel" | "stay";
   intent: Trip["intent"] | null;
   destination_theme: Trip["destination"] | null;
   status: "started" | "resolved" | "canceled";
@@ -104,16 +101,6 @@ interface PostcardRow {
   sent_at: Date | string;
 }
 
-interface BattleRow {
-  legacy_id: string | null;
-  result: BattleRecord["result"];
-  title: string;
-  story: string;
-  spoils: string | null;
-  attacker_injury: number;
-  created_at: Date | string;
-}
-
 interface ActivityRow {
   id: number;
   legacy_seq: number | null;
@@ -137,7 +124,6 @@ export function emptySave(): CloudSave {
     postcards: [],
     souvenirs: [],
     misunderstandings: [],
-    battles: [],
     lastResult: null,
     pendingPostcardId: null,
     pendingMessage: null,
@@ -205,16 +191,16 @@ function userFromRow(row: UserRow, bindToken: string): User {
 }
 
 function stripStoredItem(item: PackedItem): PackedItem {
-  const { photo: _photo, ...rest } = item;
-  return rest as PackedItem;
+  const rest = { ...item };
+  delete rest.photo;
+  return rest;
 }
 
 function stripStoredItems(items: PackedItem[] | undefined): PackedItem[] {
   return (items ?? []).slice(0, 3).map(stripStoredItem);
 }
 
-function tripKind(trip: Trip): "travel" | "battle" | "stay" {
-  if (trip.intent === "claw") return "battle";
+function tripKind(trip: Trip): "travel" | "stay" {
   if (
     trip.intent === "home" ||
     trip.intent === "yard" ||
@@ -297,14 +283,6 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     order by p.sent_at desc
   `;
 
-  const battleRows = await tx<BattleRow[]>`
-    select *
-    from battles
-    where attacker_pet_id = ${petId}::uuid
-    order by created_at desc
-    limit 60
-  `;
-
   const activityRows = await tx<ActivityRow[]>`
     select id, legacy_seq, kind, title, payload, created_at
     from activities
@@ -351,7 +329,6 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     postcards,
     souvenirs: pet.souvenirs ?? [],
     misunderstandings: pet.misunderstandings ?? [],
-    battles: battleRows.map(battleFromRow),
     lastResult: pet.last_result,
     pendingPostcardId: pending ? (pending.legacy_id ?? "") : null,
     pendingMessage: pet.pending_message,
@@ -400,18 +377,6 @@ function postcardFromRow(row: PostcardRow): Postcard {
     imagePrompt: row.image_prompt ?? undefined,
     imageStatus: row.image_status ?? undefined,
     imageUrl: row.image_path ?? undefined,
-  };
-}
-
-function battleFromRow(row: BattleRow): BattleRecord {
-  return {
-    id: row.legacy_id ?? "",
-    result: row.result,
-    title: row.title,
-    story: row.story,
-    spoils: row.spoils ?? undefined,
-    injury: row.attacker_injury,
-    at: iso(row.created_at),
   };
 }
 
@@ -564,51 +529,6 @@ async function syncPostcards(
       update postcards
       set collected = true
       where pet_id = ${petId}::uuid
-    `;
-  }
-}
-
-async function syncBattles(
-  tx: Query,
-  petId: string,
-  save: CloudSave,
-): Promise<void> {
-  for (const battle of save.battles ?? []) {
-    await tx`
-      insert into battles (
-        legacy_id, day, attacker_pet_id, defender_pet_id, is_npc,
-        attacker_snapshot, defender_snapshot, result, attacker_injury, spoils,
-        title, story, created_at
-      )
-      values (
-        ${battle.id},
-        ${battle.at.slice(0, 10)}::date,
-        ${petId}::uuid,
-        null,
-        true,
-        ${tx.json({
-          name: save.companion?.name,
-          species: save.companion?.type,
-          color: save.companion?.primaryColor,
-          bravery: save.capyState.bravery,
-          energy: save.capyState.energy,
-          bond: save.capyState.bond,
-        } as never)},
-        ${tx.json({ name: "Claw", isNpc: true } as never)},
-        ${battle.result},
-        ${battle.injury},
-        ${battle.spoils ?? null},
-        ${battle.title},
-        ${battle.story},
-        ${new Date(battle.at)}
-      )
-      on conflict (legacy_id) do update set
-        result = excluded.result,
-        attacker_injury = excluded.attacker_injury,
-        spoils = excluded.spoils,
-        title = excluded.title,
-        story = excluded.story,
-        created_at = excluded.created_at
     `;
   }
 }
@@ -834,7 +754,6 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
       : null;
 
     await syncPostcards(tx, petId, save.postcards ?? [], save.pendingPostcardId);
-    await syncBattles(tx, petId, save);
     await syncEvents(tx, petId, save.events ?? []);
 
     await tx`

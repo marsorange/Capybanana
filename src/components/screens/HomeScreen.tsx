@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import type { OutcomeKind } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import HomeModel from "../scenes3d/home/HomeModel";
 import HomeColliders from "../scenes3d/home/HomeColliders";
@@ -24,16 +23,6 @@ const READY_LINES = [
   "你留的那句话，我记住了。",
 ];
 
-// Dev/QA preview menu: one tap to see每种结局长什么样 —— 出门旅行 + 在家的各种状态。
-const TEST_OUTCOMES: { kind: OutcomeKind; emoji: string; label: string }[] = [
-  { kind: "travel", emoji: "✈️", label: "出门旅行" },
-  { kind: "home", emoji: "🏡", label: "在家待着" },
-  { kind: "yard", emoji: "🌿", label: "院子里晃" },
-  { kind: "rest", emoji: "😴", label: "休息养伤" },
-  { kind: "claw", emoji: "⚔️", label: "找 Claw 对决" },
-  { kind: "secret", emoji: "🌙", label: "神秘事件" },
-];
-
 export default function HomeScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const capy = useGameStore((s) => s.capyState);
@@ -41,18 +30,7 @@ export default function HomeScreen() {
   const postcards = useGameStore((s) => s.postcards);
   const lastResult = useGameStore((s) => s.lastResult);
   const goTo = useGameStore((s) => s.goTo);
-  const devPreviewOutcome = useGameStore((s) => s.devPreviewOutcome);
-  const devRunDay = useGameStore((s) => s.devRunDay);
-  const openAgentOnboardingLogin = useGameStore(
-    (s) => s.openAgentOnboardingLogin,
-  );
-  const cloudBusy = useGameStore((s) => s.cloudBusy);
-  const cloudError = useGameStore((s) => s.cloudError);
   const bound = useGameStore((s) => !!s.cloud);
-  const [showTest, setShowTest] = useState(false);
-  // "preview" = pure local look-see (repeatable, no mutation);
-  // "run" = actually resolve the day (guest: local apply / cloud: real server).
-  const [testMode, setTestMode] = useState<"preview" | "run">("preview");
 
   const wallThemes = useMemo(
     () => postcards.slice(0, 3).map((p) => p.destinationTheme),
@@ -83,15 +61,15 @@ export default function HomeScreen() {
         orthographic
         sun
         physics
-        cameraPosition={[9, 8.4, 9]}
-        target={[-0.4, 2.4, -0.4]}
-        zoom={45}
+        cameraPosition={[5, 6.5, 11]}
+        target={[-1.6, 2.0, -2.0]}
+        zoom={60}
         enableZoom
-        minZoom={30}
-        maxZoom={95}
-        minPolar={0.6}
-        maxPolar={1.32}
-        bendStrength={0.15}
+        minZoom={34}
+        maxZoom={120}
+        minPolar={0.7}
+        maxPolar={1.3}
+        bendStrength={0}
       >
         {/* visual diorama (throwaway art) */}
         <HomeModel
@@ -165,76 +143,6 @@ export default function HomeScreen() {
         </button>
       )}
 
-      {/* dev/QA test panel: 走一遍每种结局 —— 出门旅行 + 在家的不同状态。
-          「预览」纯本地、不改数值、可反复点；「真跑」真实结算（访客改本地数值 /
-          云端驱动真宠物，受每日一次·受伤限制）。 */}
-      <div className="absolute right-4 top-24 flex flex-col items-end gap-1.5">
-        <button
-          onClick={() => setShowTest((v) => !v)}
-          className="pointer-events-auto rounded-full border border-dashed border-ink/30 bg-cream-soft/80 px-3 py-1 text-[11px] text-ink-soft/80"
-        >
-          🧪 测试{showTest ? " ▴" : " ▾"}
-        </button>
-        {showTest && (
-          <div className="pointer-events-auto w-44 rounded-sticker border-2 border-dashed border-ink/15 bg-paper/95 p-2 shadow-[0_3px_0_rgba(58,46,42,0.12)]">
-            {/* mode toggle */}
-            <div className="mb-1.5 flex rounded-full border-2 border-ink/10 bg-cream-soft p-0.5 text-[11px]">
-              {(["preview", "run"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setTestMode(m)}
-                  className={`flex-1 rounded-full px-2 py-1 ${
-                    testMode === m
-                      ? "bg-paper text-ink shadow-[0_1px_0_rgba(58,46,42,0.1)]"
-                      : "text-ink-soft/70"
-                  }`}
-                >
-                  {m === "preview" ? "👁 预览" : "▶️ 真跑"}
-                </button>
-              ))}
-            </div>
-            <p className="px-1 pb-1 text-[10px] leading-snug text-ink-soft/70">
-              {testMode === "preview"
-                ? "只看结果·不改数值"
-                : bound
-                  ? "真实结算·驱动云端宠物"
-                  : "真实结算·会改数值"}
-            </p>
-            {TEST_OUTCOMES.map((o) => (
-              <button
-                key={o.kind}
-                disabled={cloudBusy}
-                onClick={() => {
-                  setShowTest(false);
-                  if (testMode === "preview") devPreviewOutcome(o.kind);
-                  else devRunDay(o.kind);
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-ink active:bg-cream-soft disabled:opacity-40"
-              >
-                <span className="w-5 text-center">{o.emoji}</span>
-                <span>{o.label}</span>
-              </button>
-            ))}
-            <div className="my-1 border-t border-dashed border-ink/15" />
-            <button
-              disabled={cloudBusy}
-              onClick={() => {
-                setShowTest(false);
-                openAgentOnboardingLogin();
-              }}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-ink active:bg-cream-soft disabled:opacity-40"
-            >
-              <span className="w-5 text-center">🔗</span>
-              <span>新用户绑定页</span>
-            </button>
-            {cloudError && (
-              <p className="px-1 pt-1 text-[10px] leading-snug text-accent">
-                {cloudError}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

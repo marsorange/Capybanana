@@ -1,4 +1,3 @@
-import { planTrip } from "./planTrip";
 import { resolveDay } from "./resolveDay";
 import type {
   CapyState,
@@ -9,32 +8,10 @@ import type {
   Postcard,
   Trip,
 } from "./types";
-import { randRange, uid } from "./util";
-
-// Compressed timing: after packing, the "day" plays out over a short window,
-// then resolves into one of the outcomes. Offline catch-up still resolves it.
-export const TIMING = { departMin: 8_000, departMax: 28_000 };
-
-// How long the pet is "away" when the agent sends it to scrap with Claw — a
-// quick scuffle, much shorter than a full trip.
-export const BATTLE = { awayMin: 12_000, awayMax: 30_000 };
 
 // Sentinel departAt for an agent-driven (cloud) pet: it never auto-departs on
-// its own — it waits for the agent to decide (travel / battle / stay).
+// its own — it waits for the agent to decide the day.
 export const NO_AUTO_DEPART = Number.MAX_SAFE_INTEGER;
-
-export interface DepartureDecision {
-  departAt: number;
-  willGo: boolean;
-}
-
-/** When the prepared day starts to unfold (local/guest autonomous mode). */
-export function scheduleDeparture(now: number): DepartureDecision {
-  return {
-    departAt: now + randRange(TIMING.departMin, TIMING.departMax),
-    willGo: true,
-  };
-}
 
 export interface LifecycleState {
   companion: Companion | null;
@@ -55,55 +32,29 @@ export interface AdvanceOutcome {
 }
 
 /**
- * ready -> (day unfolds) -> resolved into home/yard/travel. Loops so a long
- * offline gap resolves both the start and the result in one call.
+ * Cloud pets only advance server-authored trips. `ready` never auto-departs:
+ * the agent must explicitly choose the day's action.
  */
 export function advanceLifecycle(
   input: LifecycleState,
   now: number,
 ): AdvanceOutcome {
   const { companion, capy } = input;
-  let { companionState, packedBag, activeTrip, postcards } = input;
-  let started = false;
+  const { packedBag } = input;
+  let { companionState, activeTrip, postcards } = input;
+  const started = false;
   let outcome: DayOutcome | null = null;
 
   if (companion) {
-    for (let i = 0; i < 4; i++) {
-      if (companionState === "ready" && packedBag && now >= packedBag.departAt) {
-        const plan = planTrip(packedBag.items, packedBag.message);
-        const startedAt = packedBag.departAt;
-        activeTrip = {
-          id: uid("trip"),
-          companionId: companion.id,
-          items: packedBag.items,
-          message: packedBag.message,
-          gesture: packedBag.gesture,
-          status: "traveling",
-          destination: plan.destination,
-          intent: "auto", // it left on its own → it decides its own ending
-          startedAt,
-          durationMs: plan.durationMs,
-          returnsAt: startedAt + plan.durationMs,
-        };
-        companionState = "traveling";
-        packedBag = null;
-        started = true;
-        continue;
-      }
-
-      if (
-        companionState === "traveling" &&
-        activeTrip &&
-        now >= activeTrip.returnsAt
-      ) {
-        outcome = resolveDay(companion, capy, activeTrip);
-        if (outcome.postcard) postcards = [outcome.postcard, ...postcards];
-        activeTrip = { ...activeTrip, status: "returned" };
-        companionState = "idle_home";
-        continue;
-      }
-
-      break;
+    if (
+      companionState === "traveling" &&
+      activeTrip &&
+      now >= activeTrip.returnsAt
+    ) {
+      outcome = resolveDay(companion, capy, activeTrip);
+      if (outcome.postcard) postcards = [outcome.postcard, ...postcards];
+      activeTrip = { ...activeTrip, status: "returned" };
+      companionState = "idle_home";
     }
   }
 

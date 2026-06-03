@@ -3,7 +3,7 @@
 //   mode — force where it spends the day; omitted → a low-key day picked from
 //   home/yard/rest based on the bag and how it feels (rest if hurt/tired).
 import { authed, commit, commitError, jsonError } from "@/server/api";
-import { dayBlockedReason, stayHome, tickSave } from "@/server/engine";
+import { dayBlockedReason, decideDay, tickSave } from "@/server/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,5 +28,5 @@ export async function POST(req: Request): Promise<Response> {
   const mode = typeof body.mode === "string" ? body.mode : undefined;
   const note = typeof body.note === "string" ? body.note : undefined;
 
-  return commit(a.user.petId, stayHome(save, { mode, note }, now));
+  return commit(a.user.petId, decideDay(save, { action: "stay", mode, note }, now));
 }

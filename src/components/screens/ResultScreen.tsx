@@ -49,15 +49,6 @@ const KIND_THEME: Record<
     pedestal: "#d3e7e2",
     accent: "#6FA8C9",
   },
-  claw: {
-    emoji: "⚔️",
-    caption: "和 Claw 较量了一场",
-    from: "#fdeee9",
-    to: "#f6d6cc",
-    glow: "#ffd0bf",
-    pedestal: "#f3ddcf",
-    accent: "#D95F59",
-  },
   rest: {
     emoji: "😴",
     caption: "好好休息的一天",

@@ -1,12 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { getDestination } from "@/game/destinations";
-import { MOCK_POSTCARDS } from "@/game/mockPostcards";
 import type { Postcard } from "@/game/types";
-import { cloud } from "@/lib/cloudClient";
 import { useGameStore } from "@/state/gameStore";
 import Button from "../ui/Button";
 import PostcardArt from "../ui/PostcardArt";
@@ -94,58 +92,13 @@ export default function PostcardScreen() {
   const collectPostcard = useGameStore((s) => s.collectPostcard);
   const goTo = useGameStore((s) => s.goTo);
 
-  const bindToken = useGameStore((s) => s.cloud?.bindToken ?? null);
-
-  // Include the shared demo cards so a tapped mock resolves here too.
-  const allCards = [...postcards, ...MOCK_POSTCARDS];
-  const card = allCards.find((p) => p.id === selectedId) ?? allCards[0];
+  const card = postcards.find((p) => p.id === selectedId) ?? postcards[0];
   const isFresh = pendingId != null && card?.id === pendingId;
   const [flipped, setFlipped] = useState(false);
-  const [polledUrl, setPolledUrl] = useState<string | null>(null);
 
-  // Reset the server-polled art when switching to a different card — adjust
-  // state during render (the React-recommended pattern) rather than calling
-  // setState synchronously inside an effect.
-  const [lastCardId, setLastCardId] = useState(card?.id);
-  if (card?.id !== lastCardId) {
-    setLastCardId(card?.id);
-    setPolledUrl(null);
-  }
-
-  // The art to show: an inline image (mock/demo cards) wins; otherwise the
-  // server-polled URL; otherwise the procedural SVG fallback inside <Front/>.
-  const imageUrl = card?.imageUrl ?? polledUrl;
-
-  // Cloud pets: the art is pre-generated server-side (see server/postcardImages).
-  // Poll until it's ready; meanwhile the procedural SVG shows as the fallback.
-  // Guests / inline image / no prompt / no API key → nothing to poll.
-  useEffect(() => {
-    const id = card?.id;
-    if (!id || card?.imageUrl || !bindToken || !card?.imagePrompt) return;
-    let alive = true;
-    let tries = 0;
-    let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      try {
-        const r = await cloud.postcardImage(bindToken, id);
-        if (!alive) return;
-        if (r.status === "ready" && r.url) {
-          setPolledUrl(r.url);
-          return;
-        }
-        if (r.status === "fallback") return; // no key/prompt → keep SVG
-      } catch {
-        if (!alive) return;
-      }
-      // pending (or a transient error) → keep polling for ~2min, then give up.
-      if (tries++ < 30) timer = setTimeout(poll, 4000);
-    };
-    poll();
-    return () => {
-      alive = false;
-      clearTimeout(timer);
-    };
-  }, [card?.id, card?.imageUrl, card?.imagePrompt, bindToken]);
+  // AI postcard art will later be stored in Supabase. Until then, real cards
+  // render the deterministic procedural artwork.
+  const imageUrl = card?.imageUrl ?? null;
 
   if (!card) {
     return (

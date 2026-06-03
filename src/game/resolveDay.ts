@@ -8,10 +8,9 @@ import type {
   OutcomeKind,
   Trip,
 } from "./types";
-import { pick, randInt, randRange, uid, weightedPick } from "./util";
+import { pick, randRange, uid, weightedPick } from "./util";
 
 const HOME_WORDS = ["休息", "别累", "在家", "睡", "安静", "慢", "歇"];
-const TRAVEL_WORDS = ["海", "山", "远", "旅行", "出门", "外面", "走走", "看看世界"];
 const YARD_WORDS = ["院子", "晒太阳", "种", "花", "草", "门口"];
 
 const SOUVENIRS = [
@@ -32,23 +31,6 @@ const MISREADS = [
   "你想吃它带回来的任何东西",
 ];
 
-const CLAW_REPORTS_WIN = [
-  "你来我往三个回合，它鼓起腮帮子猛地一扑，Claw 转身就溜了。",
-  "它一个利落的侧滚闪开，反手叼走了对方的小旗子，Claw 愣在原地。",
-  "它一屁股坐下耍赖，又冷不丁反击，Claw 拿它没辙，悻悻认了输。",
-  "它把带的东西当道具一通乱舞，Claw 看懵了，灰头土脸地退走。",
-];
-const CLAW_REPORTS_LOSE = [
-  "它被 Claw 连挠两爪，灰溜溜地缩回角落，回来一直舔爪子。",
-  "Claw 今天太凶，它没占到半点便宜，蔫蔫地回了家。",
-  "一个没站稳被掀翻在地，它委屈巴巴地一路小跑回来。",
-];
-const CLAW_REPORTS_DRAW = [
-  "两边对视了很久，谁也不让谁，最后居然一起分吃了点东西。",
-  "打着打着就玩到一起去了，滚成一团也分不清谁输谁赢。",
-  "互相虚张声势了半天，谁都没真动手，扮个鬼脸各回各家。",
-];
-const CLAW_SPOILS = ["Claw 掉的一颗纽扣", "一撮对方的软毛", "半块没吃完的饼干"];
 const SECRET_HINTS = [
   "它最近总盯着窗外的某个方向发呆。",
   "门口好像多了一串不属于它的脚印。",
@@ -121,54 +103,6 @@ function yardStory(tags: ItemTag[]): string {
 
 type ResolvedBase = Pick<DayOutcome, "id" | "kind" | "reason" | "resolvedAt">;
 
-// Weighted-random "what did it do today" — the legacy autonomous behavior, used
-// when the pet decides for itself (intent "auto").
-function pickAutoKind(
-  capy: CapyState,
-  tags: ItemTag[],
-  msg: string,
-  gesture: Trip["gesture"],
-): OutcomeKind {
-  const weights = new Map<OutcomeKind, number>([
-    ["home", 6],
-    ["yard", 3],
-    ["travel", 2],
-    ["claw", 1],
-    ["rest", 1],
-    ["secret", 0.6],
-  ]);
-  const add = (k: OutcomeKind, n: number) =>
-    weights.set(k, (weights.get(k) ?? 0) + n);
-
-  // tags
-  if (has(tags, "warm") || has(tags, "soft") || has(tags, "sleep")) add("home", 4);
-  if (has(tags, "work")) add("home", 2);
-  if (has(tags, "food")) add("yard", 2);
-  if (has(tags, "toy")) add("yard", 2);
-  if (has(tags, "rain")) add("home", 2);
-  if (has(tags, "shiny") || has(tags, "weird")) add("travel", 3);
-  if (has(tags, "protective")) {
-    add("travel", 1);
-    add("claw", 2);
-  }
-  // stats
-  if (capy.injury > 0) add("rest", 8);
-  if (capy.energy < 28) add("rest", 6);
-  if (capy.energy < 40) add("home", 4);
-  if (capy.curiosity > 60) {
-    add("travel", 4);
-    add("secret", 1.2);
-  }
-  if (capy.bravery > 55) add("claw", 3);
-  // message
-  if (any(msg, TRAVEL_WORDS)) add("travel", 6);
-  if (any(msg, HOME_WORDS)) add("home", 5);
-  if (any(msg, YARD_WORDS)) add("yard", 5);
-  if (gesture === "pat") add("home", 2);
-
-  return weightedPick(weights);
-}
-
 // A low-key day: only home / yard / rest, biased by the bag and how it feels.
 // Used when the agent tells it to "stay" without a specific mode.
 function pickQuietKind(capy: CapyState, tags: ItemTag[], msg: string): OutcomeKind {
@@ -190,68 +124,16 @@ function pickQuietKind(capy: CapyState, tags: ItemTag[], msg: string): OutcomeKi
 }
 
 // Resolve the day's "kind" from the agent's decision. A concrete OutcomeKind is
-// obeyed; "quiet" picks a low-key day; "auto"/undefined lets the pet choose.
+// obeyed; "quiet" picks a low-key day.
 function pickKind(
   capy: CapyState,
   tags: ItemTag[],
   msg: string,
   trip: Trip,
 ): OutcomeKind {
-  const intent = trip.intent ?? "auto";
-  if (intent === "auto") return pickAutoKind(capy, tags, msg, trip.gesture);
+  const intent = trip.intent ?? "quiet";
   if (intent === "quiet") return pickQuietKind(capy, tags, msg);
   return intent; // a concrete OutcomeKind the agent asked for
-}
-
-// A scrap with Claw resolved as win / lose / draw from the pet's fighting power
-// (bravery + energy + a protective item + bond + luck) vs a random opponent.
-function resolveClaw(
-  capy: CapyState,
-  tags: ItemTag[],
-  base: ResolvedBase,
-  misread: string | undefined,
-): DayOutcome {
-  const protective = has(tags, "protective");
-  const power =
-    capy.bravery +
-    capy.energy * 0.25 +
-    (protective ? 18 : 0) +
-    capy.bond * 0.08 +
-    randRange(0, 35);
-  const foe = randRange(35, 100);
-  const margin = power - foe;
-
-  if (margin > 10) {
-    return {
-      ...base,
-      title: "它赢下了和 Claw 的对决",
-      story: pick(CLAW_REPORTS_WIN),
-      effects: { bravery: 8, bond: 6, mood: 8, energy: -12, injury: randInt(0, 6) },
-      souvenir: Math.random() < 0.7 ? pick(CLAW_SPOILS) : undefined,
-      trait: capy.bravery > 72 ? "常胜将军" : undefined,
-      misunderstanding: misread,
-      battle: "win",
-    };
-  }
-  if (margin < -10) {
-    return {
-      ...base,
-      title: "它输给了 Claw",
-      story: pick(CLAW_REPORTS_LOSE),
-      effects: { injury: randInt(8, 20), mood: -6, energy: -15, bravery: 4, bond: 3 },
-      misunderstanding: misread,
-      battle: "lose",
-    };
-  }
-  return {
-    ...base,
-    title: "它和 Claw 打了个平手",
-    story: pick(CLAW_REPORTS_DRAW),
-    effects: { bravery: 5, injury: randInt(0, 8), mood: 3, bond: 4 },
-    souvenir: Math.random() < 0.4 ? pick(CLAW_SPOILS) : undefined,
-    misunderstanding: misread,
-    battle: "draw",
-  };
 }
 
 export function resolveDay(
@@ -307,10 +189,6 @@ export function resolveDay(
       memory: mv?.memory,
       misunderstanding: misread,
     };
-  }
-
-  if (kind === "claw") {
-    return resolveClaw(capy, tags, base, misread);
   }
 
   if (kind === "rest") {
