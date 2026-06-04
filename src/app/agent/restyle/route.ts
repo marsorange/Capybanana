@@ -54,7 +54,7 @@ export async function GET(req: Request): Promise<Response> {
       "换个造型",
       `<div class="emoji">🔗</div><h1>缺少绑定令牌</h1>
        <p>请用你自己的链接打开：<br><code>${base}/agent/restyle?bind=&lt;你的令牌&gt;</code><br>
-       令牌可在 App 的「Agent」页里拿到。</p>`,
+       令牌可在小屋的「助手」页里拿到。</p>`,
     );
 
   const found = await resolveBind(token);
@@ -66,8 +66,8 @@ export async function GET(req: Request): Promise<Response> {
     return page(
       "换个造型",
       `<div class="emoji">🥚</div><h1>这个账号还没有宠物</h1>
-       <p>先登录 App 领养一只，再回来换造型。</p>
-       <div class="btns"><a class="primary btn" href="${base}/">打开 App →</a></div>`,
+       <p>先进入小屋领养一只，再回来换造型。</p>
+       <div class="btns"><a class="primary btn" href="${base}/">打开小屋</a></div>`,
     );
 
   save = restyleCompanion(save, { random: true }, Date.now());
@@ -88,7 +88,7 @@ export async function GET(req: Request): Promise<Response> {
      <h1>${esc(c.name)} 换了个新造型！</h1>
      <div class="look">${t?.emoji ?? ""} ${t?.label ?? c.type}　·
        <span class="swatch" style="background:${esc(c.primaryColor)}"></span>${esc(colorName)}　·　${accText}</div>
-     <p>不满意就刷新本页再换一个；满意了回到 App，几秒内就会变成这个样子。</p>
+     <p>不满意就刷新本页再换一个；满意了回到小屋，几秒内就会变成这个样子。</p>
      <div class="btns">
        <a class="primary btn" href="${rerollUrl}">🎲 再换一个</a>
        <a class="ghost btn" href="${base}/">← 回到小屋看效果</a>

@@ -93,32 +93,32 @@ function FenceSide({
 }
 
 export default function Yard() {
-  const stones: [number, number][] = [
-    [1.1, 0.4],
-    [1.7, 1.3],
-    [2.2, 2.3],
-    [2.6, 3.3],
+  // a winding path of small FLAT faceted stone slabs (x, z, scale)
+  const stones: [number, number, number][] = [
+    [0.55, 0.2, 1.0],
+    [0.95, 1.0, 0.9],
+    [1.2, 1.85, 1.05],
+    [1.35, 2.75, 0.92],
+    [1.6, 3.6, 1.0],
+    [1.95, 4.4, 0.88],
   ];
 
   return (
     <group>
-      {/* door step at the house front entrance (meets the island's main path) */}
-      <mesh position={[0.55, 0.09, -0.15]}>
-        <boxGeometry args={[0.9, 0.18, 0.7]} />
-        {m("#d6cdba")}
-      </mesh>
-
-      {/* stepping-stone path from the door into the yard */}
-      {stones.map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.07, z]} rotation={[-Math.PI / 2, 0, i * 0.6]}>
-          <cylinderGeometry args={[0.26, 0.26, 0.07, 7]} />
-          {m("#cdc3ad")}
-        </mesh>
+      {/* (the stone doorstep slab at the house frame was removed) */}
+      {/* stepping-stone path — flat faceted stone slabs */}
+      {stones.map(([x, z, s], i) => (
+        <group key={i} position={[x, 0.05, z]} rotation={[0, i * 1.1, 0]} scale={[s, 1, s]}>
+          <mesh scale={[1, 0.3, 0.84]}>
+            <icosahedronGeometry args={[0.3, 0]} />
+            {m("#c4baa6")}
+          </mesh>
+        </group>
       ))}
 
       {/* ===== MAILBOX — a cute bright-red rounded mailbox beside the postcard
             board (rendered by House at POSTCARD_BOARD ≈ [2.6,0,-0.9]) ===== */}
-      <group position={[3.55, 0, -1.0]} rotation={[0, -0.6, 0]}>
+      <group position={[3.5, 0, -1.1]} rotation={[0, -0.6, 0]}>
         {/* warm wood post */}
         <mesh position={[0, 0.34, 0]}>
           <cylinderGeometry args={[0.06, 0.075, 0.68, 8]} />
@@ -157,8 +157,8 @@ export default function Yard() {
         </mesh>
       </group>
 
-      {/* ===== GARDEN LAMP POST ===== */}
-      <group position={[3.4, 0, 0.6]}>
+      {/* ===== GARDEN LAMP POST (stone lantern, beside the path) ===== */}
+      <group position={[1.8, 0, 2.6]}>
         <mesh position={[0, 0.05, 0]}>
           <cylinderGeometry args={[0.13, 0.16, 0.1, 12]} />
           {m(WOOD_DK)}
@@ -182,7 +182,7 @@ export default function Yard() {
       </group>
 
       {/* ===== BENCH ===== */}
-      <group position={[4.4, 0, 1.9]} rotation={[0, -Math.PI / 2.2, 0]}>
+      <group position={[4.0, 0, 1.4]} rotation={[0, -Math.PI / 2.2, 0]}>
         <mesh position={[0, 0.28, 0]}>
           <boxGeometry args={[1.0, 0.06, 0.3]} />
           {m(WOOD)}
@@ -199,20 +199,20 @@ export default function Yard() {
         ))}
       </group>
 
-      {/* ===== FENCED VEG GARDEN ===== */}
-      <group position={[1.5, 0, 3.1]}>
+      {/* ===== FENCED VEG GARDEN (front-left, enlarged) ===== */}
+      <group position={[-0.6, 0, 2.5]}>
         {/* tilled soil bed */}
         <mesh position={[0, 0.08, 0]}>
-          <boxGeometry args={[1.9, 0.16, 1.7]} />
+          <boxGeometry args={[2.5, 0.16, 2.1]} />
           {m("#7d553a")}
         </mesh>
         <mesh position={[0, 0.17, 0]}>
-          <boxGeometry args={[1.7, 0.02, 1.5]} />
+          <boxGeometry args={[2.3, 0.02, 1.9]} />
           {m("#8a623f")}
         </mesh>
         {/* rows of carrots, cabbages + a tulip */}
-        {[-0.5, 0.0, 0.5].map((x, col) =>
-          [-0.4, 0.3].map((z, row) => {
+        {[-0.8, -0.27, 0.27, 0.8].map((x, col) =>
+          [-0.6, 0.0, 0.6].map((z, row) => {
             const carrot = (col + row) % 2 === 0;
             return (
               <group key={`${col}-${row}`} position={[x, 0.22, z]}>
@@ -252,31 +252,44 @@ export default function Yard() {
             );
           }),
         )}
-        {/* a single bright tulip for a pop of color */}
-        <group position={[-0.5, 0.22, -0.05]}>
-          <mesh position={[0, 0.16, 0]}>
-            <cylinderGeometry args={[0.018, 0.018, 0.32, 5]} />
-            {m("#6f9352")}
-          </mesh>
-          <mesh position={[0, 0.36, 0]}>
-            <coneGeometry args={[0.07, 0.16, 6]} />
-            {m("#e8607a")}
-          </mesh>
-        </group>
-        {/* white picket fence wrapping the bed */}
-        <FenceSide pos={[0, 0, 0.88]} rot={0} len={1.95} />
-        <FenceSide pos={[0, 0, -0.88]} rot={0} len={1.95} />
-        <FenceSide pos={[0.97, 0, 0]} rot={Math.PI / 2} len={1.75} />
-        <FenceSide pos={[-0.97, 0, 0]} rot={Math.PI / 2} len={1.75} />
+        {/* a couple of bright tulips for a pop of color */}
+        {([[-0.8, -0.05], [0.55, 0.65]] as const).map(([tx, tz], i) => (
+          <group key={i} position={[tx, 0.22, tz]}>
+            <mesh position={[0, 0.16, 0]}>
+              <cylinderGeometry args={[0.018, 0.018, 0.32, 5]} />
+              {m("#6f9352")}
+            </mesh>
+            <mesh position={[0, 0.36, 0]}>
+              <coneGeometry args={[0.07, 0.16, 6]} />
+              {m(i ? "#f4c245" : "#e8607a")}
+            </mesh>
+          </group>
+        ))}
+        {/* white picket fence wrapping the bigger bed */}
+        <FenceSide pos={[0, 0, 1.05]} rot={0} len={2.55} />
+        <FenceSide pos={[0, 0, -1.05]} rot={0} len={2.55} />
+        <FenceSide pos={[1.27, 0, 0]} rot={Math.PI / 2} len={2.15} />
+        <FenceSide pos={[-1.27, 0, 0]} rot={Math.PI / 2} len={2.15} />
       </group>
 
-      {/* a few daisies scattered on the lawn */}
+      {/* a colorful spread of daisies scattered across the big lawn */}
       {([
-        [-3.0, 0, 4.6, "#f4d35e"],
-        [3.7, 0, 3.9, "#fff4f0"],
-        [4.2, 0, -0.8, "#f1a6bd"],
-        [-1.4, 0, 4.9, "#fff4f0"],
-        [0.2, 0, 4.6, "#f4d35e"],
+        [-2.6, 0, 3.9, "#f4d35e"],
+        [3.0, 0, 3.2, "#fff4f0"],
+        [3.6, 0, -0.6, "#f1a6bd"],
+        [-1.2, 0, 4.0, "#e8607a"],
+        [0.2, 0, 4.0, "#f4d35e"],
+        [-3.3, 0, -1.3, "#f0915b"],
+        [1.8, 0, 3.5, "#fff4f0"],
+        [-3.6, 0, 1.1, "#b89cd9"],
+        [4.8, 0, 2.2, "#f4d35e"],
+        [-4.8, 0, 2.0, "#fff4f0"],
+        [1.0, 0, 4.9, "#e8607a"],
+        [-2.0, 0, 4.7, "#f0915b"],
+        [4.6, 0, -2.0, "#f1a6bd"],
+        [-4.4, 0, -1.6, "#f4d35e"],
+        [2.4, 0, 4.4, "#b89cd9"],
+        [-0.6, 0, 5.0, "#fff4f0"],
       ] as const).map(([x, y, z, c], i) => (
         <Flower key={i} pos={[x, y, z]} petal={c} />
       ))}

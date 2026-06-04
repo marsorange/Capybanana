@@ -18,14 +18,15 @@ export default function DevHome() {
         controls="orbit"
         orthographic
         sun
+        sky
         physics
         debugPhysics={debug}
-        cameraPosition={[5, 6.5, 11]}
-        target={[-1.6, 2.0, -2.0]}
-        zoom={60}
+        cameraPosition={[6, 7, 12]}
+        target={[-0.6, 0.4, -0.8]}
+        zoom={38}
         enableZoom
-        minZoom={34}
-        maxZoom={120}
+        minZoom={24}
+        maxZoom={110}
         minPolar={0.7}
         maxPolar={1.3}
         bendStrength={0}

@@ -45,7 +45,7 @@ export default function InteractionLayer() {
         pos={BED}
         label="休息"
         color="#9aa6c8"
-        labelY={1.05}
+        labelY={1.35}
         onClick={() =>
           walk(REST.pos, 1, undefined, {
             activity: "sleep",

@@ -31,7 +31,8 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
   const photoText = photos.map((p) => p.keyword ?? "").join(" ");
   const byMessage = matchRule(msg, trip.destination);
   const byPhoto = matchRule(photoText, trip.destination);
-  const photoHint = photos.find((p) => p.hint)?.hint;
+  const photoClue = photos.find((p) => p.hint || p.label);
+  const photoHint = photoClue?.hint;
 
   let opening: string;
   if (byMessage) {
@@ -44,9 +45,18 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
 
   const scene = pick(meta.scenes);
   const toneLine = pick(PERSONALITY_LINES[companion.personality]);
+  const clueLine = photoHint
+    ? `你拍下的「${photoHint}」一路陪着我，像一枚小小的路标。`
+    : photoClue
+      ? `我把你拍的「${photoClue.label}」当成今天的护身符，悄悄带了一路。`
+      : "";
+  const wishLine =
+    msg.trim() && !byMessage
+      ? `你留的那句话我也带着，虽然我可能理解得有点慢。`
+      : "";
   const giftLine = presets.includes("gift") ? pick(GIFT_LINES) : "";
 
-  const message = [opening, scene, toneLine, giftLine]
+  const message = [opening, clueLine, wishLine, scene, toneLine, giftLine]
     .filter(Boolean)
     .join("\n");
 
@@ -56,7 +66,7 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
   else if (byPhoto && photoHint)
     reasonMain = `因为你拍的那样东西，有种「${photoHint}」的感觉`;
   else if (byPhoto) reasonMain = "因为你拍下的那样东西，把我带到了这里";
-  else reasonMain = "其实你没特别说想去哪，是它自己拐着弯挑的";
+  else reasonMain = "它没找到明确目的地，就把今天交给了风和脚步";
 
   const nouns = presets.map((p) => ITEM_NOUNS[p]);
   if (photos.length > 0) nouns.push("你拍下的东西");

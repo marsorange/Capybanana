@@ -17,10 +17,10 @@ const WEATHERS = [
 ];
 
 function statusLine(p: number): string {
-  if (p < 0.34) return "今天才刚开始，它还在琢磨你的包裹。";
-  if (p < 0.7) return "它正捣鼓着你给的东西，不知道在干嘛。";
-  if (p < 0.98) return "好像有点眉目了，再等等。";
-  return "今天的结果马上揭晓！";
+  if (p < 0.34) return "它刚出门不久，包裹应该还背得很紧。";
+  if (p < 0.7) return "小屋安静下来，远方正在发生一点小事。";
+  if (p < 0.98) return "它好像快想好要寄什么回来了。";
+  return "门口快有动静了。";
 }
 
 export default function TravelingScreen() {
@@ -43,9 +43,9 @@ export default function TravelingScreen() {
   const wallThemes = postcards.slice(0, 3).map((p) => p.destinationTheme);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="game-bg flex h-full flex-col">
       {/* empty room */}
-      <div className="relative h-[42%] shrink-0 overflow-hidden bg-gradient-to-b from-cream-soft to-cream-deep">
+      <div className="relative h-[46%] shrink-0 overflow-hidden">
         <SceneCanvas
           controls="none"
           orthographic
@@ -56,16 +56,20 @@ export default function TravelingScreen() {
           <HomeModel mode="away" postcardThemes={wallThemes} />
         </SceneCanvas>
         <div className="pointer-events-none absolute inset-x-0 top-0 px-5 pt-5">
-          <h1 className="font-hand text-2xl text-ink">{companion.name} 的今天</h1>
-          <p className="mt-0.5 text-sm text-ink-soft">{weather}</p>
+          <div className="game-card px-4 py-3">
+            <p className="text-sm text-ink-soft">{weather}</p>
+            <h1 className="mt-0.5 font-hand text-2xl text-ink">
+              {companion.name} 出门了
+            </h1>
+          </div>
         </div>
       </div>
 
       {/* journal map */}
       <div className="flex flex-1 flex-col px-5 py-4">
-        <div className="rounded-sticker border-2 border-ink/12 bg-paper p-4 shadow-[0_2px_0_rgba(58,46,42,0.06)]">
+        <div className="game-card p-4">
           <div className="mb-1 flex items-center justify-between">
-            <span className="font-hand text-lg text-ink">旅行手账</span>
+            <span className="font-hand text-lg text-ink">今日路程</span>
             <span className="text-sm text-ink-soft">
               {Math.round(progress * 100)}%
             </span>
@@ -83,7 +87,7 @@ export default function TravelingScreen() {
         </div>
 
         <p className="mt-auto pt-4 text-center text-xs text-ink-soft/70">
-          今天它会把你的包裹玩成什么呢？回来看看就知道。
+          目的地先不告诉你。等它回来，故事会自己落进相册里。
         </p>
 
       </div>

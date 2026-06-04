@@ -15,6 +15,12 @@ interface Props {
   labelY?: number;
 }
 
+const ICONS: Record<string, string> = {
+  休息: "🛏️",
+  打包: "🎒",
+  明信片: "🖼️",
+};
+
 // A labelled, tappable interaction point: a pulsing ground ring marks the spot
 // and a floating text pill names the action. Tapping sends the pet here.
 export default function InteractionMarker({
@@ -25,6 +31,7 @@ export default function InteractionMarker({
   labelY = 0.95,
 }: Props) {
   const ring = useRef<THREE.Mesh>(null);
+  const icon = ICONS[label] ?? "✨";
   useFrame((s) => {
     const k = (Math.sin(s.clock.elapsedTime * 2) + 1) / 2;
     if (ring.current) {
@@ -47,9 +54,12 @@ export default function InteractionMarker({
       <Html position={[0, labelY, 0]} center zIndexRange={[25, 0]}>
         <button
           onClick={onClick}
-          className="pointer-events-auto flex items-center whitespace-nowrap rounded-full border-2 border-ink bg-paper/95 px-2.5 py-0.5 font-hand text-xs text-ink shadow-[0_2px_0_rgba(58,46,42,0.22)] transition-transform hover:-translate-y-0.5 active:translate-y-px"
+          className="pointer-events-auto flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-ink/10 bg-paper/92 py-1 pl-1 pr-3 font-hand text-sm text-ink shadow-[0_3px_0_rgba(58,46,42,0.13)] backdrop-blur transition-transform hover:-translate-y-0.5 active:translate-y-px"
         >
-          {label}
+          <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink/8 bg-cream-soft text-sm">
+            {icon}
+          </span>
+          <span>{label}</span>
         </button>
       </Html>
     </group>

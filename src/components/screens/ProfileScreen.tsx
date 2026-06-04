@@ -97,23 +97,33 @@ export default function ProfileScreen() {
   }, [companion.createdAt]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="game-bg flex h-full flex-col">
       {/* spinning portrait of the actual pet */}
-      <div className="relative h-[44%] shrink-0 overflow-hidden bg-gradient-to-b from-cream-soft to-cream-deep">
+      <div className="relative h-[40%] shrink-0 overflow-hidden">
         <SceneCanvas controls="spin">
-          <Pedestal />
-          <CharacterModel
-            type={companion.type}
-            color={companion.primaryColor}
-            accessory={companion.accessory}
-            seed={companion.id}
-          />
+          <group position={[0, -0.58, 0]} scale={0.84}>
+            <Pedestal />
+            <CharacterModel
+              type={companion.type}
+              color={companion.primaryColor}
+              accessory={companion.accessory}
+              seed={companion.id}
+            />
+          </group>
         </SceneCanvas>
-        <div className="pointer-events-none absolute inset-x-0 top-0 px-5 pt-5">
-          <p className="text-sm text-ink-soft">先认识一下你的伙伴</p>
-          <h1 className="mt-0.5 font-hand text-3xl leading-tight text-ink">
-            {companion.name}
-          </h1>
+        <div className="absolute inset-x-0 top-0 z-10 flex items-start gap-3 px-5 pt-5">
+          <button
+            onClick={() => goTo("home")}
+            className="game-icon-tile flex h-14 w-14 items-center justify-center text-2xl text-ink-soft"
+          >
+            ←
+          </button>
+          <div className="game-card min-w-0 flex-1 px-4 py-3">
+            <p className="text-sm text-ink-soft">小伙伴手账</p>
+            <h1 className="truncate font-hand text-3xl leading-tight text-ink">
+              {companion.name}
+            </h1>
+          </div>
         </div>
       </div>
 
@@ -148,7 +158,7 @@ export default function ProfileScreen() {
 
         {/* personality blurb */}
         {(typeInfo || persInfo) && (
-          <p className="text-[15px] leading-relaxed text-ink-soft">
+          <p className="game-card px-4 py-3 text-[15px] leading-relaxed text-ink-soft">
             {typeInfo?.blurb}
             {typeInfo && persInfo ? "，" : ""}
             {persInfo?.desc}。
@@ -156,8 +166,8 @@ export default function ProfileScreen() {
         )}
 
         {/* stats */}
-        <section className="rounded-sticker border-2 border-ink/8 bg-paper px-4 py-4">
-          <p className="mb-3 font-hand text-lg text-ink">当前状态</p>
+        <section className="game-card px-4 py-4">
+          <p className="mb-3 font-hand text-lg text-ink">今天的状态</p>
           <div className="space-y-2.5">
             {STATS.map((s, i) => (
               <StatBar
@@ -183,8 +193,8 @@ export default function ProfileScreen() {
 
         {/* learned traits */}
         {capy.traits.length > 0 && (
-          <section>
-            <p className="mb-2 font-hand text-lg text-ink">习得的小性格</p>
+          <section className="game-card px-4 py-4">
+            <p className="mb-2 font-hand text-lg text-ink">记住的小性格</p>
             <div className="flex flex-wrap gap-2">
               {capy.traits.map((t) => (
                 <span
@@ -205,7 +215,7 @@ export default function ProfileScreen() {
         )}
       </div>
 
-      <div className="shrink-0 space-y-2.5 border-t-2 border-ink/8 bg-cream/80 px-5 py-4 backdrop-blur">
+      <div className="game-bottom-panel shrink-0 space-y-2.5 px-5 py-4">
         {bound && (
           <Button
             variant="soft"
@@ -214,11 +224,11 @@ export default function ProfileScreen() {
             disabled={cloudBusy}
             onClick={() => restyle()}
           >
-            {cloudBusy ? "换造型中…" : "🎲 换个样子"}
+            {cloudBusy ? "换衣服中..." : "换个样子"}
           </Button>
         )}
         <Button size="lg" className="w-full" onClick={() => goTo("home")}>
-          进入小屋 →
+          回小屋
         </Button>
         {bound && (
           <div className="flex items-center justify-center gap-2 pt-0.5 text-xs text-ink-soft/70">

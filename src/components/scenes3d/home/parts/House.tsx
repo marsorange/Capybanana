@@ -64,7 +64,6 @@ const GREEN_DK = "#7caf58";
 const SAGE = "#9dbf8c";
 const GOLD = "#e8b85c";
 const CREAM = "#fff6e6";
-const GLASS = "#cfe9e4";
 const PINK = "#f1a6bd";
 const RED = "#d95f59";
 
@@ -165,7 +164,7 @@ function Railing({
   const [ax, az] = a;
   const [bx, bz] = b;
   const len = Math.hypot(bx - ax, bz - az);
-  const n = Math.max(2, Math.round(len / 0.42));
+  const n = Math.max(2, Math.round(len / 0.7)); // sparser balusters
   return (
     <group>
       {Array.from({ length: n + 1 }).map((_, i) => {
@@ -397,6 +396,101 @@ function IsoGable({
   );
 }
 
+// A solid wall with REAL window openings punched through it (ExtrudeGeometry +
+// holes), each fitted with a translucent glass pane + a wood-trimmed jamb. The
+// hole shows the sky/exterior behind, so the windows actually transmit light
+// instead of being boxes stuck on the wall surface.
+type Hole = { u: number; v: number; w: number; h: number };
+function WindowWall({
+  axis,
+  at,
+  uCenter,
+  uLen,
+  height,
+  thickness,
+  color,
+  holes,
+}: {
+  axis: "x" | "z";
+  at: number; // constant coordinate (XL for left, ZB for back)
+  uCenter: number; // centre of the in-plane horizontal axis (CZ / CX)
+  uLen: number;
+  height: number;
+  thickness: number;
+  color: string;
+  holes: Hole[]; // u already in wall-local horizontal (world - uCenter, +z-aligned)
+}) {
+  const geo = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(-uLen / 2, 0);
+    s.lineTo(uLen / 2, 0);
+    s.lineTo(uLen / 2, height);
+    s.lineTo(-uLen / 2, height);
+    s.closePath();
+    holes.forEach(({ u, v, w, h }) => {
+      const p = new THREE.Path();
+      p.moveTo(u - w / 2, v - h / 2);
+      p.lineTo(u + w / 2, v - h / 2);
+      p.lineTo(u + w / 2, v + h / 2);
+      p.lineTo(u - w / 2, v + h / 2);
+      p.closePath();
+      s.holes.push(p);
+    });
+    const g = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false });
+    g.translate(0, 0, -thickness / 2);
+    return g;
+  }, [uLen, height, thickness, holes]);
+
+  const position: [number, number, number] =
+    axis === "z" ? [uCenter, 0, at] : [at, 0, uCenter];
+  const rotation: [number, number, number] =
+    axis === "z" ? [0, 0, 0] : [0, -Math.PI / 2, 0];
+  const innerZ = axis === "z" ? thickness / 2 : -thickness / 2; // interior face
+
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh geometry={geo}>{m(color)}</mesh>
+      {holes.map((hl, i) => (
+        <group key={i} position={[hl.u, hl.v, 0]}>
+          {/* translucent glass pane — the sky shows through it (透光) */}
+          <mesh>
+            <planeGeometry args={[hl.w, hl.h]} />
+            <meshStandardMaterial
+              color="#d3ece7"
+              transparent
+              opacity={0.4}
+              emissive="#eaf6f3"
+              emissiveIntensity={0.4}
+              roughness={1}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+          {/* wood-trim jamb on the interior face */}
+          <Box args={[hl.w + 0.16, 0.09, 0.14]} pos={[0, hl.h / 2 + 0.05, innerZ]} color={WOOD} />
+          <Box args={[hl.w + 0.16, 0.09, 0.14]} pos={[0, -hl.h / 2 - 0.05, innerZ]} color={WOOD} />
+          <Box args={[0.09, hl.h + 0.2, 0.14]} pos={[hl.w / 2 + 0.05, 0, innerZ]} color={WOOD} />
+          <Box args={[0.09, hl.h + 0.2, 0.14]} pos={[-hl.w / 2 - 0.05, 0, innerZ]} color={WOOD} />
+          {/* a cream cross-mullion */}
+          <Box args={[hl.w, 0.05, 0.05]} pos={[0, 0, innerZ * 0.4]} color={CREAM} />
+          <Box args={[0.05, hl.h, 0.05]} pos={[0, 0, innerZ * 0.4]} color={CREAM} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// Window openings, in wall-local horizontal u (= world z−CZ for the -x wall,
+// world x−CX for the -z wall) + vertical v. Module-level so the extruded wall
+// geometry memo stays stable across renders.
+const LEFT_HOLES: Hole[] = [
+  { u: 0.45, v: 1.85, w: 0.9, h: 1.0 }, // tall ground-floor window
+  { u: -1.05, v: 3.3, w: 0.8, h: 0.8 }, // loft window (above the bed)
+];
+const BACK_HOLES: Hole[] = [
+  { u: -1.25, v: 3.3, w: 0.9, h: 0.9 }, // loft window (behind the bed)
+  { u: 0.35, v: 3.32, w: 0.85, h: 0.85 }, // loft window (right)
+];
+
 // One tiled roof slope: a faceted plank dressed with raised, alternating tile
 // courses so the roof reads as hand-laid tiles instead of a flat slab.
 function RoofSlope({
@@ -455,36 +549,47 @@ function Chimney() {
     const n = g.children.length;
     g.children.forEach((c, i) => {
       const mesh = c as THREE.Mesh;
-      const phase = ((t / 3.6 + i / n) % 1 + 1) % 1;
-      mesh.position.y = phase * 1.5;
-      mesh.position.x = Math.sin(phase * 3 + i) * 0.16;
-      mesh.scale.setScalar(0.32 + phase * 0.62);
+      const phase = ((t / 4.2 + i / n) % 1 + 1) % 1;
+      mesh.position.y = phase * 2.4;
+      mesh.position.x = Math.sin(phase * 3 + i) * 0.26;
+      // big billowing puffs: start chunky off the stack, swell as they rise
+      mesh.scale.setScalar(0.7 + phase * 1.25);
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      mat.opacity = 0.7 * (1 - phase) * Math.min(1, phase * 5);
+      mat.opacity = 0.72 * (1 - phase) * Math.min(1, phase * 4);
     });
   });
   return (
-    <group position={[-1.7, 1.2, -0.55]}>
-      <mesh position={[0, 0.18, 0]}>
-        <boxGeometry args={[0.48, 0.34, 0.48]} />
-        {m("#a39a8b")}
+    <group position={[0.55, 0.72, -1.0]}>
+      {/* gray faceted STONE stack on the right slope */}
+      <mesh position={[0, 0.16, 0]}>
+        <boxGeometry args={[0.5, 0.34, 0.5]} />
+        {m("#8d8579")}
       </mesh>
-      <mesh position={[0, 0.62, 0]}>
-        <boxGeometry args={[0.42, 0.9, 0.42]} />
-        {m("#b9b1a3")}
+      <mesh position={[0, 0.64, 0]}>
+        <boxGeometry args={[0.44, 0.96, 0.44]} />
+        {m("#a9a195")}
       </mesh>
-      <mesh position={[0, 1.08, 0]}>
-        <boxGeometry args={[0.52, 0.12, 0.52]} />
-        {m("#857c6d")}
+      {/* raised stone-course lines */}
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[0.47, 0.06, 0.47]} />
+        {m("#7f786b")}
       </mesh>
-      <group ref={smoke} position={[0, 1.2, 0]}>
-        {Array.from({ length: 5 }).map((_, i) => (
+      <mesh position={[0, 0.86, 0]}>
+        <boxGeometry args={[0.47, 0.06, 0.47]} />
+        {m("#7f786b")}
+      </mesh>
+      <mesh position={[0, 1.18, 0]}>
+        <boxGeometry args={[0.58, 0.14, 0.58]} />
+        {m("#6f6759")}
+      </mesh>
+      <group ref={smoke} position={[0, 1.34, 0]}>
+        {Array.from({ length: 8 }).map((_, i) => (
           <mesh key={i}>
-            <icosahedronGeometry args={[0.2, 0]} />
+            <icosahedronGeometry args={[0.28, 0]} />
             <meshStandardMaterial
               color="#f4f1ea"
               transparent
-              opacity={0.6}
+              opacity={0.62}
               roughness={1}
               flatShading
               depthWrite={false}
@@ -521,23 +626,46 @@ export default function House({
       <RB args={[W, 0.2, D]} pos={[CX, 0.06, CZ]} color={FLOOR0} radius={0.05} />
       <Box args={[W + 0.16, 0.12, D + 0.16]} pos={[CX, 0.02, CZ]} color={WOOD_DK} />
 
-      {/* -x wall (left) with a wainscot band */}
-      <RB args={[0.18, TOP, D]} pos={[XL, TOP / 2, CZ]} color={WALL} radius={0.04} />
+      {/* -x wall (left) — solid with REAL punched windows + a wainscot band */}
+      <WindowWall
+        axis="x"
+        at={XL}
+        uCenter={CZ}
+        uLen={D}
+        height={TOP}
+        thickness={0.18}
+        color={WALL}
+        holes={LEFT_HOLES}
+      />
       <Box args={[0.2, 0.9, D]} pos={[XL + 0.005, 0.5, CZ]} color={WAINSCOT} />
-      {/* -z wall (back) */}
-      <RB args={[W, TOP, 0.18]} pos={[CX, TOP / 2, ZB]} color={WALL_BACK} radius={0.04} />
+      {/* -z wall (back) — solid with REAL punched windows + a wainscot band */}
+      <WindowWall
+        axis="z"
+        at={ZB}
+        uCenter={CX}
+        uLen={W}
+        height={TOP}
+        thickness={0.18}
+        color={WALL_BACK}
+        holes={BACK_HOLES}
+      />
       <Box args={[W, 0.9, 0.2]} pos={[CX, 0.5, ZB + 0.005]} color={WAINSCOT} />
-      {/* corner post + floor trims */}
+      {/* back-left corner post (the thin floor trims were removed — the floor
+          band below already reads the level division) */}
       <Box args={[0.24, TOP, 0.24]} pos={[XL, TOP / 2, ZB]} color={WOOD} />
-      <Box args={[W, 0.14, 0.16]} pos={[CX, FLOOR_H - 0.02, ZB + 0.04]} color={WOOD_DK} />
-      <Box args={[0.16, 0.14, D]} pos={[XL + 0.04, FLOOR_H - 0.02, CZ]} color={WOOD_DK} />
 
-      {/* ---- timber frame: corner posts at the open cut edges + wall-top plates
-            + a loft-edge fascia, so the cross-section reads as a built house ---- */}
+      {/* ---- timber frame: a corner post at EACH of the four corners + a
+            CONTINUOUS wall-top plate ring around all four eaves, so the roof and
+            its gable ends rest on a built structure instead of floating over the
+            open cutaway sides. ---- */}
       <Box args={[0.24, TOP, 0.24]} pos={[XL + 0.02, TOP / 2, ZF]} color={WOOD} />
       <Box args={[0.24, TOP, 0.24]} pos={[XR, TOP / 2, ZB + 0.02]} color={WOOD} />
+      <Box args={[0.24, TOP, 0.24]} pos={[XR, TOP / 2, ZF]} color={WOOD} />
+      {/* top-plate ring: left, back, front, right */}
       <Box args={[0.22, 0.2, D + 0.1]} pos={[XL + 0.02, TOP - 0.1, CZ]} color={WOOD} />
       <Box args={[W + 0.1, 0.2, 0.22]} pos={[CX, TOP - 0.1, ZB + 0.02]} color={WOOD} />
+      <Box args={[W + 0.1, 0.2, 0.22]} pos={[CX, TOP - 0.1, ZF]} color={WOOD} />
+      <Box args={[0.22, 0.2, D + 0.1]} pos={[XR, TOP - 0.1, CZ]} color={WOOD} />
 
       {/* ONE chunky wood floor-division band wrapping the inside corner (a solid
           block, not thin stick framing) — the only timber on the cream walls so
@@ -574,10 +702,11 @@ export default function House({
         pos={[(LOFT_MAIN.x0 + LOFT_MAIN.x1) / 2, FLOOR_H - 0.12, LOFT_MAIN.z1]}
         color={WOOD}
       />
-      {/* railings tracing the open perimeter; the gap at x≈STAIR_X is the stair */}
+      {/* railings tracing the open perimeter: the loft's front edge, its right
+          edge along the stairwell (the gap at the back is where the stair tops
+          out onto the floor), and the landing's open right edge. */}
       <Railing a={[LOFT_MAIN.x0, LOFT_MAIN.z1]} b={[LOFT_MAIN.x1, LOFT_MAIN.z1]} />
       <Railing a={[LOFT_MAIN.x1, LOFT_MAIN.z1]} b={[LOFT_MAIN.x1, STAIR_TOP[2]]} />
-      <Railing a={[LOFT_LANDING.x0, STAIR_TOP[2]]} b={[STAIR_X - STAIR_WIDTH / 2, STAIR_TOP[2]]} />
       <Railing a={[LOFT_LANDING.x1, STAIR_TOP[2]]} b={[LOFT_LANDING.x1, LOFT_LANDING.z0]} />
 
       {/* ===== STRAIGHT STAIRCASE (right bay, runs along z at x=STAIR_X) — a
@@ -612,20 +741,20 @@ export default function House({
         w={0.08}
         color={WOOD_DK}
       />
-      {/* balusters between stringer + handrail */}
-      {[0.1, 0.3, 0.5, 0.7, 0.9].map((t, i) => {
+      {/* just three simple balusters under the handrail (kept minimal) */}
+      {[0.22, 0.5, 0.78].map((t, i) => {
         const z = STAIR_BOTTOM[2] + (STAIR_TOP[2] - STAIR_BOTTOM[2]) * t;
         const yBot = STAIR_BOTTOM[1] + (STAIR_TOP[1] - STAIR_BOTTOM[1]) * t;
         return (
           <Box
             key={i}
-            args={[0.05, 0.66, 0.05]}
-            pos={[STAIR_X + STAIR_WIDTH / 2, yBot + 0.33, z]}
-            color={WOOD_DK}
+            args={[0.05, 0.58, 0.05]}
+            pos={[STAIR_X + STAIR_WIDTH / 2, yBot + 0.29, z]}
+            color={WOOD}
           />
         );
       })}
-      {/* taller newel posts at the bottom + top of the flight */}
+      {/* a newel post at the bottom + top of the flight */}
       <Box args={[0.11, 1.0, 0.11]} pos={[STAIR_X + STAIR_WIDTH / 2, STAIR_BOTTOM[1] + 0.5, STAIR_BOTTOM[2]]} color={WOOD} />
       <Box args={[0.11, 0.95, 0.11]} pos={[STAIR_X + STAIR_WIDTH / 2, STAIR_TOP[1] + 0.4, STAIR_TOP[2]]} color={WOOD} />
 
@@ -633,102 +762,57 @@ export default function House({
             iso sightlines pass UNDER the front eave into the rooms (no occlusion),
             while the warm tiled slopes + rounded ridge give it real character. */}
       <group position={[CX, TOP, CZ]}>
-        {/* cream attic gables on each end (the +x one faces the camera) */}
-        <IsoGable x={2.9} halfRun={2.25} h={1.8} color={WALL_BACK} />
-        <IsoGable x={-2.9} halfRun={2.25} h={1.8} color={WALL_BACK} />
-        {/* CUTAWAY roof: a single CLEAN back slope (the front slope — the one
-            that would occlude the loft — is removed), capped by a short ridge lip
-            so the front edge reads as finished, not a floating broken strip. */}
-        <RoofSlope z={-1.12} rot={-0.685} width={5.8} />
-        <mesh position={[0, 1.6, 0.3]} rotation={[0.6, 0, 0]}>
-          <boxGeometry args={[5.9, 0.16, 0.56]} />
-          {m(ROOF)}
-        </mesh>
+        {/* gable ends. The OUTER (-x, over the solid wall) keeps a cream infill;
+            the INNER (+x, camera-side) is left OPEN (just its wood frame below) so
+            it no longer occludes the loft — you see straight through it. */}
+        <IsoGable x={-2.5} halfRun={2.25} h={1.8} color={WALL_BACK} />
+        {/* (gable trusses removed — too many beams; the cream gable stays clean) */}
+        {/* HALF-OPEN roof: BACK slope fully tiled; the FRONT is ONE clean yellow
+            band off the ridge, the rest open with a few THICK rafters showing. */}
+        <RoofSlope z={-1.12} rot={-0.685} width={5.2} />
+        {/* a SLIM yellow band at the ridge (depth matched to the back slope's
+            tile courses, not a wide strip) */}
+        <group position={[0, 1.58, 0.28]} rotation={[0.685, 0, 0]}>
+          <mesh>
+            <boxGeometry args={[5.2, 0.2, 0.56]} />
+            {m(ROOF)}
+          </mesh>
+          <Box args={[5.28, 0.16, 0.13]} pos={[0, -0.05, 0.28]} color={WOOD} />
+        </group>
+        {/* SIX evenly-spaced bars across the open front COUNTING the two gable-
+            edge frames at x=±2.5 — these four interior rafters fall on the 1.0
+            spacing between them. */}
+        {[-1.5, -0.5, 0.5, 1.5].map((rx, i) => (
+          <Beam key={i} a={[rx, 0.04, 2.22]} b={[rx, 1.78, 0.04]} w={0.15} color={WOOD} />
+        ))}
         {/* rounded faceted ridge beam */}
         <mesh position={[0, 1.82, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.2, 0.2, 6.0, 6]} />
+          <cylinderGeometry args={[0.2, 0.2, 5.3, 6]} />
           {m("#e0a93c")}
         </mesh>
         {/* wood fascia along the back eave */}
-        <Box args={[5.95, 0.16, 0.16]} pos={[0, 0.02, -2.18]} color={WOOD} />
-        {/* barge boards framing the back slope edges */}
-        {[2.98, -2.98].map((gx) => (
-          <mesh key={gx} position={[gx, 0.92, -1.12]} rotation={[-0.685, 0, 0]}>
-            <boxGeometry args={[0.14, 0.24, 2.95]} />
-            {m(WOOD)}
-          </mesh>
+        <Box args={[5.3, 0.16, 0.16]} pos={[0, 0.02, -2.18]} color={WOOD} />
+        {/* WOOD FRAME on each gable: just the TWO sloped barge boards (eave →
+            ridge). The bottom horizontal beam was dropped — the eave/top-plate
+            already reads the base line. */}
+        {[2.5, -2.5].map((gx) => (
+          <group key={gx}>
+            <Beam a={[gx, 0.04, -2.22]} b={[gx, 1.78, 0.04]} w={0.15} color={WOOD} />
+            <Beam a={[gx, 0.04, 2.22]} b={[gx, 1.78, 0.04]} w={0.15} color={WOOD} />
+          </group>
         ))}
-        {/* round attic window on the camera-facing gable */}
-        <group position={[2.93, 0.78, 0]} rotation={[0, Math.PI / 2, 0]}>
-          <mesh>
-            <circleGeometry args={[0.32, 20]} />
-            {m(GLASS)}
-          </mesh>
-          <mesh position={[0, 0, -0.01]}>
-            <ringGeometry args={[0.32, 0.42, 20]} />
-            {m(CREAM)}
-          </mesh>
-          <Box args={[0.66, 0.05, 0.04]} pos={[0, 0, 0.02]} color={CREAM} />
-          <Box args={[0.05, 0.66, 0.04]} pos={[0, 0, 0.02]} color={CREAM} />
-        </group>
-        {/* half-timber truss framing the camera-facing gable (Tudor detail) */}
-        <group position={[3.0, 0, 0]}>
-          <mesh position={[0, 0.4, 0]}>
-            <boxGeometry args={[0.13, 0.15, 2.9]} />
-            {m(WOOD)}
-          </mesh>
-          <mesh position={[0, 1.46, 0]}>
-            <boxGeometry args={[0.13, 0.68, 0.15]} />
-            {m(WOOD)}
-          </mesh>
-        </group>
-        {/* a little potted plant perched on the ridge */}
-        <group position={[1.5, 1.95, 0]}>
-          <RB args={[0.36, 0.3, 0.34]} pos={[0, 0, 0]} color={CREAM} radius={0.05} />
-          <mesh position={[0, 0.26, 0]}>
-            <icosahedronGeometry args={[0.22, 0]} />
-            {m(GREEN)}
-          </mesh>
-          <mesh position={[0.12, 0.34, 0.06]}>
-            <icosahedronGeometry args={[0.14, 0]} />
-            {m(GREEN_DK)}
-          </mesh>
-        </group>
-        {/* stone chimney + rising smoke on the back slope */}
+        {/* gray STONE chimney + big smoke, on the RIGHT slope above the hearth */}
         <Chimney />
       </group>
 
-      {/* ===== WINDOWS / WALL ART ===== */}
-      {/* round window (back wall, bedroom) with frame + a recessed jamb so it
-          reads as a punched opening, not a sticker */}
-      <group position={[-3.2, 3.3, ZB + 0.13]}>
-        <mesh position={[0, 0, -0.09]}>
-          <circleGeometry args={[0.52, 24]} />
-          {m("#c9bba1")}
-        </mesh>
-        <mesh>
-          <circleGeometry args={[0.46, 24]} />
-          {m(GLASS)}
-        </mesh>
-        <mesh position={[0, 0, -0.01]}>
-          <ringGeometry args={[0.46, 0.55, 24]} />
-          {m(CREAM)}
-        </mesh>
-        <Box args={[0.94, 0.06, 0.04]} pos={[0, 0, 0.02]} color={CREAM} />
-        <Box args={[0.06, 0.94, 0.04]} pos={[0, 0, 0.02]} color={CREAM} />
-      </group>
-      {/* tall window on the -x wall + curtains, set into a recessed jamb */}
-      <group position={[XL + 0.11, 1.85, -1.95]}>
-        <Box args={[0.04, 1.06, 0.96]} pos={[-0.06, 0, 0]} color="#c9bba1" />
-        <Box args={[0.05, 1.0, 0.9]} pos={[0, 0, 0]} color={GLASS} />
-        <Box args={[0.06, 1.1, 1.02]} pos={[-0.01, 0, 0]} color={CREAM} />
-        <Box args={[0.06, 0.06, 0.92]} pos={[0.02, 0, 0]} color={CREAM} />
-        <Box args={[0.06, 1.04, 0.24]} pos={[0.03, 0, -0.36]} color="#e6a7a0" />
-        <Box args={[0.06, 1.04, 0.24]} pos={[0.03, 0, 0.36]} color="#e6a7a0" />
-      </group>
+      {/* (Windows are now REAL openings punched through the -x and -z walls by
+          WindowWall above — translucent glass + wood jambs — so they transmit
+          light instead of being boxes stuck on the wall.) */}
 
-      {/* ===== GROUND FLOOR — kept open (the pet roams here); just a cozy rug
-            + a small pet bed in the corner, per the reference's airy interior. */}
+
+      {/* ===== GROUND FLOOR — the pet roams the open front; furnished along the
+            visible front strip + left wall (the back is tucked under the loft). */}
+      {/* cozy round rug under the pet */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3.0, 0.05, -1.2]}>
         <circleGeometry args={[1.15, 24]} />
         {m("#e7c9a6")}
@@ -737,23 +821,119 @@ export default function House({
         <ringGeometry args={[0.86, 1.0, 24]} />
         {m("#d9b083")}
       </mesh>
-      <group position={[-3.9, 0, -3.3]}>
-        <mesh position={[0, 0.1, 0]}>
-          <cylinderGeometry args={[0.42, 0.46, 0.2, 18]} />
-          {m("#e8b85c")}
+      {/* ===== KITCHEN along the left wall — base cabinets + countertop, a sink,
+            a little stove with a pot, an upper cabinet + an open shelf (the
+            reference's cozy ground-floor kitchen) ===== */}
+      <group position={[-4.18, 0, -1.05]}>
+        {/* base cabinet run + countertop */}
+        <RB args={[0.52, 0.68, 1.5]} pos={[0, 0.34, 0]} color={WOOD} radius={0.04} />
+        <Box args={[0.58, 0.08, 1.56]} pos={[0, 0.71, 0]} color="#d8c39c" />
+        {/* cabinet-door seams on the +x face */}
+        {[-0.52, -0.05, 0.42].map((z, i) => (
+          <Box key={i} args={[0.02, 0.5, 0.03]} pos={[0.27, 0.36, z]} color={WOOD_DK} />
+        ))}
+        {/* sink basin + faucet (front end) */}
+        <Box args={[0.34, 0.12, 0.42]} pos={[0.02, 0.69, 0.52]} color="#aebcb8" />
+        <mesh position={[-0.05, 0.85, 0.52]}>
+          <cylinderGeometry args={[0.018, 0.018, 0.22, 6]} />
+          {m("#b9b1a3")}
         </mesh>
-        <mesh position={[0, 0.12, 0]}>
-          <cylinderGeometry args={[0.32, 0.32, 0.1, 18]} />
-          {m("#fff1d6")}
+        <mesh position={[0.0, 0.95, 0.52]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.018, 0.018, 0.14, 6]} />
+          {m("#b9b1a3")}
+        </mesh>
+        {/* stove top + burners + a pot (back end) */}
+        <Box args={[0.44, 0.05, 0.44]} pos={[0.02, 0.76, -0.5]} color="#3a332c" />
+        {([[-0.1, -0.6], [0.12, -0.4]] as const).map(([x, z], i) => (
+          <mesh key={i} position={[0.02 + x * 0.4, 0.79, -0.5 + (z + 0.5)]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.04, 0.08, 12]} />
+            {m("#5a5048")}
+          </mesh>
+        ))}
+        <mesh position={[0.02, 0.87, -0.5]}>
+          <cylinderGeometry args={[0.13, 0.12, 0.16, 12]} />
+          {m("#9a8d7a")}
+        </mesh>
+        <mesh position={[0.13, 0.92, -0.5]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.012, 0.012, 0.12, 6]} />
+          {m(WOOD_DK)}
+        </mesh>
+        {/* upper wall cabinet + an open shelf with a plant, a jar and books */}
+        <RB args={[0.34, 0.46, 0.82]} pos={[-0.06, 1.68, -0.42]} color={WOOD} radius={0.04} />
+        <Box args={[0.34, 0.04, 0.62]} pos={[-0.06, 1.42, 0.46]} color={WOOD_DK} />
+        <Plant pos={[-0.06, 1.44, 0.62]} scale={0.46} />
+        <Jar pos={[-0.06, 1.44, 0.34]} color="#cf8f5a" />
+        <Books pos={[-0.06, 1.44, -0.62]} count={4} len={0.36} />
+        {/* hanging-utensil rail */}
+        <Box args={[0.03, 0.03, 0.5]} pos={[0.22, 1.12, 0.1]} color={WOOD_DK} />
+        {/* a fruit basket on the counter */}
+        <Basket pos={[0.0, 0.76, 0.04]} />
+      </group>
+      {/* a warm pendant lamp over the kitchen */}
+      <Pendant pos={[-3.7, 2.0, -1.0]} drop={0.5} />
+      {/* a framed picture on the left wall, above the kitchen */}
+      <Frame pos={[XL + 0.11, 1.7, -1.6]} rot={[0, Math.PI / 2, 0]} color="#e0b48f" w={0.46} h={0.4} />
+
+      {/* a cozy little dining spot — a chunky round table (teapot + cup) flanked
+          by a pair of stools */}
+      <group position={[-1.7, 0, -0.6]}>
+        <mesh position={[0, 0.47, 0]}>
+          <cylinderGeometry args={[0.4, 0.4, 0.08, 16]} />
+          {m(WOOD_LT)}
+        </mesh>
+        <mesh position={[0, 0.24, 0]}>
+          <cylinderGeometry args={[0.06, 0.08, 0.46, 8]} />
+          {m(WOOD_DK)}
+        </mesh>
+        <mesh position={[0, 0.06, 0]}>
+          <cylinderGeometry args={[0.22, 0.24, 0.05, 12]} />
+          {m(WOOD_DK)}
+        </mesh>
+        {/* teapot + cup */}
+        <mesh position={[0.06, 0.57, -0.02]}>
+          <sphereGeometry args={[0.1, 12, 8]} />
+          {m("#d98a6a")}
+        </mesh>
+        <mesh position={[0.18, 0.56, 0.02]} rotation={[0, 0, -0.5]}>
+          <torusGeometry args={[0.045, 0.013, 6, 10]} />
+          {m("#d98a6a")}
+        </mesh>
+        <mesh position={[-0.15, 0.54, 0.12]}>
+          <cylinderGeometry args={[0.055, 0.05, 0.08, 10]} />
+          {m(CREAM)}
         </mesh>
       </group>
+      {/* a pair of stools flanking the table */}
+      {([[-1.7, 0.18], [-1.72, -1.36]] as const).map(([sx, sz], s) => (
+        <group key={s} position={[sx, 0, sz]}>
+          <mesh position={[0, 0.31, 0]}>
+            <cylinderGeometry args={[0.16, 0.16, 0.06, 12]} />
+            {m("#cdb892")}
+          </mesh>
+          {([[-0.09, -0.09], [0.09, -0.09], [-0.09, 0.09], [0.09, 0.09]] as const).map(
+            ([x, z], i) => (
+              <mesh key={i} position={[x, 0.15, z]}>
+                <cylinderGeometry args={[0.022, 0.022, 0.3, 6]} />
+                {m(WOOD_DK)}
+              </mesh>
+            ),
+          )}
+        </group>
+      ))}
+      {/* a leafy floor plant tucked by the stair foot (out of the roam lane) */}
+      <Plant pos={[-0.55, 0, 0.05]} scale={1.05} pot="#c98b58" />
 
       {/* ===== LOFT: a simple bedroom ===== */}
       <group position={[0, FLOOR_H, 0]}>
-        {/* round rug */}
+        {/* round rug by the bed */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3.0, 0.02, -2.7]}>
           <circleGeometry args={[0.7, 24]} />
           {m("#cfe0d0")}
+        </mesh>
+        {/* a second round rug on the new landing floor beside the stairs */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-1.9, 0.02, -2.9]}>
+          <circleGeometry args={[0.62, 24]} />
+          {m("#e7c9a6")}
         </mesh>
         {/* bed: in the back-left corner, headboard on -x wall, extends into room */}
         <group position={[BED[0], 0, BED[2]]}>
@@ -776,12 +956,16 @@ export default function House({
             <meshStandardMaterial color="#fff0c8" emissive="#ffd98a" emissiveIntensity={0.75} roughness={1} side={2} />
           </mesh>
         </group>
-        {/* wall shelf by the round window: a small potted plant + a framed picture */}
-        <group position={[-3.0, 0.95, ZB + 0.2]}>
+        {/* wall shelf between the round window and the fireplace: a potted plant
+            + the tiny capybara figurine, with a framed picture above */}
+        <group position={[-2.55, 0.95, ZB + 0.2]}>
           <Box args={[0.8, 0.06, 0.26]} pos={[0, 0, 0]} color={WOOD} />
-          <Plant pos={[-0.22, 0.03, 0]} scale={0.66} />
+          <Plant pos={[-0.22, 0.03, 0]} scale={0.6} />
+          <MiniCapy pos={[0.2, 0.04, 0]} />
         </group>
-        <Frame pos={[-2.7, 1.36, ZB + 0.12]} color="#9ec3d6" w={0.36} h={0.42} />
+        <Frame pos={[-2.5, 1.42, ZB + 0.12]} color="#9ec3d6" w={0.36} h={0.42} />
+        {/* (indoor stone fireplace + chimney breast removed per request — the
+            loft is kept simple; only the small roof chimney + smoke remain) */}
       </group>
 
       {/* outdoor notice board by the entrance (diegetic -> album). Self-contained

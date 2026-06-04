@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { sceneBend } from "./materials";
+import SkyWeather, { type Weather } from "./SkyWeather";
 import { zoomBus } from "./zoomBus";
 
 interface SceneCanvasProps {
@@ -23,6 +24,10 @@ interface SceneCanvasProps {
   minPolar?: number;
   maxPolar?: number;
   sun?: boolean; // enable a real shadow-casting sun
+  // Opt into the dynamic SUN + WEATHER system (a day-cycle sun + drifting clouds
+  // + optional rain). Replaces the static lights; the home diorama uses it.
+  sky?: boolean;
+  weather?: Weather;
   // Opt into a Rapier (Rust→WASM) physics world wrapping the scene content.
   // Only scenes with rigid bodies / colliders (the home scene) need this; the
   // portrait turntables stay non-physics.
@@ -149,6 +154,8 @@ export default function SceneCanvas({
   minPolar = 1.05,
   maxPolar = 1.5,
   sun = false,
+  sky = false,
+  weather = "clear",
   physics = false,
   gravity = [0, -9.81, 0],
   debugPhysics = false,
@@ -174,30 +181,35 @@ export default function SceneCanvas({
       <WebGLContextGuard />
       <BendApplier strength={bendStrength} center={bendCenter} falloff={bendFalloff} />
       {sun && <ShadowEnabler />}
-      {/* warm "日系" low-poly light with real form: a softer sky fill + lower
-          ambient so the directional SUN key actually sculpts the facets and lays
-          down soft contact shadows (the depth the scene was missing). */}
-      <hemisphereLight args={["#fffdf6", "#e7d8be", 0.72]} />
-      <ambientLight intensity={0.32} color="#fff4e6" />
-      <directionalLight
-        position={[8, 12, 5]}
-        intensity={sun ? 2.9 : 2.2}
-        color="#ffeec6"
-        castShadow={sun}
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-near={0.5}
-        shadow-camera-far={48}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
-        shadow-bias={-0.0011}
-        shadow-normalBias={0.025}
-      />
-      {/* cool sky bounce + a warm back rim so shadowed faces still read */}
-      <directionalLight position={[-7, 5, -3]} intensity={0.5} color="#cdddf2" />
-      <directionalLight position={[-2, 3, -9]} intensity={0.32} color="#ffd9bc" />
+      {sky ? (
+        /* dynamic day-cycle sun + drifting clouds + optional rain */
+        <SkyWeather weather={weather} />
+      ) : (
+        <>
+          {/* static warm "日系" low-poly light (the portrait turntables) */}
+          <hemisphereLight args={["#fffdf6", "#e7d8be", 0.72]} />
+          <ambientLight intensity={0.32} color="#fff4e6" />
+          <directionalLight
+            position={[8, 12, 5]}
+            intensity={sun ? 2.9 : 2.2}
+            color="#ffeec6"
+            castShadow={sun}
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            shadow-camera-near={0.5}
+            shadow-camera-far={48}
+            shadow-camera-left={-12}
+            shadow-camera-right={12}
+            shadow-camera-top={12}
+            shadow-camera-bottom={-12}
+            shadow-bias={-0.0011}
+            shadow-normalBias={0.025}
+          />
+          {/* cool sky bounce + a warm back rim so shadowed faces still read */}
+          <directionalLight position={[-7, 5, -3]} intensity={0.5} color="#cdddf2" />
+          <directionalLight position={[-2, 3, -9]} intensity={0.32} color="#ffd9bc" />
+        </>
+      )}
 
       <Suspense fallback={null}>
         {physics ? (

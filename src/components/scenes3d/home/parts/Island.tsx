@@ -24,11 +24,10 @@ const ROCK_DK = "#a59c8a";
 const PINE_DK = "#6f9d57";
 const PINE_LT = "#7cab60";
 const TRUNK = "#8c5f35";
-const SAND = "#e7d3a4";
-const SAND_DK = "#cdb583";
 
 const N = 14; // facet count — chunky low-poly silhouette
-const LAWN_R = 6.3; // lawn radius (smaller, so less empty green around the house)
+const LAWN_R = 7.2; // BIG tray — the whole house footprint sits well inside it
+//   (its far corner is ~6.6 from centre), with a green margin out to the edge
 const PI = Math.PI;
 
 // ---------------------------------------------------------------------------
@@ -36,18 +35,27 @@ const PI = Math.PI;
 // (NOT a clean circle) and the body is a chunky thick tray that tapers to a soft
 // bottom — built as a stack of rings sharing the same jittered profile, scaled
 // down as they descend, so the whole island reads as a hand-broken chunk of land.
-const RIM_N = 13;
-// deterministic per-vertex radius jitter for the irregular silhouette
-const RIM_JITTER = Array.from({ length: RIM_N }, (_, i) => {
-  const s = Math.sin(i * 127.1 + 3.7) * 43758.5453;
-  return 0.9 + (s - Math.floor(s)) * 0.2; // 0.90 .. 1.10 (gently irregular)
+const RIM_N = 10; // fewer, BIGGER facets — a chunky low-poly "polyhedron pile"
+// Wobbly, NON-regular vertex angles (shared by every layer so the side bands
+// don't twist) — the outline is an irregular blob, not a clean polygon.
+const RIM_ANG = Array.from({ length: RIM_N }, (_, i) => {
+  const s = Math.sin(i * 71.3 + 1.2) * 24634.21;
+  return (i / RIM_N) * PI * 2 + ((s - Math.floor(s)) - 0.5) * 0.55; // ±0.27 rad
 });
+// A per-LAYER radius jitter (seeded differently per layer) so each stacked ring
+// juts in/out at its own vertices — the grass top and the soil courses DON'T
+// line up, giving an offset, hand-stacked "堆砌" look (草地 ≠ 土).
+function layerJitter(seed: number, lo: number, hi: number): number[] {
+  return Array.from({ length: RIM_N }, (_, i) => {
+    const s = Math.sin(i * 127.1 + seed * 13.7 + 3.7) * 43758.5453;
+    return lo + (s - Math.floor(s)) * (hi - lo);
+  });
+}
 
-function ring(scale: number, y: number): THREE.Vector3[] {
-  return RIM_JITTER.map((jr, i) => {
-    const a = (i / RIM_N) * PI * 2;
-    const r = LAWN_R * jr * scale;
-    return new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
+function ring(y: number, jit: number[]): THREE.Vector3[] {
+  return jit.map((jr, i) => {
+    const r = LAWN_R * jr;
+    return new THREE.Vector3(Math.cos(RIM_ANG[i]) * r, y, Math.sin(RIM_ANG[i]) * r);
   });
 }
 
@@ -88,40 +96,42 @@ function bandGeometry(top: THREE.Vector3[], bot: THREE.Vector3[]): THREE.BufferG
 // ---- scattered ground dressing (kept off the house footprint + walking lanes)
 // house footprint: x[-4.6, 0.4], z[-4.6, -0.2]. Everything below stays clear of it.
 const CLOVERS: [number, number][] = [
-  [4.1, 2.7],
-  [-4.0, 2.8],
-  [4.5, -1.1],
-  [-2.7, 3.9],
+  [3.5, 2.4], [-3.6, 2.5], [3.9, -1.0], [-2.5, 3.4],
+  [5.4, 1.0], [-5.2, 0.6], [1.6, 5.2], [-1.6, 5.4], [4.8, 3.4], [-4.6, 3.2],
+  [5.8, -0.8], [0.2, 5.8],
 ];
 const ROCKS: [number, number, number][] = [
-  [-1.1, 4.5, 0.32],
-  [-4.4, 1.8, 0.34],
-  [4.3, 2.4, 0.3],
+  [-1.0, 4.0, 0.32], [-3.9, 1.6, 0.34], [3.8, 2.1, 0.3],
+  [5.6, -0.4, 0.4], [-5.5, 1.9, 0.38], [0.2, 6.0, 0.34], [5.0, 3.8, 0.3],
+  [-4.9, -1.0, 0.32],
 ];
 const TUFTS: [number, number][] = [
-  [-3.8, 3.3],
-  [0.4, 4.9],
-  [4.5, 1.9],
-  [3.3, -3.6],
-  [-4.7, -0.9],
+  [-3.4, 2.9], [0.4, 4.2], [3.9, 1.7], [2.9, -3.1], [-4.1, -0.8],
+  [5.2, 1.9], [-5.4, -0.2], [1.0, 5.6], [-2.3, 5.2], [4.4, 4.2], [-4.8, 2.6],
+  [3.2, 4.6], [-3.2, 4.8], [5.9, 0.6], [6.0, 2.0], [-6.0, 1.2], [-1.0, 6.0],
+  [2.2, 5.4], [-5.0, -1.6], [4.0, -3.0],
 ];
 const PEBBLES: [number, number][] = [
-  [-4.0, 2.9],
-  [3.1, -3.0],
+  [-3.6, 2.6], [2.8, -2.7], [5.0, 0.2], [-1.6, 4.8], [1.8, 4.6], [-5.0, 1.0],
 ];
+// a richer, more colorful flower scatter, spread across the whole lawn
 const FLOWERS: [number, number, string][] = [
-  [-4.2, 2.6, "#f1a6bd"],
-  [4.9, -1.0, "#fff4f0"],
-  [-3.4, 3.5, "#f4d35e"],
+  [-3.7, 2.3, "#f1a6bd"], [4.2, -0.9, "#fff4f0"], [-3.0, 3.1, "#f4d35e"],
+  [3.4, 2.7, "#e8607a"], [-1.2, 3.9, "#f0915b"], [4.0, 1.0, "#b89cd9"],
+  [0.9, 4.1, "#f4d35e"], [-4.0, 0.6, "#fff4f0"], [4.3, -2.0, "#f1a6bd"],
+  [5.6, 1.4, "#f4d35e"], [-5.2, 1.2, "#e8607a"], [1.4, 5.4, "#fff4f0"],
+  [-1.9, 5.2, "#f0915b"], [4.7, 3.6, "#b89cd9"], [-4.7, 3.0, "#f4d35e"],
+  [5.8, -1.2, "#fff4f0"], [-0.4, 5.8, "#f1a6bd"], [2.6, 5.0, "#f4d35e"],
+  [-5.4, -0.8, "#fff4f0"],
 ];
 // large, soft color patches that break up the flat lawn (x, z, radius, color)
 const GRASS_PATCHES: [number, number, number, string][] = [
-  [3.0, 2.2, 2.0, GRASS_LT],
-  [-3.8, 1.2, 1.9, GRASS_DK],
-  [1.4, 4.0, 1.7, GRASS_YEL],
-  [4.2, -1.4, 1.6, GRASS_DK],
-  [-1.8, 4.0, 1.6, GRASS_LT],
-  [0.5, -3.8, 1.6, GRASS_YEL],
+  [2.6, 1.9, 1.7, GRASS_LT],
+  [-3.3, 1.0, 1.6, GRASS_DK],
+  [1.2, 3.4, 1.5, GRASS_YEL],
+  [3.6, -1.2, 1.4, GRASS_DK],
+  [-1.6, 3.4, 1.4, GRASS_LT],
+  [0.4, -3.2, 1.4, GRASS_YEL],
 ];
 
 // ---------- decorative props for the wide-open left / right grass ----------
@@ -268,79 +278,8 @@ function Bloom({ pos, color }: { pos: [number, number]; color: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// A flat low-poly ribbon laid on the lawn — the winding sandy footpaths. Built
-// as a CatmullRom-swept strip in the XZ plane with explicit up-normals + correct
-// CCW winding so it reads from above.
-function ribbonGeometry(
-  pts: [number, number][],
-  halfWidth: number,
-): THREE.BufferGeometry {
-  const curve = new THREE.CatmullRomCurve3(
-    pts.map(([x, z]) => new THREE.Vector3(x, 0, z)),
-  );
-  const segs = Math.max(28, pts.length * 12);
-  const pos: number[] = [];
-  const nor: number[] = [];
-  const idx: number[] = [];
-  const up = new THREE.Vector3(0, 1, 0);
-  const tan = new THREE.Vector3();
-  const side = new THREE.Vector3();
-  for (let i = 0; i <= segs; i++) {
-    const t = i / segs;
-    const p = curve.getPoint(t);
-    curve.getTangent(t, tan);
-    side.crossVectors(tan, up).normalize();
-    const w = halfWidth * (0.45 + 0.55 * Math.min(1, t / 0.12));
-    pos.push(p.x - side.x * w, 0, p.z - side.z * w);
-    pos.push(p.x + side.x * w, 0, p.z + side.z * w);
-    nor.push(0, 1, 0, 0, 1, 0);
-  }
-  for (let i = 0; i < segs; i++) {
-    const a = i * 2;
-    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
-  g.setIndex(idx);
-  return g;
-}
-
-function Path({
-  pts,
-  width = 0.92,
-}: {
-  pts: [number, number][];
-  width?: number;
-}) {
-  const top = useMemo(() => ribbonGeometry(pts, width / 2), [pts, width]);
-  const base = useMemo(() => ribbonGeometry(pts, width / 2 + 0.13), [pts, width]);
-  return (
-    <group>
-      <mesh geometry={base} position={[0, 0.05, 0]}>
-        {m(SAND_DK)}
-      </mesh>
-      <mesh geometry={top} position={[0, 0.064, 0]}>
-        {m(SAND)}
-      </mesh>
-    </group>
-  );
-}
-
-// The main winding path (front edge → cottage doorstep) + a spur to the garden.
-const MAIN_PATH: [number, number][] = [
-  [1.8, 4.7],
-  [1.1, 3.9],
-  [2.1, 2.7],
-  [0.6, 1.0],
-  [0.7, -0.15], // lands at the house front entrance / doorstep
-];
-const GARDEN_PATH: [number, number][] = [
-  [1.7, 2.9],
-  [2.3, 2.4],
-  [2.7, 3.0],
-];
+// (The swept sandy-ribbon footpath was removed — the path now reads only as the
+// stepping-STONE slabs rendered in Yard.tsx.)
 
 // ---------------------------------------------------------------------------
 // The island is a REAL, IRREGULAR faceted "earth tray": a jittered-polygon grass
@@ -370,23 +309,29 @@ const mi = (c: string) => (
 );
 
 export default function Island() {
-  const mainPath = MAIN_PATH;
-  const gardenPath = GARDEN_PATH;
   // the irregular tray: a grass-top fan + tapering soil bands over a soft base,
   // all sharing the jittered rim profile.
   const island = useMemo(() => {
-    const topC = new THREE.Vector3(0, 0.04, 0);
-    const r0 = ring(1.0, 0.04); // grass rim
-    const r1 = ring(0.99, -0.5); // grass skirt bottom / soil top
-    const r2 = ring(0.84, -1.35); // soil mid
-    const r3 = ring(0.54, -2.2); // soil low
-    const baseC = new THREE.Vector3(0, -2.75, 0);
+    const topC = new THREE.Vector3(0, 0.05, 0);
+    // a chunky, ANGULAR stack of soil bands — each band has its OWN per-vertex
+    // jitter (seeded per layer) so the courses jut in/out independently and read
+    // as offset, hand-stacked slabs rather than clean nested cones.
+    // Fuller, SOLID body (扎实): a slow, substantial taper with a deep base —
+    // the jitter is kept moderate per layer so the courses still stagger/offset
+    // but the whole pile reads as a chunky solid block, not thin spikes.
+    const r0 = ring(0.05, layerJitter(0, 0.93, 1.1)); // grass rim
+    const r1 = ring(-0.75, layerJitter(1, 0.9, 1.06)); // soil top (slight ledge)
+    const r2 = ring(-1.6, layerJitter(2, 0.84, 1.0)); // soil upper
+    const r3 = ring(-2.45, layerJitter(3, 0.72, 0.92)); // soil mid
+    const r4 = ring(-3.15, layerJitter(4, 0.54, 0.78)); // soil low (fuller base)
+    const baseC = new THREE.Vector3(0, -3.7, 0); // deep, solid planet bottom
     return {
       grass: fanGeometry(topC, r0),
       skirt: bandGeometry(r0, r1),
       soilA: bandGeometry(r1, r2),
       soilB: bandGeometry(r2, r3),
-      base: fanGeometry(baseC, r3),
+      soilC: bandGeometry(r3, r4),
+      base: fanGeometry(baseC, r4),
     };
   }, []);
   const lumps = useMemo(
@@ -434,11 +379,12 @@ export default function Island() {
           {m(c)}
         </mesh>
       ))}
-      {/* grassy rim skirt + the thick tapering soil body + soft base */}
+      {/* grassy rim skirt + the chunky angular soil pile + faceted base */}
       <mesh geometry={island.skirt}>{mi(GRASS_EDGE)}</mesh>
       <mesh geometry={island.soilA}>{mi(SOIL_TOP)}</mesh>
       <mesh geometry={island.soilB}>{mi(SOIL_1)}</mesh>
-      <mesh geometry={island.base}>{mi(SOIL_2)}</mesh>
+      <mesh geometry={island.soilC}>{mi(SOIL_2)}</mesh>
+      <mesh geometry={island.base}>{mi(SOIL_3)}</mesh>
       {/* lumps + rocks dappling the flank for a hand-sculpted, varied surface */}
       {lumps.map((l, i) => (
         <mesh key={`lp${i}`} position={l.pos} scale={[l.sc * 1.2, l.sc * 0.8, l.sc]}>
@@ -453,9 +399,8 @@ export default function Island() {
         </mesh>
       ))}
 
-      {/* winding sandy footpaths */}
-      <Path pts={mainPath} width={0.98} />
-      <Path pts={gardenPath} width={0.62} />
+      {/* (sandy footpath ribbons removed — only the stepping-STONE slabs in
+          Yard.tsx remain as the path) */}
 
       {/* grey rocks dotted on the lawn */}
       {ROCKS.map(([x, z, r], i) => (
@@ -491,15 +436,15 @@ export default function Island() {
         <Bloom key={`f${i}`} pos={[x, z]} color={c} />
       ))}
 
-      {/* ---- feature props dressing the empty left / right sides ---- */}
-      {/* left side */}
-      <Pine pos={[-4.7, 0, 1.5]} scale={1.0} />
-      <Pine pos={[-3.8, 0, 3.7]} scale={0.74} />
-      <Boulders pos={[-4.4, 0, 2.8]} />
-      {/* right-BACK corner — the big shade tree, pushed back so it never
-          occludes the pet or the house's open cutaway face */}
-      <ShadeTree pos={[4.6, 0, -3.6]} scale={1.0} />
-      <Boulders pos={[5.0, 0, 0.6]} />
+      {/* ---- feature props spread EVENLY around the rim of the big tray ---- */}
+      <ShadeTree pos={[5.3, 0, 1.9]} scale={1.05} />
+      <ShadeTree pos={[4.4, 0, -3.0]} scale={0.82} />
+      <Pine pos={[-5.4, 0, 1.7]} scale={1.0} />
+      <Pine pos={[-4.4, 0, 4.1]} scale={0.72} />
+      <Pine pos={[2.9, 0, 4.9]} scale={0.7} />
+      <Boulders pos={[-5.6, 0, -0.7]} />
+      <Boulders pos={[5.5, 0, -1.3]} />
+      <Boulders pos={[0.4, 0, 5.9]} />
     </group>
   );
 }

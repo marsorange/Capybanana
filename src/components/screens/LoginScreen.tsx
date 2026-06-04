@@ -43,62 +43,80 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden px-7">
-      {/* soft, cozy backdrop */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-cream-soft via-cream to-cream-deep" />
-      <div className="pointer-events-none absolute -left-16 top-16 h-48 w-48 rounded-full bg-accent/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-14 bottom-24 h-52 w-52 rounded-full bg-sky/30 blur-3xl" />
-      <div className="pointer-events-none absolute left-1/2 top-1/4 h-40 w-40 -translate-x-1/2 rounded-full bg-[#f2d06b]/25 blur-3xl" />
+    <div className="game-bg relative flex h-full flex-col overflow-hidden px-6 pb-6 pt-8">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_50%_0%,rgba(255,244,205,0.95),transparent_72%)]" />
 
       {/* brand: floating logo + wordmark */}
       <motion.div
         initial={{ opacity: 0, y: 18, scale: 0.94 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="relative z-10 flex flex-col items-center text-center"
+        className="relative z-10 mt-4 flex flex-col items-center text-center"
       >
-        <CapyLogo className="h-40 w-40" />
-        <h1 className="mt-5 font-hand text-[2.4rem] leading-none text-ink">
+        <CapyLogo className="h-36 w-36" />
+        <h1 className="mt-5 font-hand text-[2.55rem] leading-none text-ink">
           Capybanana
         </h1>
-        <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
+        <p className="mt-3 max-w-[21rem] text-[15px] leading-relaxed text-ink-soft">
           {agentOnboarding ? (
             <>
-              测试新用户登录后，
+              先进入小屋，
               <br />
-              直接展示绑定 AI Agent 的引导页。
+              再把今天的决定交给你信任的小助手。
             </>
           ) : (
             <>
-              用 Google 登录，领养一只随机卡皮巴拉，
+              每天一分钟，给它一个小线索，
               <br />
-              还能让你的 AI Agent 来陪它。
+              它会把日子过成一封寄回来的信。
             </>
           )}
         </p>
       </motion.div>
+
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.12 }}
+        className="game-card relative z-10 mt-8 px-4 py-3"
+      >
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-2xl bg-cream-soft px-2 py-3">
+            <p className="text-2xl leading-none">🎒</p>
+            <p className="mt-1 text-xs text-ink-soft">放线索</p>
+          </div>
+          <div className="rounded-2xl bg-cream-soft px-2 py-3">
+            <p className="text-2xl leading-none">🏡</p>
+            <p className="mt-1 text-xs text-ink-soft">等它想</p>
+          </div>
+          <div className="rounded-2xl bg-cream-soft px-2 py-3">
+            <p className="text-2xl leading-none">💌</p>
+            <p className="mt-1 text-xs text-ink-soft">收来信</p>
+          </div>
+        </div>
+      </motion.section>
 
       {/* login */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.18 }}
-        className="relative z-10 w-full space-y-3"
+        className="relative z-10 mt-auto w-full space-y-3"
       >
         <button
           onClick={onGoogle}
           disabled={!isSupabaseConfigured || busy}
-          className="flex w-full items-center justify-center gap-3 rounded-sticker border-2 border-ink/15 bg-paper px-4 py-3.5 text-base font-medium text-ink shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="sticker flex w-full items-center justify-center gap-3 rounded-[22px] bg-paper px-4 py-4 text-base font-medium text-ink disabled:cursor-not-allowed disabled:opacity-60"
         >
           <GoogleMark className="h-5 w-5" />
-          {busy ? "登录中…" : "用 Google 登录"}
+          {busy ? "正在打开小屋..." : "用 Google 进入小屋"}
         </button>
 
         {devAuthEnabled && (
           <>
-            <div className="rounded-sticker border-2 border-ink/10 bg-paper/70 p-2.5">
+            <div className="game-card p-2.5">
               <label className="mb-1 block text-[11px] text-ink-soft/80">
-                本地调试身份（同名会复用同一云存档）
+                本地身份
               </label>
               <input
                 value={devIdentity}
@@ -110,9 +128,9 @@ export default function LoginScreen() {
             <button
               onClick={onDev}
               disabled={busy}
-              className="flex w-full items-center justify-center gap-2 rounded-sticker border-2 border-ink/15 bg-cream-soft px-4 py-3 text-sm font-medium text-ink shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              className="sticker flex w-full items-center justify-center gap-2 rounded-[22px] bg-cream-soft px-4 py-3 text-sm font-medium text-ink disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {busy ? "登录中…" : "本地调试登录（无需 Supabase）"}
+              {busy ? "进入中..." : "本地进入"}
             </button>
           </>
         )}
@@ -125,17 +143,17 @@ export default function LoginScreen() {
 
         {isSupabaseConfigured ? (
           <p className="text-center text-[11px] text-ink-soft/70">
-            首次登录即自动领养 · 云端存档
+            云端保存你的小屋、来信和成长记录
           </p>
         ) : devAuthEnabled ? (
           <p className="text-center text-[11px] text-ink-soft/75">
-            Supabase 未配置，当前使用本地调试登录。
+            当前是本地开发入口
           </p>
         ) : (
           <p className="text-center text-[11px] leading-relaxed text-accent/90">
-            登录暂不可用：未配置 Supabase。
+            小屋入口暂未配置完成。
             <br />
-            请设置 NEXT_PUBLIC_SUPABASE_URL 与 NEXT_PUBLIC_SUPABASE_ANON_KEY。
+            请稍后再试。
           </p>
         )}
       </motion.div>

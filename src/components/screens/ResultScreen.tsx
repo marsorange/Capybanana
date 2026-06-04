@@ -142,32 +142,19 @@ export default function ResultScreen() {
   const theme = KIND_THEME[result.kind] ?? KIND_THEME.home;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="game-bg flex h-full flex-col">
       {/* hero: the real pet, in 3D, slowly spinning on a little pedestal */}
-      <div
-        className="relative h-[46%] shrink-0 overflow-hidden"
-        style={{
-          background: `linear-gradient(to bottom, ${theme.from}, ${theme.to})`,
-        }}
-      >
-        {/* warm glow + soft cartoon blobs behind the pet */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: `radial-gradient(58% 48% at 50% 62%, ${theme.glow}, transparent 72%)`,
-          }}
-        />
-        <div className="pointer-events-none absolute -left-8 top-10 h-24 w-24 rounded-full bg-white/35 blur-2xl" />
-        <div className="pointer-events-none absolute -right-6 top-20 h-20 w-20 rounded-full bg-white/30 blur-2xl" />
-
+      <div className="relative h-[42%] shrink-0 overflow-hidden">
         <SceneCanvas controls="spin">
-          <Pedestal color={theme.pedestal} />
-          <CharacterModel
-            type={companion.type}
-            color={companion.primaryColor}
-            accessory={companion.accessory}
-            seed={companion.id}
-          />
+          <group position={[0, -0.56, 0]} scale={0.84}>
+            <Pedestal color={theme.pedestal} />
+            <CharacterModel
+              type={companion.type}
+              color={companion.primaryColor}
+              accessory={companion.accessory}
+              seed={companion.id}
+            />
+          </group>
         </SceneCanvas>
 
         {/* caption + title */}
@@ -175,12 +162,14 @@ export default function ResultScreen() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="pointer-events-none absolute inset-x-0 top-0 px-5 pt-5 text-center"
+          className="pointer-events-none absolute inset-x-5 top-5 z-10 text-center"
         >
+          <div className="game-card px-4 py-3">
           <p className="text-sm text-ink-soft">{theme.caption}</p>
           <h1 className="mt-1 font-hand text-2xl leading-tight text-ink">
             {result.title}
           </h1>
+          </div>
         </motion.div>
       </div>
 
@@ -199,16 +188,16 @@ export default function ResultScreen() {
         <div className="no-scrollbar flex-1 space-y-3.5 overflow-y-auto px-6 pb-4 pt-3">
           {/* the story of the day */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="rounded-sticker border-2 border-ink/8 bg-paper px-5 py-4 shadow-[0_3px_0_rgba(58,46,42,0.06)]"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+            className="game-card px-5 py-4"
           >
             <p
               className="mb-1.5 text-[11px] font-medium"
               style={{ color: theme.accent }}
             >
-              今天发生了什么
+              今天留下了什么
             </p>
             <p className="text-[15px] leading-relaxed text-ink">
               {result.story}
@@ -220,7 +209,7 @@ export default function ResultScreen() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.22 }}
-              className="rounded-sticker border-2 border-dashed border-ink/20 bg-cream-soft px-4 py-3 text-center"
+              className="rounded-[18px] border-2 border-dashed border-ink/20 bg-cream-soft px-4 py-3 text-center"
             >
               <p className="mb-1 text-xs font-medium text-accent">
                 误解词典 +1
@@ -234,11 +223,11 @@ export default function ResultScreen() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.28 }}
-              className="flex items-center justify-center gap-2 rounded-sticker border-2 border-ink/8 bg-cream-soft px-4 py-2.5 text-sm text-ink-soft shadow-[0_2px_0_rgba(58,46,42,0.05)]"
+              className="game-card flex items-center justify-center gap-2 px-4 py-2.5 text-sm text-ink-soft"
             >
               <span className="text-lg">🎁</span>
               <span>
-                还给你带回了 <b className="text-ink">{result.souvenir}</b>
+                它带回了 <b className="text-ink">{result.souvenir}</b>
               </span>
             </motion.div>
           )}
@@ -246,9 +235,9 @@ export default function ResultScreen() {
           <EffectChips effects={result.effects} />
         </div>
 
-        <div className="shrink-0 px-5 pb-6 pt-2">
+        <div className="game-bottom-panel shrink-0 px-5 pb-6 pt-4">
           <Button size="lg" className="w-full" onClick={() => goTo("home")}>
-            知道啦
+            收好，回小屋
           </Button>
         </div>
       </div>

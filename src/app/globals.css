@@ -59,6 +59,38 @@ body {
   box-shadow: 0 1px 0 rgba(58, 46, 42, 0.18);
 }
 
+.game-bg {
+  background:
+    radial-gradient(80% 48% at 78% 6%, rgba(255, 232, 157, 0.55), transparent 72%),
+    linear-gradient(180deg, #fff7ec 0%, #f8ecd8 58%, #ead8b8 100%);
+}
+
+.game-card {
+  border: 2px solid rgba(58, 46, 42, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 253, 248, 0.88);
+  box-shadow: 0 4px 0 rgba(111, 84, 55, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.game-icon-tile {
+  border: 2px solid rgba(58, 46, 42, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.86);
+  box-shadow: 0 4px 0 rgba(111, 84, 55, 0.12);
+  backdrop-filter: blur(10px);
+  transition: transform 0.12s ease;
+}
+.game-icon-tile:active {
+  transform: translateY(2px);
+}
+
+.game-bottom-panel {
+  border-top: 2px solid rgba(58, 46, 42, 0.08);
+  background: rgba(251, 243, 231, 0.88);
+  backdrop-filter: blur(10px);
+}
+
 @keyframes float-soft {
   0%,
   100% {

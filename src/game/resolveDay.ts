@@ -174,6 +174,7 @@ export function resolveDay(
       },
       souvenir,
       misunderstanding: misread,
+      memory: `去过${postcard.locationName}，记得那里像「${postcard.title}」。`,
       postcard,
     };
   }

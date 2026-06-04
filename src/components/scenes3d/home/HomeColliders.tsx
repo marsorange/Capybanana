@@ -12,8 +12,6 @@ import {
   LOFT_LANDING,
   LOFT_MAIN,
   STAIR_TOP,
-  STAIR_WIDTH,
-  STAIR_X,
   WALL_T,
   W,
   XL,
@@ -29,13 +27,35 @@ import {
 // against. Approximate on purpose — a collision hull, not a render mesh.
 //
 // All extents are HALF-extents (Rapier convention). The island top sits at y≈0.
-const RIM_R = 5.3; // round wall radius — inside the irregular LAWN_R≈6.3 lawn so
-const RIM_SEGS = 12; //   the pet is stopped before the edge (no fall-off / clip)
+const RIM_R = 4.7; // round wall radius — inside the (now compact) LAWN_R≈5.5 lawn
+const RIM_SEGS = 12; //   so the pet is stopped before the edge (no fall-off / clip)
 
 const SLAB_T = 0.11; // loft slab half-thickness
 const CURB_H = 0.4; // loft-edge curb HALF-height (invisible; taller than the pet
 //   capsule radius ≈0.45 so the chunky pet can't ride up over it. The VISIBLE
 //   railing in House.tsx stays low (≈0.54) for the iso sightline.
+
+// ---------------------------------------------------------------------------
+// Yard / island OBSTACLES — invisible hulls mirroring the decorative props the
+// scene draws (trees, boulders, the fenced veg bed, bench, lamp, mailbox, the
+// postcard board). Positions track the visuals in parts/Island.tsx + parts/
+// Yard.tsx; like the wall contract these are approximate collision hulls, not
+// render meshes, so the pet + the physics toy stop at them instead of clipping
+// through. (Half-extents; pos is the box center; rotY rotates about Y.)
+type Obstacle = {
+  pos: [number, number, number];
+  half: [number, number, number];
+  rotY?: number;
+};
+// Only the YARD props within the pet's reach (RIM_R) need hulls — the island
+// trees/boulders now sit out at the rim, beyond where the pet can walk.
+const OBSTACLES: Obstacle[] = [
+  { pos: [-0.6, 0.36, 2.5], half: [1.28, 0.4, 1.08] }, // fenced veg garden (花圃, enlarged)
+  { pos: [4.0, 0.32, 1.4], half: [0.5, 0.32, 0.2], rotY: -Math.PI / 2.2 }, // bench
+  { pos: [1.8, 0.85, 2.6], half: [0.18, 0.85, 0.18] }, // garden lamp post
+  { pos: [3.5, 0.5, -1.1], half: [0.26, 0.55, 0.28] }, // mailbox
+  { pos: [2.6, 0.7, -0.9], half: [0.78, 0.62, 0.12], rotY: -0.6 }, // postcard board
+];
 
 // A floor slab collider covering a layout Rect at height y (top surface = y).
 function slab(r: Rect, y: number) {
@@ -106,17 +126,9 @@ export default function HomeColliders() {
           args={[0.08, CURB_H, (LOFT_MAIN.z1 - STAIR_TOP[2]) / 2]}
           position={[LOFT_MAIN.x1, FLOOR_H + CURB_H, (LOFT_MAIN.z1 + STAIR_TOP[2]) / 2]}
         />
-        {/* LANDING front edge (z=STAIR_TOP.z), left of the stair gap, so the pet
-            can't step off the back strip into the void — the GAP at the stair
-            (x≈STAIR_X) is where it steps off the ramp onto the loft. */}
-        <CuboidCollider
-          args={[(STAIR_X - STAIR_WIDTH / 2 - LOFT_LANDING.x0) / 2, CURB_H, 0.08]}
-          position={[
-            (LOFT_LANDING.x0 + (STAIR_X - STAIR_WIDTH / 2)) / 2,
-            FLOOR_H + CURB_H,
-            LOFT_LANDING.z1,
-          ]}
-        />
+        {/* (No LANDING front-edge curb needed any more: the floor left of the
+            stair is now part of LOFT_MAIN, guarded by its right-edge curb above;
+            the stair itself fills the rest of the landing front.) */}
         {/* LANDING right edge facing the open right bay (x=-0.2) */}
         <CuboidCollider
           args={[0.08, CURB_H, (LOFT_LANDING.z1 - LOFT_LANDING.z0) / 2]}
@@ -131,6 +143,17 @@ export default function HomeColliders() {
           position={ramp.pos}
           rotation={[ramp.rotX, 0, 0]}
         />
+
+        {/* yard / island obstacle hulls (trees, boulders, veg bed, bench, lamp,
+            mailbox, board) so the pet + the physics toy collide with them */}
+        {OBSTACLES.map((o, i) => (
+          <CuboidCollider
+            key={`obs${i}`}
+            args={o.half}
+            position={o.pos}
+            rotation={[0, o.rotY ?? 0, 0]}
+          />
+        ))}
       </RigidBody>
 
       {/* Invisible tap-to-move catcher (pure R3F raycast, no physics body).

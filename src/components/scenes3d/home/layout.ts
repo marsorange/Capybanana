@@ -30,7 +30,10 @@ export const WALL_T = 0.14; //  unified wall thickness
 // landing strip (z = STAIR_TOP.z = the landing's front edge → no overhang).
 export const STAIR_X = -0.7;
 export const STAIR_WIDTH = 0.95;
-export const STAIR_BOTTOM: Vec3 = [STAIR_X, 0, -0.4];
+export const STAIR_LEFT = STAIR_X - STAIR_WIDTH / 2; // -1.175, the loft's right edge
+// Bottom pulled back (shorter run) so the flight is STEEPER (~42°, still under the
+// controller's 50° climb cap) — matches the reference's tighter staircase.
+export const STAIR_BOTTOM: Vec3 = [STAIR_X, 0, -1.15];
 export const STAIR_TOP: Vec3 = [STAIR_X, FLOOR_H, -3.6];
 export const STAIR_RUN = Math.hypot(
   STAIR_TOP[0] - STAIR_BOTTOM[0],
@@ -69,25 +72,29 @@ export function stairRamp(): {
 }
 
 // ---------------------------------------------------------------------------
-// Loft = an L-shape (deliberately SMALLER than the ground floor):
-//   • MAIN  — the bedroom, a deep "vertical bar" on the LEFT (against both solid
-//             walls). The bed lives at its back.
-//   • LANDING — a shallow "horizontal bar" across the BACK-right that the stair
-//             tops out onto and the pet walks along to reach MAIN.
-// They share the x = -2.4 edge over the back band, so the route is
+// Loft = an L-shape that fills the whole floor LEFT of the staircase, so there
+// is REAL floor right beside the stairs (no empty stairwell passage):
+//   • MAIN  — the deep bedroom + landing bar, butting straight up against the
+//             stair's left edge (x = STAIR_LEFT). Floor runs the full depth so
+//             the pet steps off the stair directly onto it, and the bed lives at
+//             its back. The front edge stops short (z1) so the camera still sees
+//             the ground floor + entrance below.
+//   • LANDING — the short strip BEHIND the stair top (x right of STAIR_LEFT) that
+//             the straight stair tops out onto.
+// They share the x = STAIR_LEFT edge over the back band, so the route is
 // stair → LANDING → (LOFT_PIVOT inner corner) → MAIN → bed. The landing sits
 // entirely at z ≤ STAIR_TOP.z, so its slab never overhangs the climb.
 export type Rect = { x0: number; x1: number; z0: number; z1: number };
-export const LOFT_MAIN: Rect = { x0: XL, x1: -2.4, z0: ZB, z1: -1.6 };
-export const LOFT_LANDING: Rect = { x0: -2.4, x1: -0.2, z0: ZB, z1: STAIR_TOP[2] };
+export const LOFT_MAIN: Rect = { x0: XL, x1: STAIR_LEFT, z0: ZB, z1: -1.6 };
+export const LOFT_LANDING: Rect = { x0: STAIR_LEFT, x1: -0.2, z0: ZB, z1: STAIR_TOP[2] };
 
 // A deep landing point straight back from the stair top — the pet walks fully
 // ONTO the landing here before turning, so its chunky capsule never straddles
 // the stair-top edge (which IS the landing's front edge) and slips into the void.
 export const LOFT_STEP: Vec3 = [STAIR_X, FLOOR_H, -4.1];
 
-// The L's inner corner, on solid floor and well clear (x ≤ -3.0) of the MAIN
-// right-edge curb at x=-2.4 — the chunky pet (capsule r≈0.45) must not brush it.
+// The L's inner corner, on solid floor and well clear of the MAIN right-edge
+// curb at x=STAIR_LEFT — the chunky pet (capsule r≈0.45) must not brush it.
 // Floor-change paths route through here so the pet never cuts the void diagonally.
 export const LOFT_PIVOT: Vec3 = [-3.0, FLOOR_H, -3.9];
 
@@ -116,7 +123,7 @@ export const STAIR_TOP_ANCHOR: Anchor = { pos: STAIR_TOP, face: -Math.PI / 2, fl
 
 // Art placement (just beyond the standing anchors), shared so House.tsx and the
 // markers agree on where the bench / board / bed actually are.
-export const PACK_BENCH: Vec3 = [-3.7, 0, -0.7];
+export const PACK_BENCH: Vec3 = [-3.1, 0, -0.02]; // front threshold, nudged outward
 export const POSTCARD_BOARD: Vec3 = [2.6, 0, -0.9];
 export const BED: Vec3 = [-3.6, FLOOR_H, -3.7];
 
@@ -144,8 +151,10 @@ export const SPOTS: Spot[] = [
   // ground floor — yard
   { id: "doorstep", pos: [0.6, 0, -0.4], face: 0.7, activity: "look", emote: "🌤️", dwell: [3, 5], floor: 0 },
   { id: "garden", pos: [1.6, 0, 1.0], face: 0.4, activity: "look", emote: "🌼", dwell: [4, 7], floor: 0 },
-  { id: "farm", pos: [1.3, 0, 2.2], face: 0.6, activity: "clean", emote: "🌱", dwell: [5, 9], floor: 0 },
-  // loft (left bay, x ≤ -3.3 to stay clear of the MAIN right-edge curb at x=-2.4)
+  // stands in FRONT of the (front-left) fenced veg bed
+  { id: "farm", pos: [-0.6, 0, 1.25], face: 0.4, activity: "clean", emote: "🌱", dwell: [5, 9], floor: 0 },
+  // loft (left bay; keep x ≤ -1.7 to stay clear of the right-edge curb at STAIR_LEFT)
   { id: "bed", pos: [-3.4, FLOOR_H, -3.5], face: 0.4, activity: "sleep", emote: "💤", dwell: [7, 11], floor: 1 },
   { id: "loftwin", pos: [-3.3, FLOOR_H, -2.6], face: 0.3, activity: "idle", emote: "🌙", dwell: [5, 8], floor: 1 },
+  { id: "loftrug", pos: [-2.0, FLOOR_H, -2.9], face: 0.6, activity: "idle", emote: "📖", dwell: [4, 7], floor: 1 },
 ];
