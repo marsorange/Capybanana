@@ -9,11 +9,12 @@ import {
   PERSONALITIES,
   PRIMARY_COLORS,
 } from "@/game/labels";
+import { companionStats } from "@/game/companionLevel";
 import type { CapyState } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
-import Button from "../ui/Button";
+import { BackButton, Panel, PrimaryButton } from "../ui/kit";
 
 function Pedestal() {
   return (
@@ -25,24 +26,22 @@ function Pedestal() {
 }
 
 const STATS: {
-  key: keyof Pick<CapyState, "mood" | "energy" | "courage">;
+  key: keyof Pick<CapyState, "mood" | "energy" | "courage" | "curiosity" | "injury">;
   label: string;
-  emoji: string;
   color: string;
 }[] = [
-  { key: "mood", label: "心情", emoji: "💛", color: "#E9A23B" },
-  { key: "energy", label: "体力", emoji: "⚡", color: "#8AA978" },
-  { key: "courage", label: "勇气", emoji: "⛰️", color: "#D95F59" },
+  { key: "mood", label: "心情", color: "#e9a23b" },
+  { key: "energy", label: "体力", color: "#8aa978" },
+  { key: "courage", label: "勇气", color: "#d95f59" },
+  { key: "curiosity", label: "好奇心", color: "#6fa8c9" },
 ];
 
 function StatBar({
-  emoji,
   label,
   value,
   color,
   delay,
 }: {
-  emoji: string;
   label: string;
   value: number;
   color: string;
@@ -50,10 +49,8 @@ function StatBar({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-14 shrink-0 text-sm text-ink-soft">
-        {emoji} {label}
-      </span>
-      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-cream-deep">
+      <span className="w-12 shrink-0 whitespace-nowrap text-[13px] text-ink-soft">{label}</span>
+      <div className="h-2.5 flex-1 overflow-hidden rounded-full border border-[#bd8a52]/25 bg-cream-deep">
         <motion.div
           className="h-full rounded-full"
           style={{ backgroundColor: color }}
@@ -62,9 +59,16 @@ function StatBar({
           transition={{ duration: 0.7, delay, ease: "easeOut" }}
         />
       </div>
-      <span className="w-7 shrink-0 text-right text-sm tabular-nums text-ink">
-        {value}
-      </span>
+      <span className="w-7 shrink-0 text-right text-[13px] tabular-nums text-ink">{value}</span>
+    </div>
+  );
+}
+
+function RecordTile({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="rounded-2xl border border-[#bd8a52]/30 bg-cream-soft px-2 py-2.5 text-center">
+      <p className="font-hand text-xl leading-none text-ink">{value}</p>
+      <p className="mt-1 text-[11px] text-ink-soft">{label}</p>
     </div>
   );
 }
@@ -72,6 +76,8 @@ function StatBar({
 export default function ProfileScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const capy = useGameStore((s) => s.capyState);
+  const postcards = useGameStore((s) => s.postcards);
+  const souvenirs = useGameStore((s) => s.souvenirs);
   const goTo = useGameStore((s) => s.goTo);
   const restyle = useGameStore((s) => s.restyle);
   const logout = useGameStore((s) => s.logout);
@@ -80,13 +86,12 @@ export default function ProfileScreen() {
   const email = useGameStore((s) => s.cloud?.email ?? null);
 
   const typeInfo = COMPANION_TYPES.find((t) => t.type === companion.type);
-  const persInfo = PERSONALITIES.find(
-    (p) => p.value === companion.personality,
-  );
+  const persInfo = PERSONALITIES.find((p) => p.value === companion.personality);
   const accInfo = ACCESSORIES.find((a) => a.value === companion.accessory);
   const colorName = PRIMARY_COLORS.find(
     (c) => c.hex.toLowerCase() === companion.primaryColor.toLowerCase(),
   )?.name;
+  const stats = useMemo(() => companionStats(companion.createdAt), [companion.createdAt]);
 
   const adoptedAt = useMemo(() => {
     const d = new Date(companion.createdAt);
@@ -97,9 +102,9 @@ export default function ProfileScreen() {
   }, [companion.createdAt]);
 
   return (
-    <div className="game-bg flex h-full flex-col">
+    <div className="screen-bg relative flex h-full flex-col">
       {/* spinning portrait of the actual pet */}
-      <div className="relative h-[40%] shrink-0 overflow-hidden">
+      <div className="relative h-[34%] shrink-0 overflow-hidden">
         <SceneCanvas controls="spin">
           <group position={[0, -0.58, 0]} scale={0.84}>
             <Pedestal />
@@ -111,138 +116,122 @@ export default function ProfileScreen() {
             />
           </group>
         </SceneCanvas>
-        <div className="absolute inset-x-0 top-0 z-10 flex items-start gap-3 px-5 pt-5">
-          <button
-            onClick={() => goTo("home")}
-            className="game-icon-tile flex h-14 w-14 items-center justify-center text-2xl text-ink-soft"
-          >
-            ←
-          </button>
-          <div className="game-card min-w-0 flex-1 px-4 py-3">
-            <p className="text-sm text-ink-soft">小伙伴手账</p>
-            <h1 className="truncate font-hand text-3xl leading-tight text-ink">
-              {companion.name}
-            </h1>
-          </div>
+        <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 px-5 pt-5">
+          <BackButton onClick={() => goTo("home")} />
+          <p className="font-hand text-lg text-ink-soft">岛屿伙伴手账</p>
         </div>
       </div>
 
-      <div className="no-scrollbar flex-1 space-y-5 overflow-y-auto px-5 py-5">
+      <div className="no-scrollbar relative z-10 flex-1 space-y-4 overflow-y-auto px-5 pb-4 pt-2">
+        {/* name plaque + level/陪伴 progress */}
+        <Panel className="-mt-8 px-4 py-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="truncate font-hand text-[26px] leading-tight text-ink">
+                {companion.name}
+              </h1>
+              {typeInfo && (
+                <p className="mt-0.5 text-[12px] text-ink-soft">
+                  {typeInfo.label}
+                  {colorName ? ` · ${colorName}` : ""}
+                </p>
+              )}
+            </div>
+            <span className="sketch tex-wood shrink-0 rounded-full border-2 border-[#cdab6e] px-3 py-1 font-hand text-sm wood-text">
+              Lv.{stats.level}
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="mb-1 flex justify-between text-[11px] text-ink-soft">
+              <span>陪伴 {stats.days} 天</span>
+              <span>距下一级还有 {stats.daysToNext} 天</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full border border-[#bd8a52]/30 bg-cream-deep">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-[#f0c25c] to-[#e0973f]"
+                initial={{ width: 0 }}
+                animate={{ width: `${stats.progress * 100}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+            </div>
+          </div>
+        </Panel>
+
+        {/* records */}
+        <div className="grid grid-cols-3 gap-2.5">
+          <RecordTile value={postcards.length} label="明信片" />
+          <RecordTile value={souvenirs.length} label="手信" />
+          <RecordTile value={capy.memories.length} label="记忆" />
+        </div>
+
         {/* identity chips */}
         <div className="flex flex-wrap gap-2">
-          {typeInfo && (
-            <span className="rounded-full border-2 border-ink/10 bg-cream-soft px-3 py-1 text-sm text-ink">
-              {typeInfo.emoji} {typeInfo.label}
-            </span>
-          )}
-          {persInfo && (
-            <span className="rounded-full border-2 border-ink/10 bg-cream-soft px-3 py-1 text-sm text-ink">
-              {persInfo.emoji} {persInfo.label}
-            </span>
-          )}
-          {accInfo && companion.accessory !== "none" && (
-            <span className="rounded-full border-2 border-ink/10 bg-cream-soft px-3 py-1 text-sm text-ink">
-              {accInfo.emoji} {accInfo.label}
-            </span>
-          )}
-          {colorName && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink/10 bg-cream-soft px-3 py-1 text-sm text-ink">
-              <span
-                className="h-3 w-3 rounded-full border border-ink/15"
-                style={{ backgroundColor: companion.primaryColor }}
-              />
-              {colorName}
-            </span>
-          )}
+          {persInfo && <Chip>{persInfo.label}</Chip>}
+          {accInfo && companion.accessory !== "none" && <Chip>{accInfo.label}</Chip>}
+          {capy.traits.map((t) => (
+            <Chip key={t} tone="leaf">
+              {t}
+            </Chip>
+          ))}
         </div>
 
-        {/* personality blurb */}
-        {(typeInfo || persInfo) && (
-          <p className="game-card px-4 py-3 text-[15px] leading-relaxed text-ink-soft">
-            {typeInfo?.blurb}
-            {typeInfo && persInfo ? "，" : ""}
-            {persInfo?.desc}。
-          </p>
-        )}
-
         {/* stats */}
-        <section className="game-card px-4 py-4">
-          <p className="mb-3 font-hand text-lg text-ink">今天的状态</p>
+        <Panel className="px-4 py-4" sketch={false}>
+          <p className="font-hand text-lg text-ink">今天的岛上天气</p>
+          <p className="mb-3 mt-1 text-[12px] leading-relaxed text-ink-soft">
+            Agent 做决定前会先看这些。体力太低或伤痛太高时，它更适合留在岛上。
+          </p>
           <div className="space-y-2.5">
             {STATS.map((s, i) => (
-              <StatBar
-                key={s.key}
-                emoji={s.emoji}
-                label={s.label}
-                value={capy[s.key]}
-                color={s.color}
-                delay={0.08 * i}
-              />
+              <StatBar key={s.key} label={s.label} value={capy[s.key]} color={s.color} delay={0.08 * i} />
             ))}
             {capy.injury > 0 && (
-              <StatBar
-                emoji="🩹"
-                label="伤痛"
-                value={capy.injury}
-                color="#b04a44"
-                delay={0.08 * STATS.length}
-              />
+              <StatBar label="伤痛" value={capy.injury} color="#b04a44" delay={0.08 * STATS.length} />
             )}
           </div>
-        </section>
+        </Panel>
 
-        {/* learned traits */}
-        {capy.traits.length > 0 && (
-          <section className="game-card px-4 py-4">
-            <p className="mb-2 font-hand text-lg text-ink">记住的小性格</p>
-            <div className="flex flex-wrap gap-2">
-              {capy.traits.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full border-2 border-leaf/30 bg-leaf/10 px-3 py-1 text-sm text-ink"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {adoptedAt && (
-          <p className="text-center text-xs text-ink-soft/70">
-            于 {adoptedAt} 来到你身边
+        {typeInfo?.blurb && (
+          <p className="px-1 text-center text-[12px] leading-relaxed text-ink-soft/85">
+            {typeInfo.blurb}
+            {adoptedAt ? ` · 于 ${adoptedAt} 来到你身边` : ""}
           </p>
         )}
       </div>
 
-      <div className="game-bottom-panel shrink-0 space-y-2.5 px-5 py-4">
+      <div className="relative z-10 shrink-0 space-y-2.5 px-5 pb-5 pt-3">
         {bound && (
-          <Button
-            variant="soft"
-            size="lg"
-            className="w-full"
+          <button
             disabled={cloudBusy}
             onClick={() => restyle()}
+            className="sketch w-full rounded-[18px] border-2 border-[#bd8a52]/55 bg-cream-soft px-6 py-3 font-hand text-base text-ink shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.16)] transition active:translate-y-0.5 disabled:opacity-50"
           >
-            {cloudBusy ? "换衣服中..." : "换个样子"}
-          </Button>
+            {cloudBusy ? "换样子中…" : "🎲 换个样子"}
+          </button>
         )}
-        <Button size="lg" className="w-full" onClick={() => goTo("home")}>
-          回小屋
-        </Button>
+        <PrimaryButton onClick={() => goTo("home")}>回小屋</PrimaryButton>
         {bound && (
-          <div className="flex items-center justify-center gap-2 pt-0.5 text-xs text-ink-soft/70">
+          <div className="flex items-center justify-center gap-2 pt-0.5 text-[11px] text-ink-soft/70">
             {email && <span className="truncate">{email}</span>}
             {email && <span aria-hidden>·</span>}
-            <button
-              onClick={() => logout()}
-              className="shrink-0 underline underline-offset-4 transition hover:text-accent"
-            >
+            <button onClick={() => logout()} className="shrink-0 underline underline-offset-4 transition hover:text-accent">
               退出登录
             </button>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function Chip({ children, tone = "warm" }: { children: React.ReactNode; tone?: "warm" | "leaf" }) {
+  return (
+    <span
+      className={`rounded-full border-2 px-3 py-1 text-[13px] text-ink ${
+        tone === "leaf" ? "border-leaf/35 bg-leaf/12" : "border-[#bd8a52]/35 bg-cream-soft"
+      }`}
+    >
+      {children}
+    </span>
   );
 }

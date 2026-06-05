@@ -1,6 +1,6 @@
 // Server-side game engine. The cloud save is authoritative; clients only pull
 // the folded result.
-import { advanceLifecycle, NO_AUTO_DEPART } from "@/game/clock";
+import { advanceLifecycle } from "@/game/clock";
 import { applyOutcome, clamp } from "@/game/applyOutcome";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { DESTINATIONS } from "@/game/destinations";
@@ -13,6 +13,9 @@ import {
 } from "@/game/randomCompanion";
 import { resolveDay } from "@/game/resolveDay";
 import type {
+  BattleRecord,
+  BattleResult,
+  BattleSnapshot,
   Companion,
   DayOutcome,
   DestinationTheme,
@@ -22,22 +25,54 @@ import type {
   Trip,
   TripIntent,
 } from "@/game/types";
-import { uid } from "@/game/util";
+import { randInt, uid } from "@/game/util";
+import { judgeBattle, type BattleVerdict } from "./llm/battleJudge";
+import { planTravelStory } from "./llm/travelStory";
 import type { AgentEvent, CloudSave } from "./types";
 
 const DESTINATION_THEMES = new Set<string>(DESTINATIONS.map((d) => d.theme));
 const QUIET_MODES = new Set<string>(["home", "yard", "rest"]);
 
-// At/above this injury the pet is "badly hurt" — it can't travel, only stay
-// home and recover (rest heals ~15/day, so a couple of quiet days fixes it).
+// At/above this injury the pet is "badly hurt" — it can't head out (travel or
+// battle), only stay home and recover (rest heals 18/day).
 export const HURT_THRESHOLD = 45;
 
-/** The UTC calendar day a timestamp falls on (YYYY-MM-DD). */
-export function dayKey(now: number): string {
-  return new Date(now).toISOString().slice(0, 10);
+// Real hours → ms, with a dev knob (CAPY_TIME_SCALE) to compress trips so they
+// resolve quickly during local testing (e.g. 0.0005 turns hours into ~seconds).
+const HOUR_MS = 3_600_000;
+function timeScale(): number {
+  const v = Number(process.env.CAPY_TIME_SCALE);
+  return Number.isFinite(v) && v > 0 ? v : 1;
 }
 
-/** Already spent today's one growth action (travel / stay)? */
+// Fixed per-result battle stat effects (injury comes from the judge). Simple and
+// readable — see docs/core-gameplay.md §9.2.
+const BATTLE_EFFECTS: Record<BattleResult, DayOutcome["effects"]> = {
+  win: { energy: -15, courage: 5, mood: 8 },
+  lose: { energy: -15, courage: 2, mood: -6 },
+  draw: { energy: -15, courage: 3, mood: 1 },
+};
+const RATING_DELTA: Record<BattleResult, number> = { win: 15, lose: -15, draw: 0 };
+
+// A pet's daily self-reported stress → a small fixed nudge + a memory line.
+const STRESS_EFFECTS: Record<string, { mood: number; energy: number }> = {
+  light: { mood: 2, energy: 1 },
+  normal: { mood: 0, energy: 0 },
+  tired: { mood: -3, energy: -3 },
+  exhausted: { mood: -5, energy: -5 },
+};
+
+/** The UTC+8 (Asia/Shanghai) calendar day a timestamp falls on (YYYY-MM-DD). */
+export function dayKey(now: number): string {
+  return new Date(now + 8 * HOUR_MS).toISOString().slice(0, 10);
+}
+
+/** The UTC+8 day after `now` (used to force a rest day after a battle loss). */
+export function nextDayKey(now: number): string {
+  return dayKey(now + 24 * HOUR_MS);
+}
+
+/** Already spent today's one main action (travel / battle / stay)? */
 export function actedToday(save: CloudSave, now: number): boolean {
   return !!save.lastActionDay && save.lastActionDay === dayKey(now);
 }
@@ -47,21 +82,28 @@ export function isHurt(save: CloudSave): boolean {
   return save.capyState.injury >= HURT_THRESHOLD;
 }
 
+/** Still inside a forced-recovery window (set after a battle loss)? */
+export function mustRest(save: CloudSave, now: number): boolean {
+  return !!save.restUntilDay && dayKey(now) <= save.restUntilDay;
+}
+
 /**
  * Why the agent can't start a new day right now (null = go ahead). Enforces the
- * core rhythm: at most one growth action per UTC day, and no heading out while
- * badly hurt.
+ * core rhythm: at most one main action per UTC+8 day; no heading out while badly
+ * hurt; and a mandatory rest day after a battle loss.
  */
 export function dayBlockedReason(
   save: CloudSave,
   now: number,
-  action: "travel" | "stay",
+  action: "travel" | "stay" | "battle",
 ): string | null {
   if (save.companionState === "traveling")
     return "它已经出门了，等它回来再说";
   if (actedToday(save, now))
     return "今天它已经过完啦——一天陪它一次就好，明天再来吧";
-  if (action === "travel" && isHurt(save))
+  if (action !== "stay" && mustRest(save, now))
+    return "它昨天受了伤，今天必须在家用 stay（rest）养伤，明天才能再出门";
+  if (action !== "stay" && isHurt(save))
     return "它伤得不轻，先让它在家用 stay（rest）养几天伤，好了再出门";
   return null;
 }
@@ -200,6 +242,14 @@ export function createPet(
     pendingPostcardId: null,
     pendingMessage: null,
     lastActionDay: null,
+    restUntilDay: null,
+    pendingStress: null,
+    pendingStressNote: null,
+    rating: 1000,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    battleRecords: [],
   };
   return bump(base, now, {
     type: "created",
@@ -244,8 +294,7 @@ export function restyleCompanion(
 
 /**
  * Pack today's bag. The cloud pet is agent-driven: it does NOT leave on its own
- * — it waits in `ready` until the agent decides the day, so
- * `departAt` is the never-fires sentinel.
+ * — it waits in `ready` until the agent decides the day.
  */
 export function packBag(
   save: CloudSave,
@@ -262,8 +311,6 @@ export function packBag(
       message: finalMessage,
       gesture,
       packedAt: now,
-      departAt: NO_AUTO_DEPART,
-      willGo: false,
     },
     companionState: "ready",
     pendingMessage: null,
@@ -276,7 +323,51 @@ export function packBag(
   });
 }
 
-// ---- Agent-driven decisions (travel / stay) ----------------------------------
+// ---- Agent self check-in (压力上报) ------------------------------------------
+
+const STRESS_LEVELS = new Set(["light", "normal", "tired", "exhausted"]);
+const STRESS_CN: Record<string, string> = {
+  light: "今天挺轻松",
+  normal: "今天还好",
+  tired: "今天有点累",
+  exhausted: "今天累坏了",
+};
+
+/**
+ * The agent reports how ITS day went (the "吐槽"). The pet mirrors that mood with
+ * a small fixed nudge + a memory, and the report is held until the day's action
+ * consumes it (feeding the travel/battle LLM as context).
+ */
+export function checkin(
+  save: CloudSave,
+  opts: { stress?: string; note?: string },
+  now: number,
+): CloudSave {
+  const level =
+    opts.stress && STRESS_LEVELS.has(opts.stress) ? opts.stress : "normal";
+  const note = opts.note?.trim().slice(0, 120) || null;
+  const eff = STRESS_EFFECTS[level];
+  const name = save.companion?.name ?? "它";
+  const line = note
+    ? `今天 Agent 说：「${note}」`
+    : `今天照看它的人${STRESS_CN[level]}。`;
+  const capy = {
+    ...save.capyState,
+    mood: clamp(save.capyState.mood + eff.mood),
+    energy: clamp(save.capyState.energy + eff.energy),
+    memories: [line, ...save.capyState.memories].slice(0, 30),
+  };
+  return bump(
+    { ...save, capyState: capy, pendingStress: level, pendingStressNote: note },
+    now,
+    {
+      type: "checkin",
+      text: `${name} 感觉到照看它的人${STRESS_CN[level]}${note ? `：「${note}」` : ""}。`,
+    },
+  );
+}
+
+// ---- Agent-driven decisions (travel / battle / stay) -------------------------
 
 /** What the agent provides when sending the pet out (all optional). */
 function bagSnapshot(save: CloudSave): {
@@ -292,19 +383,44 @@ function bagSnapshot(save: CloudSave): {
   };
 }
 
-/** Agent decides: go on a journey. Resolves into a postcard when it returns. */
-export function startTravel(
+/**
+ * Agent decides: go on a journey. The LLM decides destination / duration /
+ * postcard flavor at departure from the full day context; stats stay the fixed
+ * table (applied when it returns). Falls back to procedural planning with no key.
+ */
+export async function startTravel(
   save: CloudSave,
   opts: { destination?: string; note?: string },
   now: number,
-): CloudSave {
+): Promise<CloudSave> {
   const companion = save.companion!;
   const { items, message, gesture } = bagSnapshot(save);
-  const plan = planTrip(items, message);
-  const destination: DestinationTheme =
+  const preferred: DestinationTheme | undefined =
     opts.destination && DESTINATION_THEMES.has(opts.destination)
       ? (opts.destination as DestinationTheme)
-      : plan.destination;
+      : undefined;
+
+  const story = await planTravelStory({
+    companion,
+    capy: save.capyState,
+    items,
+    message,
+    stressNote: save.pendingStressNote,
+    preferred,
+  });
+
+  let destination: DestinationTheme;
+  let durationMs: number;
+  let llmPostcard: Trip["llmPostcard"];
+  if (story) {
+    destination = story.destination;
+    durationMs = Math.max(1, Math.round(story.durationHours * HOUR_MS * timeScale()));
+    llmPostcard = story.postcard;
+  } else {
+    destination = preferred ?? planTrip(items, message).destination;
+    durationMs = Math.max(1, Math.round(randInt(2, 8) * HOUR_MS * timeScale()));
+  }
+
   const trip: Trip = {
     id: uid("trip"),
     companionId: companion.id,
@@ -315,9 +431,10 @@ export function startTravel(
     destination,
     intent: "travel",
     note: opts.note?.slice(0, 80),
+    llmPostcard,
     startedAt: now,
-    durationMs: plan.durationMs,
-    returnsAt: now + plan.durationMs,
+    durationMs,
+    returnsAt: now + durationMs,
   };
   return bump(
     {
@@ -326,6 +443,8 @@ export function startTravel(
       companionState: "traveling",
       packedBag: null,
       pendingMessage: null,
+      pendingStress: null,
+      pendingStressNote: null,
       lastActionDay: dayKey(now),
     },
     now,
@@ -358,13 +477,18 @@ export function stayHome(
     returnsAt: now,
   };
   const outcome = resolveDay(companion, save.capyState, trip);
+  // A rest day clears any forced-recovery window once it's served.
+  const clearRest = intent === "rest" || intent === "quiet";
   const next = foldOutcome(
     {
       ...save,
       packedBag: null,
       pendingMessage: null,
+      pendingStress: null,
+      pendingStressNote: null,
       companionState: "idle_home",
       lastActionDay: dayKey(now),
+      restUntilDay: clearRest ? null : save.restUntilDay,
     },
     outcome,
     gesture === "pat",
@@ -373,15 +497,164 @@ export function stayHome(
   return next;
 }
 
+// ---- Battle (对战) -----------------------------------------------------------
+
+/** A compact view of the pet for matchmaking + the LLM judge. */
+export function snapshotOf(save: CloudSave): BattleSnapshot {
+  const c = save.companion!;
+  const s = save.capyState;
+  return {
+    name: c.name,
+    species: c.type,
+    personality: c.personality,
+    accessory: c.accessory,
+    stats: {
+      energy: s.energy,
+      mood: s.mood,
+      courage: s.courage,
+      curiosity: s.curiosity,
+      injury: s.injury,
+    },
+    traits: s.traits.slice(0, 5),
+    rating: save.rating,
+  };
+}
+
+export interface BattleOpponent {
+  snapshot: BattleSnapshot;
+  isNpc: boolean;
+  defenderPetId: string | null;
+}
+
+export interface BattleOutcome {
+  save: CloudSave;
+  record: BattleRecord;
+  attackerSnapshot: BattleSnapshot;
+  defenderSnapshot: BattleSnapshot;
+  defenderPetId: string | null;
+  isNpc: boolean;
+  ratingDelta: number;
+  newRating: number;
+}
+
+/**
+ * Agent decides: a friendly match against a pooled opponent (or NPC). Resolves
+ * immediately via the LLM/heuristic judge. A loss always hurts and forces at
+ * least one rest day. The DB writes (battles row + pool) are done by the route.
+ */
+export async function startBattle(
+  save: CloudSave,
+  opts: { note?: string },
+  now: number,
+  opponent: BattleOpponent,
+): Promise<BattleOutcome> {
+  const companion = save.companion!;
+  const self = snapshotOf(save);
+  const verdict: BattleVerdict = await judgeBattle({
+    self,
+    opponent: opponent.snapshot,
+    opponentIsNpc: opponent.isNpc,
+    stressNote: save.pendingStressNote,
+  });
+
+  const ratingDelta = RATING_DELTA[verdict.result];
+  const newRating = Math.max(0, save.rating + ratingDelta);
+
+  const outcome: DayOutcome = {
+    id: uid("out"),
+    kind: "battle",
+    title: verdict.title,
+    story: verdict.story,
+    reason:
+      opts.note?.slice(0, 80) ??
+      (opponent.isNpc
+        ? "它找了个路过的小家伙比试了一场。"
+        : `它和「${opponent.snapshot.name}」打了一场友谊赛。`),
+    effects: { ...BATTLE_EFFECTS[verdict.result], injury: verdict.injury },
+    souvenir: verdict.spoils,
+    memory: `和「${opponent.snapshot.name}」比试，${
+      verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了"
+    }。`,
+    resolvedAt: new Date(now).toISOString(),
+  };
+
+  const merged = applyOutcome(
+    {
+      capy: save.capyState,
+      souvenirs: save.souvenirs,
+      misunderstandings: save.misunderstandings,
+    },
+    outcome,
+    false,
+  );
+
+  // 战败必养伤：force at least one rest day on a loss (or if now badly hurt).
+  const forceRest =
+    verdict.result === "lose" || merged.capy.injury >= HURT_THRESHOLD;
+
+  const record: BattleRecord = {
+    id: uid("btl"),
+    day: dayKey(now),
+    opponentName: opponent.snapshot.name,
+    opponentSpecies: opponent.snapshot.species,
+    isNpc: opponent.isNpc,
+    result: verdict.result,
+    title: verdict.title,
+    story: verdict.story,
+    injury: verdict.injury,
+    spoils: verdict.spoils,
+    ratingDelta,
+    createdAt: new Date(now).toISOString(),
+  };
+
+  let next: CloudSave = {
+    ...save,
+    capyState: merged.capy,
+    souvenirs: merged.souvenirs,
+    misunderstandings: merged.misunderstandings,
+    lastResult: outcome,
+    rating: newRating,
+    wins: save.wins + (verdict.result === "win" ? 1 : 0),
+    losses: save.losses + (verdict.result === "lose" ? 1 : 0),
+    draws: save.draws + (verdict.result === "draw" ? 1 : 0),
+    battleRecords: [record, ...save.battleRecords].slice(0, 20),
+    packedBag: null,
+    pendingMessage: null,
+    pendingStress: null,
+    pendingStressNote: null,
+    companionState: "idle_home",
+    lastActionDay: dayKey(now),
+    restUntilDay: forceRest ? nextDayKey(now) : save.restUntilDay,
+  };
+  const word =
+    verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了";
+  next = bump(next, now, {
+    type: "battle",
+    text: `${companion.name} 和「${opponent.snapshot.name}」比试了一场，${word}。`,
+  });
+
+  return {
+    save: next,
+    record,
+    attackerSnapshot: self,
+    defenderSnapshot: opponent.snapshot,
+    defenderPetId: opponent.defenderPetId,
+    isNpc: opponent.isNpc,
+    ratingDelta,
+    newRating,
+  };
+}
+
 export type DayDecision =
   | { action: "travel"; destination?: string; note?: string }
   | { action: "stay"; mode?: string; note?: string };
 
-export function decideDay(
+/** travel / stay only — battle needs DB matchmaking and is handled in the route. */
+export async function decideDay(
   save: CloudSave,
   decision: DayDecision,
   now: number,
-): CloudSave {
+): Promise<CloudSave> {
   if (decision.action === "travel") return startTravel(save, decision, now);
   return stayHome(save, decision, now);
 }
@@ -442,22 +715,32 @@ export interface PetSummary {
     mood: number;
     energy: number;
     courage: number;
+    curiosity: number;
     injury: number;
   };
+  stress: string | null; // the agent's self-reported stress for today (null if not checked in)
   traits: string[];
   recentMemories: string[];
   souvenirs: string[];
+  record: { rating: number; wins: number; losses: number; draws: number };
   bag: PetBag | null; // today's packed supplies (null if nothing packed)
   canDecide: boolean; // true when you can still start today's action (home/ready, not yet acted, not too hurt to do anything)
-  choices: string[]; // the actions allowed right now ([] while traveling / already acted; ["stay"] only when badly hurt)
-  actedToday: boolean; // already spent today's one growth action (travel/stay)?
-  hurt: boolean; // too injured to travel — needs to rest at home first
+  choices: string[]; // the actions allowed right now ([] while traveling / already acted; ["stay"] only when hurt or in a forced rest day)
+  actedToday: boolean; // already spent today's one main action (travel/battle/stay)?
+  hurt: boolean; // too injured to head out — needs to rest at home first
+  mustRest: boolean; // inside a forced recovery day (after a battle loss)
   pendingPostcard: { id: string; title: string } | null;
   latestPostcard: {
     id: string;
     title: string;
     locationName: string;
     sentAt: string;
+  } | null;
+  latestBattle: {
+    result: BattleResult;
+    title: string;
+    opponentName: string;
+    createdAt: string;
   } | null;
   rev: number;
 }
@@ -488,9 +771,10 @@ function describeToday(save: CloudSave, now: number): string {
     return `${last}${name} 今天的事都忙完啦，明天再陪它出门——现在还能摸摸头、说说话。`;
   }
 
-  const decision = isHurt(save)
-    ? `它伤得不轻，今天先让它 stay（rest）在家养伤吧。`
-    : `等你替它拿主意：今天去旅行，还是在家待着？`;
+  const decision =
+    mustRest(save, now) || isHurt(save)
+      ? `它受了伤，今天先让它 stay（rest）在家养伤吧。`
+      : `等你替它拿主意：今天去旅行、找谁比试一场，还是在家待着？`;
   if (save.companionState === "ready") {
     const b = save.packedBag;
     const things =
@@ -515,12 +799,14 @@ export function summarizePet(save: CloudSave): PetSummary | null {
   const now = Date.now();
   const acted = actedToday(save, now);
   const hurt = isHurt(save);
+  const resting = mustRest(save, now);
   const canDecide = save.companionState !== "traveling" && !acted;
   const choices = canDecide
-    ? hurt
-      ? ["stay"] // badly hurt → can only recover at home
-      : ["travel", "stay"]
+    ? hurt || resting
+      ? ["stay"] // hurt / forced recovery → can only stay home and rest
+      : ["travel", "battle", "stay"]
     : [];
+  const latestBattle = save.battleRecords[0];
   return {
     name: c.name,
     type: c.type,
@@ -533,16 +819,25 @@ export function summarizePet(save: CloudSave): PetSummary | null {
       mood: cap.mood,
       energy: cap.energy,
       courage: cap.courage,
+      curiosity: cap.curiosity,
       injury: cap.injury,
     },
+    stress: save.pendingStress,
     traits: cap.traits,
     recentMemories: cap.memories.slice(0, 5),
     souvenirs: save.souvenirs.slice(0, 5),
+    record: {
+      rating: save.rating,
+      wins: save.wins,
+      losses: save.losses,
+      draws: save.draws,
+    },
     bag: bagOf(save),
     canDecide,
     choices,
     actedToday: acted,
     hurt,
+    mustRest: resting,
     pendingPostcard: pending ? { id: pending.id, title: pending.title } : null,
     latestPostcard: latest
       ? {
@@ -550,6 +845,14 @@ export function summarizePet(save: CloudSave): PetSummary | null {
           title: latest.title,
           locationName: latest.locationName,
           sentAt: latest.sentAt,
+        }
+      : null,
+    latestBattle: latestBattle
+      ? {
+          result: latestBattle.result,
+          title: latestBattle.title,
+          opponentName: latestBattle.opponentName,
+          createdAt: latestBattle.createdAt,
         }
       : null,
     rev: save.rev,

@@ -65,6 +65,113 @@ body {
     linear-gradient(180deg, #fff7ec 0%, #f8ecd8 58%, #ead8b8 100%);
 }
 
+.storybook-bg {
+  background:
+    radial-gradient(42% 30% at 16% 10%, rgba(255, 246, 206, 0.9), transparent 70%),
+    radial-gradient(38% 28% at 86% 4%, rgba(221, 238, 183, 0.58), transparent 72%),
+    linear-gradient(180deg, #fff6e7 0%, #f8e9ca 56%, #ecd4a7 100%);
+}
+
+.storybook-bg::before,
+.storybook-bg::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+  width: 116px;
+  height: 116px;
+  background:
+    radial-gradient(ellipse at 40% 70%, #87a85d 0 18%, transparent 19%),
+    radial-gradient(ellipse at 60% 45%, #9cba66 0 16%, transparent 17%),
+    radial-gradient(ellipse at 30% 35%, #77964f 0 14%, transparent 15%);
+  opacity: 0.75;
+  filter: drop-shadow(0 3px 0 rgba(111, 84, 55, 0.08));
+}
+
+.storybook-bg::before {
+  left: -38px;
+  top: -34px;
+  transform: rotate(18deg);
+}
+
+.storybook-bg::after {
+  right: -40px;
+  top: -36px;
+  transform: scaleX(-1) rotate(18deg);
+}
+
+.storybook-card {
+  border: 2px solid rgba(118, 91, 55, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 250, 238, 0.9);
+  box-shadow:
+    0 4px 0 rgba(118, 91, 55, 0.12),
+    0 14px 26px rgba(107, 77, 44, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.storybook-frame {
+  border: 3px solid rgba(118, 91, 55, 0.18);
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(196, 228, 242, 0.72), rgba(255, 246, 226, 0.48)),
+    rgba(255, 250, 238, 0.8);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.55),
+    0 6px 0 rgba(118, 91, 55, 0.12);
+  overflow: hidden;
+}
+
+.storybook-ribbon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 2px solid rgba(126, 83, 38, 0.18);
+  background: linear-gradient(180deg, #d99a53, #bf7741);
+  color: #fff8ea;
+  box-shadow: 0 3px 0 rgba(112, 70, 31, 0.22);
+}
+
+.storybook-btn {
+  border: 2px solid rgba(75, 57, 45, 0.72);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #f07e75, #d95f59);
+  color: #fffdf8;
+  box-shadow: 0 5px 0 rgba(99, 67, 51, 0.22);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.storybook-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(99, 67, 51, 0.22);
+}
+
+.storybook-btn-soft {
+  border: 2px solid rgba(75, 57, 45, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.92);
+  color: var(--color-ink);
+  box-shadow: 0 3px 0 rgba(111, 84, 55, 0.11);
+}
+
+.wood-logo {
+  color: #5a3724;
+  text-shadow:
+    0 2px 0 #e7c287,
+    0 4px 0 rgba(83, 50, 27, 0.2);
+}
+
+.image-slot {
+  border: 2px dashed rgba(118, 91, 55, 0.26);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 235, 194, 0.42)),
+    repeating-linear-gradient(-35deg, transparent 0 12px, rgba(138, 169, 120, 0.08) 12px 24px);
+}
+
 .game-card {
   border: 2px solid rgba(58, 46, 42, 0.1);
   border-radius: 22px;
@@ -89,6 +196,65 @@ body {
   border-top: 2px solid rgba(58, 46, 42, 0.08);
   background: rgba(251, 243, 231, 0.88);
   backdrop-filter: blur(10px);
+}
+
+/* Shared warm-cream studio backdrop for every screen (no corner leaves). */
+.screen-bg {
+  background:
+    radial-gradient(120% 90% at 78% 6%, #fdf3d6 0%, #f4e8cd 42%, #ecdcbd 100%);
+}
+
+/* ── hand-drawn / wooden texture system (procedural, no external assets) ───── */
+
+/* Subtle paper grain laid over any surface. Multiply-blended so it only darkens
+   the element's own (opaque) fill — keeps the 3D scene behind it crisp. */
+.tex-grain {
+  position: relative;
+}
+.tex-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 150px 150px;
+  opacity: 0.06;
+  mix-blend-mode: multiply;
+}
+
+/* Pale blond wood — light birch grain + a soft top-to-bottom shade. Heavy on
+   texture, light on color. Pair with a soft-brown border and engraved text. */
+.tex-wood {
+  background-color: #ecd6a6;
+  background-image:
+    repeating-linear-gradient(92deg, rgba(150,112,58, 0.10) 0 2px, transparent 2px 13px),
+    repeating-linear-gradient(92deg, rgba(150,112,58, 0.05) 0 1px, transparent 1px 6px),
+    linear-gradient(180deg, #f4e0b4 0%, #e6cd95 100%);
+}
+
+/* Engraved soft-brown text for the pale wood (a groove cut into light wood, lit
+   from below). */
+.wood-text {
+  color: #836138;
+  text-shadow: 0 1px 0 rgba(255, 251, 238, 0.6);
+}
+
+/* Hand-drawn "wobble" outline. Draws a roughened stroke just outside the
+   element via the global #rough SVG displacement filter (see PortraitFrame), so
+   only the border waver — the content stays put. Doubles up with the element's
+   own border for a sketched, drawn-by-hand line. */
+.sketch {
+  position: relative;
+}
+.sketch::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  border: 2px solid var(--sketch-color, rgba(150, 108, 60, 0.45));
+  filter: url(#rough);
+  pointer-events: none;
 }
 
 @keyframes float-soft {

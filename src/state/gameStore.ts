@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { randomCuteCompanion } from "@/game/randomCompanion";
 import type {
+  BattleRecord,
   CapyState,
   Companion,
   CompanionState,
@@ -20,6 +21,7 @@ import type { CloudSave } from "@/server/types";
 
 export type Screen =
   | "login"
+  | "intro"
   | "connect"
   | "profile"
   | "home"
@@ -50,9 +52,11 @@ interface GameState {
   postcards: Postcard[];
   souvenirs: string[];
   misunderstandings: string[];
+  battleRecords: BattleRecord[];
   lastResult: DayOutcome | null;
   screen: Screen;
   loginDestination: LoginDestination;
+  hasSeenIntro: boolean;
   selectedPostcardId: string | null;
   pendingPostcardId: string | null;
 
@@ -72,6 +76,7 @@ interface GameState {
   openPostcard: (id: string) => void;
   collectPostcard: () => void;
   reset: () => void;
+  completeIntro: (next?: Screen) => void;
 
   // cloud actions
   loginWithSupabaseToken: (
@@ -99,6 +104,7 @@ function emptyLocalState() {
     postcards: [],
     souvenirs: [],
     misunderstandings: [],
+    battleRecords: [],
     lastResult: null,
     selectedPostcardId: null,
     pendingPostcardId: null,
@@ -112,6 +118,7 @@ export const useGameStore = create<GameState>()(
       ...emptyLocalState(),
       screen: "login",
       loginDestination: "profile",
+      hasSeenIntro: false,
 
       cloud: null,
       connectUrl: null,
@@ -165,9 +172,16 @@ export const useGameStore = create<GameState>()(
           ...emptyLocalState(),
           screen: "login",
           loginDestination: "profile",
+          hasSeenIntro: false,
           cloud: null,
           connectUrl: null,
           cloudError: null,
+        }),
+
+      completeIntro: (next = "home") =>
+        set({
+          hasSeenIntro: true,
+          screen: next === "intro" || next === "login" ? "home" : next,
         }),
 
       // ---- cloud ----
@@ -193,11 +207,11 @@ export const useGameStore = create<GameState>()(
           });
           get().adoptSave(res.save);
           if (res.save.companion) {
-            set({ screen: destination });
+            set({ screen: get().hasSeenIntro ? destination : "intro" });
             return;
           }
           await get().ensureCloudPet();
-          if (destination === "connect" && get().companion) {
+          if (destination === "connect" && get().companion && get().hasSeenIntro) {
             set({ screen: "connect" });
           }
         } catch (e) {
@@ -225,11 +239,11 @@ export const useGameStore = create<GameState>()(
           });
           get().adoptSave(res.save);
           if (res.save.companion) {
-            set({ screen: destination });
+            set({ screen: get().hasSeenIntro ? destination : "intro" });
             return;
           }
           await get().ensureCloudPet();
-          if (destination === "connect" && get().companion) {
+          if (destination === "connect" && get().companion && get().hasSeenIntro) {
             set({ screen: "connect" });
           }
         } catch (e) {
@@ -247,7 +261,7 @@ export const useGameStore = create<GameState>()(
             randomCuteCompanion(),
           );
           get().adoptSave(save);
-          set({ cloudBusy: false, screen: "profile" });
+          set({ cloudBusy: false, screen: get().hasSeenIntro ? "profile" : "intro" });
         } catch (e) {
           const err = e as Error & { status?: number };
           if (err.status === 401) return get().logout();
@@ -255,7 +269,7 @@ export const useGameStore = create<GameState>()(
             try {
               const { save } = await cloud.pet(s.cloud.bindToken);
               get().adoptSave(save);
-              set({ cloudBusy: false, screen: "profile" });
+              set({ cloudBusy: false, screen: get().hasSeenIntro ? "profile" : "intro" });
               return;
             } catch {
               /* fall through to surfacing the error below */
@@ -290,6 +304,7 @@ export const useGameStore = create<GameState>()(
           cloudBusy: false,
           cloudError: null,
           loginDestination: "profile",
+          hasSeenIntro: false,
           screen: "login",
         });
       },
@@ -342,6 +357,7 @@ export const useGameStore = create<GameState>()(
           postcards: save.postcards,
           souvenirs: save.souvenirs,
           misunderstandings: save.misunderstandings,
+          battleRecords: save.battleRecords,
           lastResult: save.lastResult,
           pendingPostcardId: save.pendingPostcardId,
           cloud: s.cloud ? { ...s.cloud, rev: save.rev } : s.cloud,
@@ -368,9 +384,11 @@ export const useGameStore = create<GameState>()(
         postcards: s.postcards,
         souvenirs: s.souvenirs,
         misunderstandings: s.misunderstandings,
+        battleRecords: s.battleRecords,
         lastResult: s.lastResult,
         screen: s.screen,
         loginDestination: s.loginDestination,
+        hasSeenIntro: s.hasSeenIntro,
         selectedPostcardId: s.selectedPostcardId,
         pendingPostcardId: s.pendingPostcardId,
         cloud: s.cloud,

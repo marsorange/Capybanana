@@ -9,10 +9,6 @@ import type {
   Trip,
 } from "./types";
 
-// Sentinel departAt for an agent-driven (cloud) pet: it never auto-departs on
-// its own — it waits for the agent to decide the day.
-export const NO_AUTO_DEPART = Number.MAX_SAFE_INTEGER;
-
 export interface LifecycleState {
   companion: Companion | null;
   capy: CapyState;

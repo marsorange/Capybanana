@@ -6,6 +6,7 @@ export const DEFAULT_CAPY: CapyState = {
   mood: 65,
   energy: 70,
   courage: 40,
+  curiosity: 50,
   injury: 0,
   traits: [],
   memories: [],

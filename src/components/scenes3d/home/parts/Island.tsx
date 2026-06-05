@@ -8,12 +8,13 @@ const m = (c: string) => (
   <primitive object={toonMaterial(c)} attach="material" />
 );
 
-// fresh, varied greens so the lawn never reads as one flat color
-const GRASS = "#8ec159";
-const GRASS_LT = "#a3d06c";
-const GRASS_YEL = "#b6d165";
-const GRASS_DK = "#76aa48";
-const GRASS_EDGE = "#6c9f43";
+// fresh, varied greens so the lawn never reads as one flat color — bumped to the
+// juicier spring green of the reference (more saturated, slightly cooler)
+const GRASS = "#82c648";
+const GRASS_LT = "#9bd863";
+const GRASS_YEL = "#aedc63";
+const GRASS_DK = "#6aac3e";
+const GRASS_EDGE = "#5d9c37";
 // warm faceted earth tones for the soil mound
 const SOIL_TOP = "#c49a64";
 const SOIL_1 = "#b07f49";

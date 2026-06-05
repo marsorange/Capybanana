@@ -1,5 +1,6 @@
 // Server-side persistence shapes (stored in Supabase/Postgres).
 import type {
+  BattleRecord,
   CapyState,
   Companion,
   CompanionState,
@@ -26,6 +27,9 @@ export type AgentEventType =
   | "postcard"
   | "pat"
   | "said"
+  | "checkin"
+  | "battle"
+  | "challenged"
   | "restyled";
 
 // One entry in the pet's activity log. `seq` (== the rev at which it was
@@ -52,7 +56,15 @@ export interface CloudSave {
   lastResult: DayOutcome | null;
   pendingPostcardId: string | null;
   pendingMessage: string | null; // a thing the agent "said"; seeds the next trip
-  lastActionDay: string | null; // YYYY-MM-DD (UTC) the day's growth action (travel/stay) was spent — caps the pet to one a day
+  lastActionDay: string | null; // YYYY-MM-DD (UTC+8) the day's main action (travel/battle/stay) was spent — caps the pet to one a day
+  restUntilDay: string | null; // YYYY-MM-DD (UTC+8); on/before this day only stay(rest) is allowed (forced recovery after a battle loss)
+  pendingStress: string | null; // the agent's self-reported stress level for today (light|normal|tired|exhausted), consumed by the day's action
+  pendingStressNote: string | null; // the agent's free-text "吐槽" for today, fed into the LLM and remembered
+  rating: number; // simple matchmaking rating (±15 per battle)
+  wins: number;
+  losses: number;
+  draws: number;
+  battleRecords: BattleRecord[]; // recent battles (loaded from the battles table)
   rev: number;
   updatedAt: string;
   events: AgentEvent[];

@@ -6,12 +6,39 @@ import type {
   DayOutcome,
   ItemTag,
   OutcomeKind,
+  Postcard,
   Trip,
 } from "./types";
-import { pick, randRange, uid, weightedPick } from "./util";
+import { pick, uid, weightedPick } from "./util";
 
 const HOME_WORDS = ["休息", "别累", "在家", "睡", "安静", "慢", "歇"];
 const YARD_WORDS = ["院子", "晒太阳", "种", "花", "草", "门口"];
+
+// One obvious place for every action's stat change. Fixed small integers — easy
+// to read and tune (see docs/core-gameplay.md §9). injury for travel is the only
+// randomness, a single coin-flip below.
+const EFFECTS: Record<
+  Exclude<OutcomeKind, "battle">,
+  DayOutcome["effects"]
+> = {
+  travel: { energy: -10, mood: 5, courage: 3, curiosity: 5 },
+  home: { mood: 6, energy: 12, injury: -6 },
+  yard: { mood: 8, energy: -3, curiosity: 3 },
+  rest: { injury: -18, energy: 18, mood: 4 },
+};
+
+const TRAVEL_HURT_CHANCE = 0.25;
+const TRAVEL_HURT_AMOUNT = 15;
+
+const TRAIT_CHANCE = 0.12;
+const TRAITS = [
+  "爱晒太阳",
+  "喜欢收集小石头",
+  "容易读歪留言",
+  "胆子变大了一点",
+  "对远方很好奇",
+  "爱睡懒觉",
+];
 
 const SOUVENIRS = [
   "一颗圆圆的小石头",
@@ -31,13 +58,6 @@ const MISREADS = [
   "你想吃它带回来的任何东西",
 ];
 
-const SECRET_HINTS = [
-  "它最近总盯着窗外的某个方向发呆。",
-  "门口好像多了一串不属于它的脚印。",
-  "它把一样东西藏进了地板缝里，不让你看。",
-  "半夜你好像听见它在跟谁小声说话。",
-];
-
 const WEIRD_USES = [
   "一顶帽子",
   "一把奇怪的乐器",
@@ -46,6 +66,13 @@ const WEIRD_USES = [
   "一台想象中的机器",
   "一个鸟窝",
 ];
+
+/** Occasionally pick up a growth tag on a memorable day (keeps traits alive). */
+function maybeTrait(existing: string[]): string | undefined {
+  if (Math.random() >= TRAIT_CHANCE) return undefined;
+  const fresh = TRAITS.filter((t) => !existing.includes(t));
+  return fresh.length ? pick(fresh) : undefined;
+}
 
 // "把东西弄丢" / "把东西组合成奇怪用途" — small surprise sub-events.
 function microVariant(
@@ -136,6 +163,24 @@ function pickKind(
   return intent; // a concrete OutcomeKind the agent asked for
 }
 
+/** Build the travel postcard: the LLM's pre-generated flavor if present, else procedural. */
+function travelPostcard(companion: Companion, trip: Trip): Postcard {
+  const lp = trip.llmPostcard;
+  if (!lp) return generatePostcard(companion, trip);
+  return {
+    id: uid("pc"),
+    tripId: trip.id,
+    companionId: companion.id,
+    locationName: lp.landmark,
+    destinationTheme: trip.destination,
+    title: lp.title,
+    message: lp.message,
+    reason: lp.reason,
+    imageKey: trip.destination,
+    sentAt: new Date().toISOString(),
+  };
+}
+
 export function resolveDay(
   companion: Companion,
   capy: CapyState,
@@ -160,19 +205,16 @@ export function resolveDay(
   };
 
   if (kind === "travel") {
-    const postcard = generatePostcard(companion, trip);
+    const postcard = travelPostcard(companion, trip);
     const souvenir = Math.random() < 0.6 ? pick(SOUVENIRS) : undefined;
+    const hurt = Math.random() < TRAVEL_HURT_CHANCE ? TRAVEL_HURT_AMOUNT : 0;
     return {
       ...base,
       title: "它真的出门啦",
       story: `它背上包裹走了挺远，寄回了一张明信片：「${postcard.title}」。`,
-      effects: {
-        energy: -10,
-        mood: 5,
-        courage: 6,
-        injury: Math.random() < 0.25 ? 6 : 0,
-      },
+      effects: { ...EFFECTS.travel, injury: hurt },
       souvenir,
+      trait: maybeTrait(capy.traits),
       misunderstanding: misread,
       memory: `去过${postcard.locationName}，记得那里像「${postcard.title}」。`,
       postcard,
@@ -185,8 +227,9 @@ export function resolveDay(
       ...base,
       title: mv ? "院子里出了点意外" : "它在院子里晃了晃",
       story: mv?.story ?? yardStory(tags),
-      effects: mv?.effects ?? { mood: 8, energy: -3 },
+      effects: mv?.effects ?? EFFECTS.yard,
       memory: mv?.memory,
+      trait: maybeTrait(capy.traits),
       misunderstanding: misread,
     };
   }
@@ -199,19 +242,7 @@ export function resolveDay(
       story: hurt
         ? "它窝在角落舔了舔爪子，把你给的东西垫在身下，睡了好久。"
         : "它赖在窝里一整天，谁叫都只是哼哼两声。",
-      effects: { injury: -15, energy: 18, mood: 4 },
-      misunderstanding: misread,
-    };
-  }
-
-  if (kind === "secret") {
-    const hint = pick(SECRET_HINTS);
-    return {
-      ...base,
-      title: "有点不对劲…",
-      story: hint,
-      effects: { courage: 4, mood: 2 },
-      memory: hint,
+      effects: EFFECTS.rest,
       misunderstanding: misread,
     };
   }
@@ -222,12 +253,9 @@ export function resolveDay(
     ...base,
     title: mv ? "今天有点意外" : "它今天待在家里",
     story: mv?.story ?? homeStory(tags),
-    effects: mv?.effects ?? {
-      mood: 6,
-      energy: Math.round(randRange(8, 16)),
-      injury: -8,
-    },
+    effects: mv?.effects ?? EFFECTS.home,
     memory: mv?.memory,
+    trait: maybeTrait(capy.traits),
     misunderstanding: misread,
   };
 }

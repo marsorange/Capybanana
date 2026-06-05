@@ -4,9 +4,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Sql, TransactionSql } from "postgres";
 
-import { NO_AUTO_DEPART } from "@/game/clock";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import type {
+  BattleRecord,
+  BattleResult,
+  BattleSnapshot,
   Companion,
   CompanionState,
   DayOutcome,
@@ -44,6 +46,7 @@ interface PetRow {
   mood: number;
   energy: number;
   courage: number;
+  curiosity: number;
   injury: number;
   traits: string[];
   memories: string[];
@@ -52,11 +55,33 @@ interface PetRow {
   last_result: DayOutcome | null;
   state: CompanionState;
   last_action_day: Date | string | null;
+  rest_until_day: Date | string | null;
   pending_message: string | null;
+  pending_stress: string | null;
+  pending_stress_note: string | null;
+  rating: number;
+  wins: number;
+  losses: number;
+  draws: number;
   active_trip_id: string | null;
   rev: number;
   created_at: Date | string;
   updated_at: Date | string;
+}
+
+interface BattleRow {
+  legacy_id: string | null;
+  day: Date | string;
+  defender_pet_id: string | null;
+  is_npc: boolean;
+  defender_snapshot: BattleSnapshot;
+  result: BattleResult;
+  attacker_injury: number;
+  attacker_rating_delta: number;
+  spoils: string | null;
+  title: string;
+  story: string;
+  created_at: Date | string;
 }
 
 interface BagRow {
@@ -122,6 +147,14 @@ export function emptySave(): CloudSave {
     pendingPostcardId: null,
     pendingMessage: null,
     lastActionDay: null,
+    restUntilDay: null,
+    pendingStress: null,
+    pendingStressNote: null,
+    rating: 1000,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    battleRecords: [],
     rev: 0,
     updatedAt: new Date().toISOString(),
     events: [],
@@ -213,10 +246,16 @@ function eventKind(type: AgentEventType): string {
       return "pack";
     case "said":
       return "say";
+    case "checkin":
+      return "say"; // activities.kind has no 'checkin'; payload keeps the real type
     case "restyled":
       return "restyle";
     case "pat":
       return "pat";
+    case "battle":
+      return "battle";
+    case "challenged":
+      return "challenged";
     case "departed":
     case "returned":
     case "postcard":
@@ -285,6 +324,16 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     limit 50
   `;
 
+  const battleRows = await tx<BattleRow[]>`
+    select
+      legacy_id, day, defender_pet_id, is_npc, defender_snapshot, result,
+      attacker_injury, attacker_rating_delta, spoils, title, story, created_at
+    from battles
+    where attacker_pet_id = ${petId}::uuid
+    order by created_at desc
+    limit 20
+  `;
+
   const postcards = postcardRows.map(postcardFromRow);
   const pending = postcardRows.find((p: PostcardRow) => !p.collected);
 
@@ -302,6 +351,7 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
       mood: pet.mood,
       energy: pet.energy,
       courage: pet.courage,
+      curiosity: pet.curiosity ?? 50,
       injury: pet.injury,
       traits: pet.traits ?? [],
       memories: pet.memories ?? [],
@@ -313,8 +363,6 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
           message: bag.message,
           gesture: bag.gesture ?? undefined,
           packedAt: ms(bag.packed_at),
-          departAt: NO_AUTO_DEPART,
-          willGo: false,
         }
       : null,
     activeTrip,
@@ -325,11 +373,37 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     pendingPostcardId: pending ? (pending.legacy_id ?? "") : null,
     pendingMessage: pet.pending_message,
     lastActionDay: day(pet.last_action_day),
+    restUntilDay: day(pet.rest_until_day),
+    pendingStress: pet.pending_stress,
+    pendingStressNote: pet.pending_stress_note,
+    rating: Number(pet.rating ?? 1000),
+    wins: Number(pet.wins ?? 0),
+    losses: Number(pet.losses ?? 0),
+    draws: Number(pet.draws ?? 0),
+    battleRecords: battleRows.map(battleFromRow),
     rev: Number(pet.rev),
     updatedAt: iso(pet.updated_at),
     events: activityRows
       .map(eventFromRow)
       .filter((e: AgentEvent | null): e is AgentEvent => !!e),
+  };
+}
+
+function battleFromRow(row: BattleRow): BattleRecord {
+  const snap = row.defender_snapshot;
+  return {
+    id: row.legacy_id ?? "",
+    day: day(row.day) ?? iso(row.created_at).slice(0, 10),
+    opponentName: snap?.name ?? "神秘对手",
+    opponentSpecies: snap?.species ?? "capybara",
+    isNpc: row.is_npc,
+    result: row.result,
+    title: row.title,
+    story: row.story,
+    injury: row.attacker_injury,
+    spoils: row.spoils ?? undefined,
+    ratingDelta: row.attacker_rating_delta,
+    createdAt: iso(row.created_at),
   };
 }
 
@@ -665,9 +739,10 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
     await tx`
       insert into pets (
         id, legacy_companion_id, owner_id, name, species, primary_color,
-        personality, accessory, mood, energy, courage, injury,
+        personality, accessory, mood, energy, courage, curiosity, injury,
         traits, memories, souvenirs, misunderstandings, last_result, state,
-        last_action_day, pending_message, rev,
+        last_action_day, rest_until_day, pending_message, pending_stress,
+        pending_stress_note, rating, wins, losses, draws, rev,
         created_at, updated_at
       )
       values (
@@ -682,6 +757,7 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         ${cap.mood},
         ${cap.energy},
         ${cap.courage},
+        ${cap.curiosity},
         ${cap.injury},
         ${cap.traits}::text[],
         ${cap.memories}::text[],
@@ -690,7 +766,14 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         ${save.lastResult ? tx.json(save.lastResult as never) : null},
         ${save.companionState},
         ${save.lastActionDay ? tx`${save.lastActionDay}::date` : null},
+        ${save.restUntilDay ? tx`${save.restUntilDay}::date` : null},
         ${save.pendingMessage},
+        ${save.pendingStress},
+        ${save.pendingStressNote},
+        ${save.rating},
+        ${save.wins},
+        ${save.losses},
+        ${save.draws},
         ${save.rev},
         ${new Date(c.createdAt)},
         ${new Date(save.updatedAt)}
@@ -705,6 +788,7 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         mood = excluded.mood,
         energy = excluded.energy,
         courage = excluded.courage,
+        curiosity = excluded.curiosity,
         injury = excluded.injury,
         traits = excluded.traits,
         memories = excluded.memories,
@@ -713,7 +797,14 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         last_result = excluded.last_result,
         state = excluded.state,
         last_action_day = excluded.last_action_day,
+        rest_until_day = excluded.rest_until_day,
         pending_message = excluded.pending_message,
+        pending_stress = excluded.pending_stress,
+        pending_stress_note = excluded.pending_stress_note,
+        rating = excluded.rating,
+        wins = excluded.wins,
+        losses = excluded.losses,
+        draws = excluded.draws,
         rev = excluded.rev,
         updated_at = excluded.updated_at
     `;
@@ -739,4 +830,98 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
 export async function loadPet(petId: string): Promise<CloudSave | null> {
   const save = await loadSave(sqlDb(), petId);
   return save.companion ? save : null;
+}
+
+// --- Battle: matchmaking pool + records --------------------------------------
+
+export interface PoolOpponent {
+  petId: string;
+  snapshot: BattleSnapshot;
+}
+
+/** Draw a recent battle-pool opponent from a DIFFERENT owner (null → use NPC). */
+export async function findBattleOpponent(
+  petId: string,
+  ownerId: string,
+): Promise<PoolOpponent | null> {
+  const sql = sqlDb();
+  const rows = await sql<{ pet_id: string; snapshot: BattleSnapshot }[]>`
+    select pet_id, snapshot
+    from battle_pool
+    where owner_id <> ${ownerId}::uuid
+      and pet_id <> ${petId}::uuid
+      and updated_at > now() - interval '7 days'
+    order by random()
+    limit 1
+  `;
+  const row = rows[0];
+  return row ? { petId: row.pet_id, snapshot: row.snapshot } : null;
+}
+
+export interface BattleWrite {
+  legacyId: string;
+  day: string; // YYYY-MM-DD
+  attackerSnapshot: BattleSnapshot;
+  defenderPetId: string | null;
+  defenderSnapshot: BattleSnapshot;
+  isNpc: boolean;
+  result: BattleResult;
+  attackerInjury: number;
+  attackerRatingDelta: number;
+  newRating: number;
+  spoils?: string;
+  title: string;
+  story: string;
+}
+
+/** Persist a battle row and refresh the attacker's matchmaking-pool snapshot. */
+export async function recordBattle(
+  petId: string,
+  ownerId: string,
+  b: BattleWrite,
+): Promise<void> {
+  const sql = sqlDb();
+  await sql.begin(async (tx) => {
+    await tx`
+      insert into battles (
+        legacy_id, day, attacker_pet_id, defender_pet_id, is_npc,
+        attacker_snapshot, defender_snapshot, result,
+        attacker_rating_delta, defender_rating_delta, attacker_injury,
+        spoils, title, story
+      )
+      values (
+        ${b.legacyId},
+        ${b.day}::date,
+        ${petId}::uuid,
+        ${b.defenderPetId ? tx`${b.defenderPetId}::uuid` : null},
+        ${b.isNpc},
+        ${tx.json(b.attackerSnapshot as never)},
+        ${tx.json(b.defenderSnapshot as never)},
+        ${b.result},
+        ${b.attackerRatingDelta},
+        ${0},
+        ${b.attackerInjury},
+        ${b.spoils ?? null},
+        ${b.title},
+        ${b.story}
+      )
+      on conflict (legacy_id) do nothing
+    `;
+
+    await tx`
+      insert into battle_pool (pet_id, owner_id, snapshot, rating, updated_at)
+      values (
+        ${petId}::uuid,
+        ${ownerId}::uuid,
+        ${tx.json(b.attackerSnapshot as never)},
+        ${b.newRating},
+        now()
+      )
+      on conflict (pet_id) do update set
+        owner_id = excluded.owner_id,
+        snapshot = excluded.snapshot,
+        rating = excluded.rating,
+        updated_at = now()
+    `;
+  });
 }

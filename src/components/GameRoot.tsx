@@ -8,6 +8,7 @@ import { useGameStore, type Screen } from "@/state/gameStore";
 import AlbumScreen from "./screens/AlbumScreen";
 import ConnectAgentScreen from "./screens/ConnectAgentScreen";
 import HomeScreen from "./screens/HomeScreen";
+import IntroScreen from "./screens/IntroScreen";
 import LoginScreen from "./screens/LoginScreen";
 import PackScreen from "./screens/PackScreen";
 import PostcardScreen from "./screens/PostcardScreen";
@@ -79,6 +80,8 @@ function renderScreen(screen: Screen) {
   switch (screen) {
     case "login":
       return <LoginScreen />;
+    case "intro":
+      return <IntroScreen />;
     case "connect":
       return <ConnectAgentScreen />;
     case "profile":

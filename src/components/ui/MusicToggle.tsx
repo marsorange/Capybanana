@@ -30,9 +30,29 @@ export default function MusicToggle() {
       onClick={toggle}
       aria-label={on ? "关闭背景音乐" : "开启背景音乐"}
       aria-pressed={on}
-      className="pointer-events-auto rounded-full border-2 border-ink/12 bg-cream-soft/90 px-3 py-1 text-sm text-ink-soft shadow-[0_2px_0_rgba(58,46,42,0.08)]"
+      className="sketch tex-grain pointer-events-auto grid h-11 w-11 place-items-center rounded-full border-2 border-[#bd8a52]/45 bg-paper shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.18)] transition active:translate-y-0.5"
     >
-      {on ? "🎵" : "🔇"}
+      <NoteIcon on={on} className="h-5 w-5" />
     </button>
+  );
+}
+
+function NoteIcon({ on, className }: { on: boolean; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke={on ? "#8aa978" : "#a89b90"}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 18V6l10-2v12" />
+      <circle cx="6" cy="18" r="3" fill={on ? "#8aa978" : "none"} />
+      <circle cx="16" cy="16" r="3" fill={on ? "#8aa978" : "none"} />
+      {!on && <path d="M3 3l18 18" stroke="#c77" />}
+    </svg>
   );
 }

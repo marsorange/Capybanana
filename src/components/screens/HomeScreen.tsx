@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { motion } from "framer-motion";
 
+import { companionStats } from "@/game/companionLevel";
 import { useGameStore } from "@/state/gameStore";
 import HomeModel from "../scenes3d/home/HomeModel";
 import HomeColliders from "../scenes3d/home/HomeColliders";
@@ -11,6 +13,7 @@ import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import MusicToggle from "../ui/MusicToggle";
 import Icon, { type IconName } from "../ui/Icon";
+import CapyAvatar from "../ui/CapyAvatar";
 
 const IDLE_LINES = [
   "今天也想和你待在一起。",
@@ -19,21 +22,27 @@ const IDLE_LINES = [
   "我在想昨天那个东西能怎么玩。",
 ];
 const READY_LINES = [
-  "包裹我收下啦，让我想想今天怎么过~",
-  "嗯…说不定我会出门，也说不定就在家。",
-  "你留的那句话，我记住了。",
+  "包裹放在门口啦，等 Agent 看看今天适不适合出门。",
+  "嗯…也许去远方，也许就在岛上晒一会儿。",
+  "你留的那句话，我已经藏进背包里了。",
 ];
 
-// A reserved ICON SLOT placeholder — real icon art will drop in here later.
-// (No emoji per request; this just holds the icon's footprint.)
-function IconSlot({ className = "" }: { className?: string }) {
+function LeafGlyph({ className = "" }: { className?: string }) {
   return (
-    <span className={`block rounded-[7px] border-2 border-ink/10 bg-ink/[0.07] ${className}`} />
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M21 3C9 2 3 9 3 20c11 1 18-6 18-17Z" fill="#8aa978" />
+      <path
+        d="M7 17C11 12 15 8 19 5"
+        stroke="rgba(255,255,255,.45)"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
-
-function TopIconButton({
+/** A round paper icon button for the top-right cluster (Agent, etc.). */
+function RoundIconBtn({
   label,
   icon,
   onClick,
@@ -45,55 +54,57 @@ function TopIconButton({
   return (
     <button
       onClick={onClick}
-      className="pointer-events-auto flex h-11 w-11 flex-col items-center justify-center rounded-[14px] border-2 border-ink/10 bg-paper/85 text-ink shadow-[0_3px_0_rgba(111,84,55,0.12)] backdrop-blur active:translate-y-0.5"
+      aria-label={label}
+      className="sketch tex-grain pointer-events-auto grid h-11 w-11 place-items-center rounded-full border-2 border-[#bd8a52]/45 bg-paper text-ink shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.18)] transition active:translate-y-0.5"
     >
       <Icon name={icon} className="h-6 w-6" />
-      <span className="mt-0.5 text-[9px] font-medium leading-none">{label}</span>
     </button>
   );
 }
 
-function BottomNav({
-  onHome,
-  onPack,
-  onAlbum,
-  onJournal,
-}: {
-  onHome: () => void;
-  onPack: () => void;
-  onAlbum: () => void;
-  onJournal: () => void;
-}) {
+/** Floating entry bar — three simple shortcuts off the home scene. A puffy,
+    centered, translucent pill with the low-poly toy icons (the cozy-game look). */
+function EntryBar({ goTo }: { goTo: (s: "pack" | "album" | "profile") => void }) {
   const items = [
-    { label: "小屋", icon: "house" as IconName, active: true, onClick: onHome },
-    { label: "背包", icon: "package" as IconName, active: false, onClick: onPack },
-    { label: "相册", icon: "photobook" as IconName, active: false, onClick: onAlbum },
-    { label: "手账", icon: "book" as IconName, active: false, onClick: onJournal },
+    { key: "pack", label: "打包", icon: "package" as IconName, onClick: () => goTo("pack") },
+    { key: "album", label: "相册", icon: "photobook" as IconName, onClick: () => goTo("album") },
+    { key: "journal", label: "手账", icon: "book" as IconName, onClick: () => goTo("profile") },
   ];
   return (
-    <nav className="absolute inset-x-6 bottom-3 grid grid-cols-4 rounded-[22px] border-2 border-ink/10 bg-paper/90 p-1.5 shadow-[0_4px_0_rgba(111,84,55,0.1)] backdrop-blur">
-      {items.map((item) => (
-        <button
-          key={item.label}
-          onClick={item.onClick}
-          className={`flex flex-col items-center justify-center rounded-[16px] py-1.5 transition active:translate-y-0.5 ${
-            item.active ? "bg-leaf/14 text-ink" : "text-ink-soft"
-          }`}
-        >
-          <Icon name={item.icon} className={`h-7 w-7 ${item.active ? "" : "opacity-70"}`} />
-          <span className="mt-1 text-xs font-medium leading-none">{item.label}</span>
-        </button>
-      ))}
-    </nav>
+    <motion.nav
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-5"
+    >
+      <div className="sketch tex-wood pointer-events-auto relative flex items-center gap-1 rounded-[26px] border-2 border-[#cdab6e] p-2 shadow-[inset_0_1.5px_0_rgba(255,250,236,0.65),0_5px_0_rgba(150,112,60,0.4),0_16px_30px_-18px_rgba(120,90,50,0.4)]">
+        {/* carved decorative groove */}
+        <span className="pointer-events-none absolute inset-[5px] rounded-[20px] border border-dashed border-[#a07c48]/35" />
+        {items.map((it) => (
+          <button
+            key={it.key}
+            onClick={it.onClick}
+            className="group relative flex w-[78px] flex-col items-center justify-center gap-1 rounded-[20px] py-2 transition hover:bg-white/20 active:translate-y-0.5"
+          >
+            <Icon
+              name={it.icon}
+              className="h-8 w-8 drop-shadow-[0_2px_2px_rgba(140,104,56,0.3)] transition group-active:scale-95"
+            />
+            <span className="wood-text font-hand text-[13px] leading-none">
+              {it.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </motion.nav>
   );
 }
 
 export default function HomeScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const companionState = useGameStore((s) => s.companionState);
+  const packedBag = useGameStore((s) => s.packedBag);
   const postcards = useGameStore((s) => s.postcards);
-  const lastResult = useGameStore((s) => s.lastResult);
-  const memories = useGameStore((s) => s.capyState.memories);
   const goTo = useGameStore((s) => s.goTo);
   const bound = useGameStore((s) => !!s.cloud);
 
@@ -101,115 +112,96 @@ export default function HomeScreen() {
     () => postcards.slice(0, 3).map((p) => p.destinationTheme),
     [postcards],
   );
-  return (
-    <div className="relative h-full overflow-hidden">
-      {/* clean warm-cream studio backdrop, letting the diorama pop */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(120% 90% at 78% 8%, #fdf3d6 0%, #f4e8cd 42%, #ecdcbd 100%)",
-        }}
-      />
-      {/* the sun, glowing up in the corner */}
-      <div
-        className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full blur-[2px]"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(255,243,190,0.98) 0%, rgba(255,227,150,0.6) 36%, rgba(255,227,150,0) 70%)",
-        }}
-      />
-      {/* free-orbit isometric view, centered on the island */}
-      <SceneCanvas
-        controls="orbit"
-        orthographic
-        sun
-        sky
-        physics
-        cameraPosition={[6, 7, 12]}
-        target={[-0.6, 0.4, -0.8]}
-        zoom={38}
-        enableZoom
-        minZoom={24}
-        maxZoom={110}
-        minPolar={0.7}
-        maxPolar={1.3}
-        bendStrength={0}
-      >
-        {/* visual diorama (throwaway art) */}
-        <HomeModel
-          mode="home"
-          postcardThemes={wallThemes}
-          onOpenPack={() => goTo("pack")}
-          onOpenAlbum={() => goTo("album")}
-        />
-        {/* lean physical proxy the pet + props collide against; also the
-            tap-to-move ground catcher */}
-        <HomeColliders />
-        {/* physics pet (tap to move) + a reference physics prop (tap to toss) */}
-        <RoamingCompanion
-          type={companion.type}
-          color={companion.primaryColor}
-          accessory={companion.accessory}
-          seed={companion.id}
-          clickLines={companionState === "ready" ? READY_LINES : IDLE_LINES}
-        />
-        <PhysicsToy />
-        <InteractionLayer />
-      </SceneCanvas>
+  const stats = useMemo(() => companionStats(companion.createdAt), [companion.createdAt]);
+  const ready = companionState === "ready" || !!packedBag;
 
-      {/* top bar: profile capsule + notebook controls */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2.5 px-4 pt-4">
-        <button
-          onClick={() => goTo("profile")}
-          className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-[18px] border-2 border-ink/10 bg-paper/85 py-1.5 pl-1.5 pr-3.5 text-left shadow-[0_3px_0_rgba(111,84,55,0.1)] backdrop-blur"
+  return (
+    <div
+      className="relative h-full overflow-hidden"
+      style={{
+        background:
+          "radial-gradient(120% 90% at 78% 6%, #fdf3d6 0%, #f4e8cd 42%, #ecdcbd 100%)",
+      }}
+    >
+      {/* full-bleed 3D diorama — the page IS the scene; UI just floats over it */}
+      <div className="absolute inset-0">
+        <SceneCanvas
+          controls="orbit"
+          orthographic
+          sun
+          sky
+          physics
+          cameraPosition={[6, 7, 12]}
+          target={[-0.6, 0.7, -0.8]}
+          zoom={52}
+          enableZoom
+          minZoom={24}
+          maxZoom={110}
+          minPolar={0.7}
+          maxPolar={1.3}
+          bendStrength={0}
         >
-          {/* avatar slot (capybara art TBD) */}
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cream-soft shadow-inner">
-            <IconSlot className="h-6 w-6 rounded-lg" />
-          </span>
+          {/* visual diorama (throwaway art) — taps on the backpack / postcard
+              rack route to those screens, so the scene is the navigation */}
+          <HomeModel
+            mode="home"
+            postcardThemes={wallThemes}
+            onOpenPack={() => goTo("pack")}
+            onOpenAlbum={() => goTo("album")}
+          />
+          {/* lean physical proxy the pet + props collide against; also the
+              tap-to-move ground catcher */}
+          <HomeColliders />
+          {/* physics pet (tap to move) + a reference physics prop (tap to toss) */}
+          <RoamingCompanion
+            type={companion.type}
+            color={companion.primaryColor}
+            accessory={companion.accessory}
+            seed={companion.id}
+            clickLines={ready ? READY_LINES : IDLE_LINES}
+          />
+          <PhysicsToy />
+          <InteractionLayer />
+        </SceneCanvas>
+      </div>
+
+      {/* the only floating chrome: a thin identity + controls bar */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2.5 px-4 pt-4">
+        <motion.button
+          onClick={() => goTo("profile")}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="sketch tex-grain pointer-events-auto flex min-w-0 items-center gap-2.5 rounded-[20px] border-2 border-[#bd8a52]/45 bg-paper py-1.5 pl-1.5 pr-4 text-left shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.18),0_12px_24px_-14px_rgba(58,46,42,0.45)] active:translate-y-0.5"
+        >
+          <CapyAvatar className="h-11 w-11 shrink-0 ring-2 ring-[#cda269]" />
           <span className="min-w-0">
-            <span className="block truncate font-hand text-lg leading-none text-ink">
+            <span className="block truncate font-hand text-[19px] leading-none text-ink">
               {companion.name}
             </span>
-            <span className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft">
-              <IconSlot className="h-3 w-3 rounded-[4px] border-leaf/40 bg-leaf/20" />
-              <span>{postcards.length * 80 + memories.length * 20}</span>
+            <span className="mt-1.5 flex items-center gap-1.5 text-[11px] leading-none text-ink-soft">
+              <LeafGlyph className="h-3.5 w-3.5" />
+              <span className="font-semibold text-leaf">Lv.{stats.level}</span>
+              <span className="text-ink-soft/55">·</span>
+              <span>陪伴 {stats.days} 天</span>
             </span>
           </span>
-        </button>
-        <div className="flex gap-2">
-          <TopIconButton label="手账" icon="book" onClick={() => goTo("profile")} />
-          {bound && (
-            <TopIconButton label="助手" icon="setting" onClick={() => goTo("connect")} />
-          )}
-        </div>
-      </div>
-      <div className="absolute right-4 top-[4.4rem]">
-        <MusicToggle />
-      </div>
+        </motion.button>
 
-      {/* (daily-wish card hidden for now) */}
-
-      {/* last result chip */}
-      {lastResult && (
-        <button
-          onClick={() => goTo("result")}
-          className="absolute inset-x-6 bottom-[5.25rem] rounded-[16px] border-2 border-ink/12 bg-paper/90 px-3.5 py-2 text-left shadow-[0_2px_0_rgba(58,46,42,0.1)]"
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.05, ease: "easeOut" }}
+          className="pointer-events-auto flex shrink-0 items-center gap-2"
         >
-          <span className="text-[10px] text-ink-soft">昨天留下的小事 ›</span>
-          <span className="block truncate text-sm text-ink">
-            {lastResult.title} · {lastResult.story}
-          </span>
-        </button>
-      )}
+          {bound && (
+            <RoundIconBtn label="接入 Agent" icon="setting" onClick={() => goTo("connect")} />
+          )}
+          <MusicToggle />
+        </motion.div>
+      </div>
 
-      <BottomNav
-        onHome={() => goTo("home")}
-        onPack={() => goTo("pack")}
-        onAlbum={() => goTo("album")}
-        onJournal={() => goTo("profile")}
-      />
+      <EntryBar goTo={goTo} />
     </div>
   );
 }

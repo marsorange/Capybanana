@@ -12,6 +12,7 @@ export function applyEffects(
     mood: clamp(capy.mood + (eff.mood ?? 0)),
     energy: clamp(capy.energy + (eff.energy ?? 0)),
     courage: clamp(capy.courage + (eff.courage ?? 0)),
+    curiosity: clamp(capy.curiosity + (eff.curiosity ?? 0)),
     injury: clamp(capy.injury + (eff.injury ?? 0)),
   };
 }
