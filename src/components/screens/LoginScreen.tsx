@@ -5,12 +5,15 @@ import { motion } from "framer-motion";
 
 import { useGameStore } from "@/state/gameStore";
 import { isSupabaseConfigured, signInWithGoogle } from "@/lib/supabaseClient";
-import CharacterModel from "../scenes3d/character/CharacterModel";
-import SceneCanvas from "../scenes3d/SceneCanvas";
 import LeafCorners from "../ui/LeafCorners";
 
+const FEATURES: Array<[string, string]> = [
+  ["打包", "给今日线索"],
+  ["判断", "Agent 决定"],
+  ["来信", "收藏回忆"],
+];
+
 export default function LoginScreen() {
-  const loginDestination = useGameStore((s) => s.loginDestination);
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const cloudError = useGameStore((s) => s.cloudError);
   const loginWithDevIdentity = useGameStore((s) => s.loginWithDevIdentity);
@@ -20,7 +23,6 @@ export default function LoginScreen() {
   const [devIdentity, setDevIdentity] = useState("local-dev");
   const [error, setError] = useState<string | null>(null);
   const busy = redirecting || cloudBusy;
-  const agentOnboarding = loginDestination === "connect";
 
   const onGoogle = async () => {
     setError(null);
@@ -36,24 +38,26 @@ export default function LoginScreen() {
   const onDev = async () => {
     setError(null);
     try {
-      await loginWithDevIdentity(devIdentity, loginDestination);
+      await loginWithDevIdentity(devIdentity);
     } catch (e) {
       setError((e as Error).message);
     }
   };
 
   return (
-    <div className="screen-bg relative flex h-full flex-col overflow-hidden px-5 pb-6 pt-7">
+    // center + scroll: tall screens center the column, short screens scroll —
+    // every section is shrink-0 so nothing is clipped at any viewport height.
+    <div className="screen-bg no-scrollbar relative flex h-full flex-col justify-center gap-6 overflow-y-auto px-5 py-8">
       <LeafCorners corners={["tl", "tr"]} className="z-0 opacity-80" />
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: "easeOut" }}
-        className="relative z-10 text-center"
+        className="relative z-10 shrink-0 text-center"
       >
-        <h1 className="wood-logo font-hand text-[3.2rem] leading-none">Capybanana</h1>
-        <div className="storybook-ribbon mx-auto mt-2 px-4 py-1.5 text-sm font-semibold">
+        <h1 className="wood-logo font-hand text-[3rem] leading-none">Capybanana</h1>
+        <div className="storybook-ribbon mx-auto mt-2.5 px-4 py-1.5 text-sm font-semibold">
           每天一分钟，陪它过日子
         </div>
       </motion.div>
@@ -62,37 +66,23 @@ export default function LoginScreen() {
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.55, delay: 0.08 }}
-        className="sketch tex-grain relative z-10 mt-5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border-2 border-[#bd8a52]/50 bg-[#eaf3e6] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_5px_0_rgba(111,84,55,0.16),0_18px_34px_-18px_rgba(58,46,42,0.45)]"
+        className="sketch tex-grain relative z-10 shrink-0 overflow-hidden rounded-[28px] border-2 border-[#bd8a52]/50 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_5px_0_rgba(111,84,55,0.16),0_18px_34px_-18px_rgba(58,46,42,0.45)]"
         style={{
           background:
             "linear-gradient(180deg, rgba(197,228,210,0.65), rgba(255,246,226,0.55)), #fffaf0",
         }}
       >
-        <div className="relative h-[56%] min-h-[260px]">
-          <SceneCanvas controls="spin" cameraPosition={[0, 1.25, 4]} target={[0, 0.68, 0]}>
-            <group position={[0, -0.18, 0]} scale={1.04}>
-              <CharacterModel type="capybara" color="#C8893B" accessory="scarf" seed="login-capy" />
-            </group>
-          </SceneCanvas>
-          <div className="pointer-events-none absolute inset-x-6 bottom-2 rounded-[18px] border border-[#bd8a52]/25 bg-paper/85 px-4 py-2 text-center shadow-[0_3px_0_rgba(111,84,55,0.1)]">
-            <p className="font-hand text-xl leading-tight text-ink">慢岛群陪伴小游戏</p>
-            <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-              {agentOnboarding
-                ? "把小岛信箱交给 Agent，让它替你照看今天。"
-                : "你的 Agent 使用节奏，会变成这座小岛的天气。"}
-            </p>
-          </div>
+        <div className="px-5 pt-5 text-center">
+          <p className="font-hand text-xl leading-tight text-ink">慢岛群陪伴小游戏</p>
+          <p className="mx-auto mt-1.5 max-w-[17rem] text-xs leading-relaxed text-ink-soft">
+            你的 Agent 使用节奏，会变成这座小岛的天气。
+          </p>
         </div>
-
-        <div className="grid grid-cols-3 gap-2 px-4 pb-4 pt-3">
-          {[
-            ["打包", "给今日线索"],
-            ["判断", "Agent 决定"],
-            ["来信", "收藏回忆"],
-          ].map(([label, text]) => (
+        <div className="grid grid-cols-3 gap-2 p-4">
+          {FEATURES.map(([label, text]) => (
             <div
               key={label}
-              className="rounded-[16px] border-2 border-[#bd8a52]/35 bg-paper/85 px-2 py-2 text-center"
+              className="rounded-[16px] border-2 border-[#bd8a52]/35 bg-paper/85 px-2 py-2.5 text-center"
             >
               <p className="font-hand text-lg leading-none text-ink">{label}</p>
               <p className="mt-1 text-[10px] leading-tight text-ink-soft">{text}</p>
@@ -105,7 +95,7 @@ export default function LoginScreen() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.16 }}
-        className="relative z-10 mt-5 w-full space-y-3"
+        className="relative z-10 w-full shrink-0 space-y-3"
       >
         <button
           onClick={onGoogle}

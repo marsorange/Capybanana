@@ -8,7 +8,6 @@ import { useGameStore, type Screen } from "@/state/gameStore";
 import AlbumScreen from "./screens/AlbumScreen";
 import ConnectAgentScreen from "./screens/ConnectAgentScreen";
 import HomeScreen from "./screens/HomeScreen";
-import IntroScreen from "./screens/IntroScreen";
 import LoginScreen from "./screens/LoginScreen";
 import PackScreen from "./screens/PackScreen";
 import PostcardScreen from "./screens/PostcardScreen";
@@ -42,7 +41,7 @@ function useSupabaseAuthBridge() {
       if (!active || !token) return;
       const st = useGameStore.getState();
       if (st.cloud || st.cloudBusy) return; // already bound / in flight
-      void loginWithSupabaseToken(token, st.loginDestination);
+      void loginWithSupabaseToken(token);
     };
 
     // On mount: finish a pending Google redirect (?code=) if there is one,
@@ -80,8 +79,6 @@ function renderScreen(screen: Screen) {
   switch (screen) {
     case "login":
       return <LoginScreen />;
-    case "intro":
-      return <IntroScreen />;
     case "connect":
       return <ConnectAgentScreen />;
     case "profile":
@@ -98,6 +95,9 @@ function renderScreen(screen: Screen) {
       return <PostcardScreen />;
     case "result":
       return <ResultScreen />;
+    default:
+      // Legacy/unknown persisted screen (e.g. the removed "intro"): land on home.
+      return <HomeScreen />;
   }
 }
 
@@ -112,6 +112,7 @@ export default function GameRoot() {
   const ensureCloudPet = useGameStore((s) => s.ensureCloudPet);
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const cloudError = useGameStore((s) => s.cloudError);
+  const hasOnboarded = useGameStore((s) => s.hasOnboarded);
   const bound = useGameStore((s) => !!s.cloud);
 
   // Hydrate from localStorage on the client only (avoids SSR mismatch).
@@ -181,6 +182,10 @@ export default function GameRoot() {
   if (!companion) {
     // No pet: a failed adoption falls back to the connect screen so the owner
     // can retry / attach an agent.
+    effective = "connect";
+  } else if (!hasOnboarded) {
+    // First-time owner: the only gate before the island is the one-time
+    // "connect an Agent" step. No pet display/selection screen.
     effective = "connect";
   } else if (screen === "login") {
     effective = "home";

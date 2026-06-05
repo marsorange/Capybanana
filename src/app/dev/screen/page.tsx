@@ -17,7 +17,6 @@ import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import AlbumScreen from "@/components/screens/AlbumScreen";
 import ConnectAgentScreen from "@/components/screens/ConnectAgentScreen";
 import HomeScreen from "@/components/screens/HomeScreen";
-import IntroScreen from "@/components/screens/IntroScreen";
 import PackScreen from "@/components/screens/PackScreen";
 import PostcardScreen from "@/components/screens/PostcardScreen";
 import ProfileScreen from "@/components/screens/ProfileScreen";
@@ -81,8 +80,6 @@ const BATTLES: BattleRecord[] = [
 
 function renderScreen(screen: Screen) {
   switch (screen) {
-    case "intro":
-      return <IntroScreen />;
     case "connect":
       return <ConnectAgentScreen />;
     case "profile":
@@ -112,7 +109,7 @@ export default function DevScreen() {
   useEffect(() => {
     useGameStore.setState({
       hasHydrated: true,
-      hasSeenIntro: true,
+      hasOnboarded: true,
       companion: COMPANION,
       capyState: {
         ...DEFAULT_CAPY,
@@ -159,7 +156,7 @@ export default function DevScreen() {
     // Optional ?s=<screen> to jump straight to a screen for previewing.
     const s = new URLSearchParams(window.location.search).get("s");
     const screens = [
-      "home", "pack", "album", "postcard", "profile", "connect", "result", "traveling", "intro", "login",
+      "home", "pack", "album", "postcard", "profile", "connect", "result", "traveling", "login",
     ];
     if (s && screens.includes(s)) {
       useGameStore.setState({

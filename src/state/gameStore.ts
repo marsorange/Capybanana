@@ -21,7 +21,6 @@ import type { CloudSave } from "@/server/types";
 
 export type Screen =
   | "login"
-  | "intro"
   | "connect"
   | "profile"
   | "home"
@@ -30,8 +29,6 @@ export type Screen =
   | "album"
   | "postcard"
   | "result";
-
-type LoginDestination = "profile" | "connect";
 
 // When bound to an account, the web client is just another holder of the bind
 // token, talking to the same /api/agent/* endpoints an external agent uses.
@@ -55,8 +52,9 @@ interface GameState {
   battleRecords: BattleRecord[];
   lastResult: DayOutcome | null;
   screen: Screen;
-  loginDestination: LoginDestination;
-  hasSeenIntro: boolean;
+  // Whether the owner has passed the one-time "connect an Agent" step. New
+  // accounts land on the connect screen once; returning owners go straight home.
+  hasOnboarded: boolean;
   selectedPostcardId: string | null;
   pendingPostcardId: string | null;
 
@@ -76,17 +74,11 @@ interface GameState {
   openPostcard: (id: string) => void;
   collectPostcard: () => void;
   reset: () => void;
-  completeIntro: (next?: Screen) => void;
+  completeOnboarding: () => void;
 
   // cloud actions
-  loginWithSupabaseToken: (
-    accessToken: string,
-    destination?: LoginDestination,
-  ) => Promise<void>;
-  loginWithDevIdentity: (
-    identity?: string,
-    destination?: LoginDestination,
-  ) => Promise<void>;
+  loginWithSupabaseToken: (accessToken: string) => Promise<void>;
+  loginWithDevIdentity: (identity?: string) => Promise<void>;
   logout: () => void;
   ensureCloudPet: () => Promise<void>;
   restyle: () => void;
@@ -117,8 +109,7 @@ export const useGameStore = create<GameState>()(
       hasHydrated: false,
       ...emptyLocalState(),
       screen: "login",
-      loginDestination: "profile",
-      hasSeenIntro: false,
+      hasOnboarded: false,
 
       cloud: null,
       connectUrl: null,
@@ -171,25 +162,22 @@ export const useGameStore = create<GameState>()(
         set({
           ...emptyLocalState(),
           screen: "login",
-          loginDestination: "profile",
-          hasSeenIntro: false,
+          hasOnboarded: false,
           cloud: null,
           connectUrl: null,
           cloudError: null,
         }),
 
-      completeIntro: (next = "home") =>
-        set({
-          hasSeenIntro: true,
-          screen: next === "intro" || next === "login" ? "home" : next,
-        }),
+      // The owner finished the one-time connect step; enter the island and never
+      // force the connect screen again (it stays reachable from home).
+      completeOnboarding: () => set({ hasOnboarded: true, screen: "home" }),
 
       // ---- cloud ----
 
       // Bridge a verified Supabase session (Google login) into our bind-token
       // account. Invoked by the GameRoot auth bridge once Supabase reports a
       // session; Supabase Auth owns the identity proof.
-      loginWithSupabaseToken: async (accessToken, destination = "profile") => {
+      loginWithSupabaseToken: async (accessToken) => {
         const cur = get();
         if (cur.cloud || cur.cloudBusy) return;
         set({ cloudBusy: true, cloudError: null });
@@ -207,13 +195,12 @@ export const useGameStore = create<GameState>()(
           });
           get().adoptSave(res.save);
           if (res.save.companion) {
-            set({ screen: get().hasSeenIntro ? destination : "intro" });
+            // First-time owners pass the connect step once; returning owners go
+            // straight to the island. No pet-display/selection screen in between.
+            set({ screen: get().hasOnboarded ? "home" : "connect" });
             return;
           }
           await get().ensureCloudPet();
-          if (destination === "connect" && get().companion && get().hasSeenIntro) {
-            set({ screen: "connect" });
-          }
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
         }
@@ -221,7 +208,7 @@ export const useGameStore = create<GameState>()(
 
       // Local dev bridge (no Supabase). Still cloud-backed: it writes to the
       // same SQL tables as Google login, using a stable local identity string.
-      loginWithDevIdentity: async (identity, destination = "profile") => {
+      loginWithDevIdentity: async (identity) => {
         const cur = get();
         if (cur.cloud || cur.cloudBusy) return;
         set({ cloudBusy: true, cloudError: null });
@@ -239,13 +226,10 @@ export const useGameStore = create<GameState>()(
           });
           get().adoptSave(res.save);
           if (res.save.companion) {
-            set({ screen: get().hasSeenIntro ? destination : "intro" });
+            set({ screen: get().hasOnboarded ? "home" : "connect" });
             return;
           }
           await get().ensureCloudPet();
-          if (destination === "connect" && get().companion && get().hasSeenIntro) {
-            set({ screen: "connect" });
-          }
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
         }
@@ -261,7 +245,7 @@ export const useGameStore = create<GameState>()(
             randomCuteCompanion(),
           );
           get().adoptSave(save);
-          set({ cloudBusy: false, screen: get().hasSeenIntro ? "profile" : "intro" });
+          set({ cloudBusy: false, screen: get().hasOnboarded ? "home" : "connect" });
         } catch (e) {
           const err = e as Error & { status?: number };
           if (err.status === 401) return get().logout();
@@ -269,7 +253,7 @@ export const useGameStore = create<GameState>()(
             try {
               const { save } = await cloud.pet(s.cloud.bindToken);
               get().adoptSave(save);
-              set({ cloudBusy: false, screen: get().hasSeenIntro ? "profile" : "intro" });
+              set({ cloudBusy: false, screen: get().hasOnboarded ? "home" : "connect" });
               return;
             } catch {
               /* fall through to surfacing the error below */
@@ -303,8 +287,7 @@ export const useGameStore = create<GameState>()(
           connectUrl: null,
           cloudBusy: false,
           cloudError: null,
-          loginDestination: "profile",
-          hasSeenIntro: false,
+          hasOnboarded: false,
           screen: "login",
         });
       },
@@ -387,8 +370,7 @@ export const useGameStore = create<GameState>()(
         battleRecords: s.battleRecords,
         lastResult: s.lastResult,
         screen: s.screen,
-        loginDestination: s.loginDestination,
-        hasSeenIntro: s.hasSeenIntro,
+        hasOnboarded: s.hasOnboarded,
         selectedPostcardId: s.selectedPostcardId,
         pendingPostcardId: s.pendingPostcardId,
         cloud: s.cloud,

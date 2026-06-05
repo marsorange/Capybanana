@@ -79,9 +79,7 @@ export default function ProfileScreen() {
   const postcards = useGameStore((s) => s.postcards);
   const souvenirs = useGameStore((s) => s.souvenirs);
   const goTo = useGameStore((s) => s.goTo);
-  const restyle = useGameStore((s) => s.restyle);
   const logout = useGameStore((s) => s.logout);
-  const cloudBusy = useGameStore((s) => s.cloudBusy);
   const bound = useGameStore((s) => !!s.cloud);
   const email = useGameStore((s) => s.cloud?.email ?? null);
 
@@ -200,15 +198,6 @@ export default function ProfileScreen() {
       </div>
 
       <div className="relative z-10 shrink-0 space-y-2.5 px-5 pb-5 pt-3">
-        {bound && (
-          <button
-            disabled={cloudBusy}
-            onClick={() => restyle()}
-            className="sketch w-full rounded-[18px] border-2 border-[#bd8a52]/55 bg-cream-soft px-6 py-3 font-hand text-base text-ink shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.16)] transition active:translate-y-0.5 disabled:opacity-50"
-          >
-            {cloudBusy ? "换样子中…" : "🎲 换个样子"}
-          </button>
-        )}
         <PrimaryButton onClick={() => goTo("home")}>回小屋</PrimaryButton>
         {bound && (
           <div className="flex items-center justify-center gap-2 pt-0.5 text-[11px] text-ink-soft/70">

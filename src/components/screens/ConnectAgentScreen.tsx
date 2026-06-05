@@ -19,11 +19,20 @@ export default function ConnectAgentScreen() {
   const connectUrl = useGameStore((s) => s.connectUrl);
   const companion = useGameStore((s) => s.companion);
   const cloudError = useGameStore((s) => s.cloudError);
+  const hasOnboarded = useGameStore((s) => s.hasOnboarded);
+  const completeOnboarding = useGameStore((s) => s.completeOnboarding);
   const goTo = useGameStore((s) => s.goTo);
   const [copied, setCopied] = useState<string | null>(null);
 
   const snippet = connectUrl ? `Read ${connectUrl}` : "";
   const hasPet = !!companion;
+
+  // First-time onboarding: the connect screen is the only gate before the
+  // island, so there's no back button — the one way forward is "进入小岛".
+  const enterIsland = () => {
+    if (!hasOnboarded) completeOnboarding();
+    else goTo("home");
+  };
 
   const copy = async (key: string, text: string) => {
     if (!text) return;
@@ -37,10 +46,14 @@ export default function ConnectAgentScreen() {
   };
 
   return (
-    <div className="screen-bg no-scrollbar relative flex h-full flex-col overflow-y-auto pb-5">
-      <ScreenHeader onBack={() => goTo("home")} eyebrow="把小岛信箱交给 Agent" title="今日照看口令" />
+    <div className="screen-bg relative flex h-full flex-col">
+      <ScreenHeader
+        onBack={hasOnboarded ? () => goTo("home") : undefined}
+        eyebrow="把小岛信箱交给 Agent"
+        title="今日照看口令"
+      />
 
-      <div className="space-y-4 px-5 pt-5">
+      <div className="no-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-4 pt-5">
         {/* live status */}
         <Panel className="px-4 py-3.5">
           {hasPet ? (
@@ -83,11 +96,18 @@ export default function ConnectAgentScreen() {
         </div>
       </div>
 
-      <div className="mt-auto px-5 pt-5">
+      <div className="shrink-0 px-5 pb-5 pt-3">
         {hasPet ? (
-          <PrimaryButton onClick={() => goTo("home")}>回小屋</PrimaryButton>
+          <PrimaryButton onClick={enterIsland}>
+            {hasOnboarded ? "回小屋" : "进入小岛"}
+          </PrimaryButton>
         ) : (
           <PrimaryButton disabled>小岛准备中</PrimaryButton>
+        )}
+        {!hasOnboarded && hasPet && (
+          <p className="mt-2 text-center text-[11px] text-ink-soft/70">
+            稍后也能从小岛上的「接入 Agent」再来复制口令。
+          </p>
         )}
       </div>
     </div>
