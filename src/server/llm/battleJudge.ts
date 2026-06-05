@@ -2,7 +2,7 @@
 // a winner + a process narrative; on no-key/failure falls back to a SIMPLE
 // score compare (see docs/core-gameplay.md §9.2). Always returns a verdict.
 import type { BattleResult, BattleSnapshot } from "@/game/types";
-import { jsonComplete, llmConfigured } from "@/lib/minimax";
+import { jsonComplete, llmConfigured } from "@/lib/openrouter";
 import { pick, randInt } from "@/game/util";
 
 export interface BattleContext {

@@ -11,7 +11,7 @@ import type {
   DestinationTheme,
   PackedItem,
 } from "@/game/types";
-import { jsonComplete, llmConfigured } from "@/lib/minimax";
+import { jsonComplete, llmConfigured } from "@/lib/openrouter";
 
 const THEMES = DESTINATIONS.map((d) => d.theme);
 const THEME_SET = new Set<string>(THEMES);
