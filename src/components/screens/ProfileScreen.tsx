@@ -101,28 +101,31 @@ export default function ProfileScreen() {
 
   return (
     <div className="screen-bg relative flex h-full flex-col">
-      {/* spinning portrait of the actual pet */}
-      <div className="relative h-[34%] shrink-0 overflow-hidden">
-        <SceneCanvas controls="spin">
-          <group position={[0, -0.58, 0]} scale={0.84}>
-            <Pedestal />
-            <CharacterModel
-              type={companion.type}
-              color={companion.primaryColor}
-              accessory={companion.accessory}
-              seed={companion.id}
-            />
-          </group>
-        </SceneCanvas>
-        <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 px-5 pt-5">
-          <BackButton onClick={() => goTo("home")} />
-          <p className="font-hand text-lg text-ink-soft">岛屿伙伴手账</p>
-        </div>
+      {/* fixed top bar — always visible */}
+      <div className="relative z-20 flex shrink-0 items-center gap-3 px-5 pb-1 pt-5">
+        <BackButton onClick={() => goTo("home")} />
+        <p className="font-hand text-lg text-ink-soft">岛屿伙伴手账</p>
       </div>
 
-      <div className="no-scrollbar relative z-10 flex-1 space-y-4 overflow-y-auto px-5 pb-4 pt-2">
+      {/* portrait + every card scroll together so nothing is hard-cut at the
+          fold; the footer below stays pinned. */}
+      <div className="no-scrollbar relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-4">
+        <div className="relative -mx-5 h-[180px] shrink-0">
+          <SceneCanvas controls="spin">
+            <group position={[0, -0.58, 0]} scale={0.84}>
+              <Pedestal />
+              <CharacterModel
+                type={companion.type}
+                color={companion.primaryColor}
+                accessory={companion.accessory}
+                seed={companion.id}
+              />
+            </group>
+          </SceneCanvas>
+        </div>
+
         {/* name plaque + level/陪伴 progress */}
-        <Panel className="-mt-8 px-4 py-3.5">
+        <Panel className="px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="truncate font-hand text-[26px] leading-tight text-ink">
