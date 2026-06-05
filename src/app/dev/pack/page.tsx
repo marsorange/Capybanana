@@ -1,8 +1,8 @@
 "use client";
 
-// TEMPORARY dev-only preview for the packing screen (the real one is behind
-// login). Seeds a fake companion so PackScreen renders standalone. Safe to delete.
-import { useEffect, useState } from "react";
+// Dev-only preview for the packing screen. Seeds a fake companion so PackScreen
+// renders standalone without Google login or a cloud backend.
+import { useEffect } from "react";
 
 import PackScreen from "@/components/screens/PackScreen";
 import type { Companion } from "@/game/types";
@@ -19,14 +19,15 @@ const DEV_COMPANION: Companion = {
 };
 
 export default function DevPack() {
-  const [ready, setReady] = useState(false);
+  const companion = useGameStore((s) => s.companion);
+
   useEffect(() => {
     useGameStore.setState({ companion: DEV_COMPANION, packedBag: null, hasHydrated: true });
-    setReady(true);
   }, []);
+
   return (
     <div style={{ position: "fixed", inset: 0 }}>
-      {ready ? <PackScreen /> : null}
+      {companion ? <PackScreen /> : null}
     </div>
   );
 }

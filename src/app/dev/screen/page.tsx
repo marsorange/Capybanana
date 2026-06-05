@@ -1,13 +1,10 @@
 "use client";
 
-// TEMPORARY dev-only preview harness for the 2D screen chrome (the real screens
-// live behind Google login + a cloud backend). Seeds a fake bound companion into
-// the store and renders the app by its `screen` state — exactly like GameRoot,
-// but without the login gate or cloud polling — so every screen is clickable
-// with no login. Cloud mutations (pack/collect/restyle) just no-op offline.
-// Safe to delete.
+// Dev-only preview harness for the 2D screen chrome. Seeds a fake bound
+// companion into the store and renders by `screen`, like GameRoot, but without
+// the login gate or cloud polling.
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { useGameStore, type Screen } from "@/state/gameStore";
@@ -101,7 +98,7 @@ function renderScreen(screen: Screen) {
 }
 
 export default function DevScreen() {
-  const [ready, setReady] = useState(false);
+  const companion = useGameStore((s) => s.companion);
   const screen = useGameStore((s) => s.screen);
   const selectedPostcardId = useGameStore((s) => s.selectedPostcardId);
   const lastResult = useGameStore((s) => s.lastResult);
@@ -181,10 +178,9 @@ export default function DevScreen() {
         },
       });
     }
-    setReady(true);
   }, []);
 
-  if (!ready) return null;
+  if (companion?.id !== COMPANION.id) return null;
 
   // Mirror GameRoot's light redirects so we never land on a blank screen.
   let effective: Screen = screen === "login" ? "home" : screen;

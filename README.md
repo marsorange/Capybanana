@@ -2,14 +2,14 @@
 
 > 每天一分钟，陪它长大一点。
 
-Capybanana 是一个竖屏 Web 随心陪伴养成小游戏。用户每天花一分钟，给一只低多边形卡皮巴拉伙伴**准备包裹和心愿**，由绑定的 **AI Agent** 替它决定今天怎么过（出门旅行 / 在家），宠物把这一天变成一张可收藏的明信片或一段成长记录。完整玩法设计见 [`docs/core-gameplay.md`](docs/core-gameplay.md)。
+Capybanana 是一个竖屏 Web 随心陪伴养成小游戏。用户每天花一分钟，给一只低多边形卡皮巴拉伙伴**准备包裹和心愿**，由绑定的 **AI Agent** 替它决定今天怎么过（旅行 / 对战 / 在家），宠物把这一天变成一张可收藏的明信片、对战记录或成长记忆。完整玩法设计见 [`docs/core-gameplay.md`](docs/core-gameplay.md)。
 
 ## Product
 
 - 低压力、短平快的每日陪伴体验：打包 → Agent 决策 → 结算 → 收藏
-- 全程序化低多边形 3D 卡皮巴拉伙伴（无外部美术素材）
+- 低多边形 3D 卡皮巴拉伙伴；GLB 管线保留，当前默认走程序化主角
 - 每个登录用户拥有唯一一只云端宠物；AI Agent 通过 bind token 操作同一只宠物
-- 明信片、纪念品、误解词典、成长 traits 等收藏内容
+- 明信片、对战记录、纪念品、误解词典、成长 traits 等收藏内容
 - 移动端优先，适合 1 分钟左右打开一次；拍照打包可接入摄像头识别
 
 ## Tech Stack
@@ -75,7 +75,7 @@ This first version focuses on the Agent-driven daily loop (see
 - Sign in with Google; the app mints an Agent **bind token**
 - Adopt a companion (the bound AI Agent generates one)
 - Each day the owner packs up to 3 items + a wish; the pet waits in `ready`
-- The Agent calls `POST /api/agent/day` to decide the day — `travel` or `stay`
-  (battle is on the roadmap, not yet implemented)
+- The Agent calls `POST /api/agent/day` to decide the day — `travel`,
+  `battle`, or `stay`
 - Travel may send back a postcard; collect cards, souvenirs and memories
-- Four core stats drive the day: energy / mood / courage / injury
+- Five core stats drive the day: energy / mood / courage / curiosity / injury

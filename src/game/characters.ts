@@ -52,8 +52,8 @@ export const DEFAULT_SPECIES: CompanionType = "capybara";
  * fixed character that's always the capybara — old saves (rabbit/duck/… or the
  * retired parametric types) and any agent `type` all resolve here.
  */
-export function normalizeSpecies(_value?: unknown): CompanionType {
-  return DEFAULT_SPECIES;
+export function normalizeSpecies(value?: unknown): CompanionType {
+  return isSpecies(value) ? value : DEFAULT_SPECIES;
 }
 
 export function isSpecies(value: unknown): value is CompanionType {

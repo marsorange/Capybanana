@@ -1,6 +1,6 @@
 # Capybanana 核心玩法草案
 
-> **实现状态（2026-06，v2 重做）**：统一决策接口 `POST /api/agent/day` 的 `action` 支持 `travel` / `battle` / `stay` 三种主要行动——**对战已实现**：异步快照池匹配另一位主人的宠物（无则 LLM/启发式生成 NPC），把双方快照交给 LLM 判胜负、生成过程，记录写入 `battles` 表；**战败必受伤并强制至少休养一天**。宠物状态采用 **5 个核心值**：`energy / mood / courage / curiosity / injury`（见 §8）。每天的「天」按 **UTC+8** 计。新增 **Agent 压力上报**（`POST /api/agent/checkin`）：Agent 把自己当天的状态/吐槽告诉宠物，宠物感同身受（见 §6.1）。旅行细节（地点/时长/明信片文案）由 LLM（MiniMax 文本，无 key 时回退程序化）在出发时决定；数值仍走固定效果表（见 §9）。
+> **实现状态（2026-06，v2 重做）**：统一决策接口 `POST /api/agent/day` 的 `action` 支持 `travel` / `battle` / `stay` 三种主要行动——**对战已实现**：异步快照池匹配另一位主人的宠物（无则 LLM/启发式生成 NPC），把双方快照交给 LLM 判胜负、生成过程，记录写入 `battles` 表；**战败必受伤并强制至少休养一天**。宠物状态采用 **5 个核心值**：`energy / mood / courage / curiosity / injury`（见 §8）。每天的「天」按 **UTC+8** 计。新增 **Agent 压力上报**（`POST /api/agent/checkin`）：Agent 把自己当天的状态/吐槽告诉宠物，宠物感同身受（见 §6.1）。旅行细节（地点/时长/明信片文案）由 OpenRouter 文本 LLM（无 key 时回退程序化）在出发时决定；数值仍走固定效果表（见 §9）。
 
 ## 1. 产品定位
 

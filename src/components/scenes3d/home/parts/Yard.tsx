@@ -13,7 +13,6 @@ const WOOD = "#b9844f";
 const WOOD_DK = "#8c5f35";
 const LEAF = "#7fae5c";
 const LEAF_LT = "#93c06c";
-const RED = "#d95f59";
 const PICKET = "#f7ecd6";
 const RAIL = "#ead9ba";
 const MAIL = "#e8625a";

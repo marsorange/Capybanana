@@ -150,7 +150,6 @@ export default function PackScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    setCamPhase("starting");
     (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
@@ -258,6 +257,11 @@ export default function PackScreen() {
     setBusyIds((b) => b.filter((x) => x !== id));
   };
 
+  const switchCamera = () => {
+    setCamPhase("starting");
+    setFacing((f) => (f === "environment" ? "user" : "environment"));
+  };
+
   const hasClue = photos.length > 0 || message.trim().length > 0;
   const full = photos.length >= MAX;
   const subtext = full
@@ -339,7 +343,7 @@ export default function PackScreen() {
           </button>
           {/* switch */}
           <button
-            onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
+            onClick={switchCamera}
             className="absolute right-3 top-3 flex flex-col items-center gap-1"
             aria-label="切换镜头"
           >

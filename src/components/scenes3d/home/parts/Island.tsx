@@ -26,7 +26,6 @@ const PINE_DK = "#6f9d57";
 const PINE_LT = "#7cab60";
 const TRUNK = "#8c5f35";
 
-const N = 14; // facet count — chunky low-poly silhouette
 const LAWN_R = 7.2; // BIG tray — the whole house footprint sits well inside it
 //   (its far corner is ~6.6 from centre), with a green margin out to the edge
 const PI = Math.PI;

@@ -6,7 +6,7 @@ import type {
   Personality,
 } from "./types";
 
-// Derived from the six-character roster so there is a single source of truth.
+// Derived from the character roster so there is a single source of truth.
 export const COMPANION_TYPES: {
   type: CompanionType;
   label: string;

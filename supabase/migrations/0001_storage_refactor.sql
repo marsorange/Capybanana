@@ -48,7 +48,7 @@ create table pets (
   personality text not null,
   accessory text not null default 'none',
 
-  -- Four core stats (see docs/core-gameplay.md §8).
+  -- v1 core stats. Gameplay v2 adds curiosity in 0002_gameplay_v2.sql.
   mood int not null default 65,
   energy int not null default 70,
   courage int not null default 40,

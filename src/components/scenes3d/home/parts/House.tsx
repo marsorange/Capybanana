@@ -58,14 +58,10 @@ const FLOOR0 = "#ecca94";
 const FLOOR1 = "#f3d9aa";
 const ROOF = "#fad96e";
 const ROOF_DK = "#f1cb57";
-const ROOF_RIDGE = "#cf9a48";
 const GREEN = "#92c46b";
 const GREEN_DK = "#7caf58";
-const SAGE = "#9dbf8c";
-const GOLD = "#e8b85c";
 const CREAM = "#fff6e6";
 const PINK = "#f1a6bd";
-const RED = "#d95f59";
 
 // The cottage opts OUT of the shared planet bend so its rigid structure stands
 // straight while the island ground domes around it.
@@ -308,22 +304,6 @@ function Jar({ pos, color }: { pos: [number, number, number]; color: string }) {
   );
 }
 
-// A slumped burlap sack of grain.
-function Sack({ pos }: { pos: [number, number, number] }) {
-  return (
-    <group position={pos}>
-      <mesh position={[0, 0.12, 0]}>
-        <cylinderGeometry args={[0.1, 0.13, 0.24, 7]} />
-        {m("#d8c39a")}
-      </mesh>
-      <mesh position={[0, 0.26, 0]}>
-        <coneGeometry args={[0.07, 0.08, 7]} />
-        {m("#c8b186")}
-      </mesh>
-    </group>
-  );
-}
-
 // A woven basket, optionally holding round produce.
 function Basket({ pos, fruit = "#e88a3c" }: { pos: [number, number, number]; fruit?: string }) {
   return (
@@ -518,25 +498,6 @@ function RoofSlope({
         </mesh>
       ))}
     </group>
-  );
-}
-
-// A subtle pulsing ground ring that marks an interactive spot (no emoji).
-function Beacon({ pos, color = "#e8b85c" }: { pos: [number, number, number]; color?: string }) {
-  const ring = useRef<THREE.Mesh>(null);
-  useFrame((s) => {
-    const k = (Math.sin(s.clock.elapsedTime * 2) + 1) / 2;
-    if (ring.current) {
-      const sc = 0.8 + k * 0.55;
-      ring.current.scale.set(sc, sc, sc);
-      (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.5 - k * 0.4;
-    }
-  });
-  return (
-    <mesh ref={ring} position={pos} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[0.34, 0.44, 28]} />
-      <meshBasicMaterial color={color} transparent opacity={0.4} depthWrite={false} />
-    </mesh>
   );
 }
 
