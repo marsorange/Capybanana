@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 
 import { useGameStore } from "@/state/gameStore";
 import { isSupabaseConfigured, signInWithGoogle } from "@/lib/supabaseClient";
-import CapyLogo from "./CapyLogo";
+import CharacterModel from "../scenes3d/character/CharacterModel";
+import SceneCanvas from "../scenes3d/SceneCanvas";
 
 export default function LoginScreen() {
   const loginDestination = useGameStore((s) => s.loginDestination);
@@ -46,55 +47,30 @@ export default function LoginScreen() {
     <div className="game-bg relative flex h-full flex-col overflow-hidden px-6 pb-6 pt-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_50%_0%,rgba(255,244,205,0.95),transparent_72%)]" />
 
-      {/* brand: floating logo + wordmark */}
+      {/* the guide: a slowly turning 3D capybara — almost no text */}
       <motion.div
-        initial={{ opacity: 0, y: 18, scale: 0.94 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="relative z-10 mt-4 flex flex-col items-center text-center"
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="relative z-10 mt-4 flex flex-1 flex-col items-center justify-center text-center"
       >
-        <CapyLogo className="h-36 w-36" />
-        <h1 className="mt-5 font-hand text-[2.55rem] leading-none text-ink">
+        <div className="h-[44vh] max-h-[420px] w-full">
+          <SceneCanvas controls="spin">
+            <CharacterModel
+              type="capybara"
+              color="#b27a43"
+              accessory="scarf"
+              seed="login-capy"
+            />
+          </SceneCanvas>
+        </div>
+        <h1 className="-mt-2 font-hand text-[2.6rem] leading-none text-ink">
           Capybanana
         </h1>
-        <p className="mt-3 max-w-[21rem] text-[15px] leading-relaxed text-ink-soft">
-          {agentOnboarding ? (
-            <>
-              先进入小屋，
-              <br />
-              再把今天的决定交给你信任的小助手。
-            </>
-          ) : (
-            <>
-              每天一分钟，给它一个小线索，
-              <br />
-              它会把日子过成一封寄回来的信。
-            </>
-          )}
+        <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">
+          {agentOnboarding ? "把今天交给你的小助手。" : "每天一分钟，陪它过日子。"}
         </p>
       </motion.div>
-
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.12 }}
-        className="game-card relative z-10 mt-8 px-4 py-3"
-      >
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-2xl bg-cream-soft px-2 py-3">
-            <p className="text-2xl leading-none">🎒</p>
-            <p className="mt-1 text-xs text-ink-soft">放线索</p>
-          </div>
-          <div className="rounded-2xl bg-cream-soft px-2 py-3">
-            <p className="text-2xl leading-none">🏡</p>
-            <p className="mt-1 text-xs text-ink-soft">等它想</p>
-          </div>
-          <div className="rounded-2xl bg-cream-soft px-2 py-3">
-            <p className="text-2xl leading-none">💌</p>
-            <p className="mt-1 text-xs text-ink-soft">收来信</p>
-          </div>
-        </div>
-      </motion.section>
 
       {/* login */}
       <motion.div

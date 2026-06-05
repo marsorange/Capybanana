@@ -31,13 +31,14 @@ export default function InteractionLayer() {
       <InteractionMarker
         pos={PACK_BENCH}
         label="打包"
+        labelY={1.4}
         onClick={() => walk(PACK.pos, 0, () => goTo("pack"))}
       />
       {/* 明信片 — on the postcard board out in the yard (right of the house) */}
       <InteractionMarker
         pos={POSTCARD_BOARD}
         label="明信片"
-        labelY={1.1}
+        labelY={1.75}
         onClick={() => walk(POSTCARD.pos, 0, () => goTo("album"))}
       />
       {/* 休息 — the bed up in the loft (the pet climbs the stairs to get there) */}
@@ -45,7 +46,7 @@ export default function InteractionLayer() {
         pos={BED}
         label="休息"
         color="#9aa6c8"
-        labelY={1.35}
+        labelY={1.55}
         onClick={() =>
           walk(REST.pos, 1, undefined, {
             activity: "sleep",

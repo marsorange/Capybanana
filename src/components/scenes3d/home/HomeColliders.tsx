@@ -15,7 +15,9 @@ import {
   WALL_T,
   W,
   XL,
+  XR,
   ZB,
+  ZF,
   stairRamp,
   type Rect,
 } from "./layout";
@@ -47,13 +49,11 @@ type Obstacle = {
   half: [number, number, number];
   rotY?: number;
 };
-// Only the YARD props within the pet's reach (RIM_R) need hulls — the island
-// trees/boulders now sit out at the rim, beyond where the pet can walk.
+// Only the BIG yard objects get hulls — the small decor (lamp, mailbox, rocks,
+// flowers, edge trees) is left collider-free on purpose.
 const OBSTACLES: Obstacle[] = [
-  { pos: [-0.6, 0.36, 2.5], half: [1.28, 0.4, 1.08] }, // fenced veg garden (花圃, enlarged)
+  { pos: [-0.6, 0.36, 2.5], half: [1.28, 0.4, 1.08] }, // fenced veg garden (花圃)
   { pos: [4.0, 0.32, 1.4], half: [0.5, 0.32, 0.2], rotY: -Math.PI / 2.2 }, // bench
-  { pos: [1.8, 0.85, 2.6], half: [0.18, 0.85, 0.18] }, // garden lamp post
-  { pos: [3.5, 0.5, -1.1], half: [0.26, 0.55, 0.28] }, // mailbox
   { pos: [2.6, 0.7, -0.9], half: [0.78, 0.62, 0.12], rotY: -0.6 }, // postcard board
 ];
 
@@ -107,6 +107,13 @@ export default function HomeColliders() {
             +x/+z faces stay open (cutaway). Sized from layout WALL_T/EAVE. */}
         <CuboidCollider args={[WALL_T / 2, EAVE / 2, D / 2]} position={[XL, EAVE / 2, CZ]} />
         <CuboidCollider args={[W / 2, EAVE / 2, WALL_T / 2]} position={[CX, EAVE / 2, ZB]} />
+
+        {/* the four chunky vertical CORNER POSTS (立柱) — the big structural
+            timbers the pet must not walk through (the open-corner ones aren't
+            covered by the walls above). */}
+        {([[XL, ZB], [XL, ZF], [XR, ZB], [XR, ZF]] as const).map(([px, pz], i) => (
+          <CuboidCollider key={`post${i}`} args={[0.14, EAVE / 2, 0.14]} position={[px, EAVE / 2, pz]} />
+        ))}
 
         {/* L-shaped loft floor: the MAIN bedroom platform + the LANDING lobe the
             straight stair tops out onto, so the pet can stand upstairs. */}

@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 
 import { useGameStore } from "@/state/gameStore";
-import type { CompanionState } from "@/game/types";
 import HomeModel from "../scenes3d/home/HomeModel";
 import HomeColliders from "../scenes3d/home/HomeColliders";
 import PhysicsToy from "../scenes3d/home/PhysicsToy";
@@ -11,6 +10,7 @@ import InteractionLayer from "../scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import MusicToggle from "../ui/MusicToggle";
+import Icon, { type IconName } from "../ui/Icon";
 
 const IDLE_LINES = [
   "今天也想和你待在一起。",
@@ -24,46 +24,14 @@ const READY_LINES = [
   "你留的那句话，我记住了。",
 ];
 
-function dailyWish(
-  state: CompanionState,
-  mood: number,
-  energy: number,
-  injury: number,
-) {
-  if (state === "ready") {
-    return {
-      title: "今日包裹已放好",
-      body: "它会先闻一闻、想一想，再等助手替它决定今天出门还是留在家。",
-      cta: "查看助手",
-    };
-  }
-  if (injury > 0) {
-    return {
-      title: "它今天走得慢一点",
-      body: "可以给它拍一样柔软或暖暖的东西，留言也可以短一点。",
-      cta: "准备包裹",
-    };
-  }
-  if (energy < 35) {
-    return {
-      title: "它有点困",
-      body: "今天适合带一件舒服的小东西，让它把日子过得慢一点。",
-      cta: "准备包裹",
-    };
-  }
-  if (mood < 45) {
-    return {
-      title: "它在窗边发呆",
-      body: "拍一张你身边的颜色，或者留一句想去哪里的心愿。",
-      cta: "准备包裹",
-    };
-  }
-  return {
-    title: "它在等今天的小线索",
-    body: "拍 1-3 件真实物品，再留一句话。远方会从这些线索里长出来。",
-    cta: "准备包裹",
-  };
+// A reserved ICON SLOT placeholder — real icon art will drop in here later.
+// (No emoji per request; this just holds the icon's footprint.)
+function IconSlot({ className = "" }: { className?: string }) {
+  return (
+    <span className={`block rounded-[7px] border-2 border-ink/10 bg-ink/[0.07] ${className}`} />
+  );
 }
+
 
 function TopIconButton({
   label,
@@ -71,16 +39,16 @@ function TopIconButton({
   onClick,
 }: {
   label: string;
-  icon: string;
+  icon: IconName;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className="pointer-events-auto flex h-14 w-14 flex-col items-center justify-center rounded-[18px] border-2 border-ink/10 bg-paper/82 text-ink shadow-[0_4px_0_rgba(111,84,55,0.12)] backdrop-blur active:translate-y-0.5"
+      className="pointer-events-auto flex h-11 w-11 flex-col items-center justify-center rounded-[14px] border-2 border-ink/10 bg-paper/85 text-ink shadow-[0_3px_0_rgba(111,84,55,0.12)] backdrop-blur active:translate-y-0.5"
     >
-      <span className="text-xl leading-none">{icon}</span>
-      <span className="mt-1 text-[11px] font-medium leading-none">{label}</span>
+      <Icon name={icon} className="h-6 w-6" />
+      <span className="mt-0.5 text-[9px] font-medium leading-none">{label}</span>
     </button>
   );
 }
@@ -97,23 +65,23 @@ function BottomNav({
   onJournal: () => void;
 }) {
   const items = [
-    { label: "小屋", icon: "🏠", active: true, onClick: onHome },
-    { label: "背包", icon: "🎒", active: false, onClick: onPack },
-    { label: "相册", icon: "📷", active: false, onClick: onAlbum },
-    { label: "手账", icon: "📒", active: false, onClick: onJournal },
+    { label: "小屋", icon: "house" as IconName, active: true, onClick: onHome },
+    { label: "背包", icon: "package" as IconName, active: false, onClick: onPack },
+    { label: "相册", icon: "photobook" as IconName, active: false, onClick: onAlbum },
+    { label: "手账", icon: "book" as IconName, active: false, onClick: onJournal },
   ];
   return (
-    <nav className="absolute inset-x-5 bottom-4 grid grid-cols-4 rounded-[28px] border-2 border-ink/10 bg-paper/88 p-2 shadow-[0_6px_0_rgba(111,84,55,0.1)] backdrop-blur">
+    <nav className="absolute inset-x-6 bottom-3 grid grid-cols-4 rounded-[22px] border-2 border-ink/10 bg-paper/90 p-1.5 shadow-[0_4px_0_rgba(111,84,55,0.1)] backdrop-blur">
       {items.map((item) => (
         <button
           key={item.label}
           onClick={item.onClick}
-          className={`flex flex-col items-center justify-center rounded-[20px] py-2 text-sm transition active:translate-y-0.5 ${
+          className={`flex flex-col items-center justify-center rounded-[16px] py-1.5 transition active:translate-y-0.5 ${
             item.active ? "bg-leaf/14 text-ink" : "text-ink-soft"
           }`}
         >
-          <span className="text-2xl leading-none">{item.icon}</span>
-          <span className="mt-1 font-medium leading-none">{item.label}</span>
+          <Icon name={item.icon} className={`h-7 w-7 ${item.active ? "" : "opacity-70"}`} />
+          <span className="mt-1 text-xs font-medium leading-none">{item.label}</span>
         </button>
       ))}
     </nav>
@@ -122,7 +90,6 @@ function BottomNav({
 
 export default function HomeScreen() {
   const companion = useGameStore((s) => s.companion)!;
-  const capy = useGameStore((s) => s.capyState);
   const companionState = useGameStore((s) => s.companionState);
   const postcards = useGameStore((s) => s.postcards);
   const lastResult = useGameStore((s) => s.lastResult);
@@ -134,13 +101,6 @@ export default function HomeScreen() {
     () => postcards.slice(0, 3).map((p) => p.destinationTheme),
     [postcards],
   );
-  const wish = dailyWish(
-    companionState,
-    capy.mood,
-    capy.energy,
-    capy.injury,
-  );
-
   return (
     <div className="relative h-full overflow-hidden">
       {/* clean warm-cream studio backdrop, letting the diorama pop */}
@@ -199,62 +159,45 @@ export default function HomeScreen() {
       </SceneCanvas>
 
       {/* top bar: profile capsule + notebook controls */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 px-5 pt-5">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2.5 px-4 pt-4">
         <button
           onClick={() => goTo("profile")}
-          className="pointer-events-auto flex min-w-0 flex-1 items-center gap-3 rounded-[26px] border-2 border-ink/10 bg-paper/82 py-2 pl-2 pr-4 text-left shadow-[0_4px_0_rgba(111,84,55,0.1)] backdrop-blur"
+          className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-[18px] border-2 border-ink/10 bg-paper/85 py-1.5 pl-1.5 pr-3.5 text-left shadow-[0_3px_0_rgba(111,84,55,0.1)] backdrop-blur"
         >
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cream-soft text-3xl shadow-inner">
-            🐾
+          {/* avatar slot (capybara art TBD) */}
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cream-soft shadow-inner">
+            <IconSlot className="h-6 w-6 rounded-lg" />
           </span>
           <span className="min-w-0">
-            <span className="block truncate font-hand text-[26px] leading-none text-ink">
+            <span className="block truncate font-hand text-lg leading-none text-ink">
               {companion.name}
             </span>
-            <span className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
-              <span>🍃</span>
+            <span className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft">
+              <IconSlot className="h-3 w-3 rounded-[4px] border-leaf/40 bg-leaf/20" />
               <span>{postcards.length * 80 + memories.length * 20}</span>
             </span>
           </span>
         </button>
         <div className="flex gap-2">
-          <TopIconButton label="手账" icon="📒" onClick={() => goTo("profile")} />
+          <TopIconButton label="手账" icon="book" onClick={() => goTo("profile")} />
           {bound && (
-            <TopIconButton
-              label="助手"
-              icon="⚙️"
-              onClick={() => goTo("connect")}
-            />
+            <TopIconButton label="助手" icon="setting" onClick={() => goTo("connect")} />
           )}
         </div>
       </div>
-      <div className="absolute right-5 top-[5.35rem]">
+      <div className="absolute right-4 top-[4.4rem]">
         <MusicToggle />
       </div>
 
-      <section className="absolute inset-x-5 bottom-28 rounded-[22px] border-2 border-ink/10 bg-paper/88 px-4 py-3 shadow-[0_4px_0_rgba(111,84,55,0.1)] backdrop-blur">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="font-hand text-lg leading-none text-ink">{wish.title}</p>
-          <span className="shrink-0 rounded-full bg-cream-deep px-2.5 py-1 text-[11px] text-ink-soft">
-            {companionState === "ready" ? "等助手" : "在家"}
-          </span>
-        </div>
-        <p className="text-[13px] leading-relaxed text-ink-soft">{wish.body}</p>
-        <button
-          onClick={() => goTo(companionState === "ready" && bound ? "connect" : "pack")}
-          className="mt-2 inline-flex rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-paper shadow-[0_2px_0_rgba(58,46,42,0.15)] active:translate-y-0.5"
-        >
-          {wish.cta}
-        </button>
-      </section>
+      {/* (daily-wish card hidden for now) */}
 
       {/* last result chip */}
       {lastResult && (
         <button
           onClick={() => goTo("result")}
-          className="absolute inset-x-5 bottom-[13.25rem] rounded-sticker border-2 border-ink/12 bg-paper/90 px-4 py-2.5 text-left shadow-[0_2px_0_rgba(58,46,42,0.1)]"
+          className="absolute inset-x-6 bottom-[5.25rem] rounded-[16px] border-2 border-ink/12 bg-paper/90 px-3.5 py-2 text-left shadow-[0_2px_0_rgba(58,46,42,0.1)]"
         >
-          <span className="text-[11px] text-ink-soft">昨天留下的小事 ›</span>
+          <span className="text-[10px] text-ink-soft">昨天留下的小事 ›</span>
           <span className="block truncate text-sm text-ink">
             {lastResult.title} · {lastResult.story}
           </span>

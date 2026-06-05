@@ -1,6 +1,6 @@
 "use client";
 
-import { OrbitControls } from "@react-three/drei";
+import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import type { ReactNode } from "react";
@@ -182,8 +182,22 @@ export default function SceneCanvas({
       <BendApplier strength={bendStrength} center={bendCenter} falloff={bendFalloff} />
       {sun && <ShadowEnabler />}
       {sky ? (
-        /* dynamic day-cycle sun + drifting clouds + optional rain */
-        <SkyWeather weather={weather} />
+        <>
+          {/* dynamic day-cycle sun + drifting clouds + optional rain */}
+          <SkyWeather weather={weather} />
+          {/* soft contact shadows (小阴影) under the ground-level objects — adds
+              grounding/depth without darkening the bright scene. far is low so it
+              only catches the pet + furniture + yard props, not the whole house. */}
+          <ContactShadows
+            position={[-0.6, 0.07, -1.0]}
+            scale={17}
+            resolution={384}
+            blur={2.6}
+            far={1.7}
+            opacity={0.42}
+            color="#5c4632"
+          />
+        </>
       ) : (
         <>
           {/* static warm "日系" low-poly light (the portrait turntables) */}

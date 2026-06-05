@@ -482,13 +482,15 @@ function WindowWall({
 // Window openings, in wall-local horizontal u (= world z−CZ for the -x wall,
 // world x−CX for the -z wall) + vertical v. Module-level so the extruded wall
 // geometry memo stays stable across renders.
+// All at LOFT level (the ground-floor walls are tucked under the loft / behind
+// furniture, so windows there read as occluded). Spaced to flank the wall shelf
+// at x≈−2.55 (back) and to sit in front of the bed (left), so nothing overlaps.
 const LEFT_HOLES: Hole[] = [
-  { u: 0.45, v: 1.85, w: 0.9, h: 1.0 }, // tall ground-floor window
-  { u: -1.05, v: 3.3, w: 0.8, h: 0.8 }, // loft window (above the bed)
+  { u: -0.2, v: 3.32, w: 0.8, h: 0.8 }, // loft window (front of the bed, clear)
 ];
 const BACK_HOLES: Hole[] = [
-  { u: -1.25, v: 3.3, w: 0.9, h: 0.9 }, // loft window (behind the bed)
-  { u: 0.35, v: 3.32, w: 0.85, h: 0.85 }, // loft window (right)
+  { u: -1.4, v: 3.32, w: 0.85, h: 0.85 }, // loft window (left, above the bed)
+  { u: 0.5, v: 3.32, w: 0.85, h: 0.85 }, // loft window (right of the shelf)
 ];
 
 // One tiled roof slope: a faceted plank dressed with raised, alternating tile
@@ -903,25 +905,46 @@ export default function House({
           {m(CREAM)}
         </mesh>
       </group>
-      {/* a pair of stools flanking the table */}
-      {([[-1.7, 0.18], [-1.72, -1.36]] as const).map(([sx, sz], s) => (
-        <group key={s} position={[sx, 0, sz]}>
-          <mesh position={[0, 0.31, 0]}>
-            <cylinderGeometry args={[0.16, 0.16, 0.06, 12]} />
-            {m("#cdb892")}
-          </mesh>
-          {([[-0.09, -0.09], [0.09, -0.09], [-0.09, 0.09], [0.09, 0.09]] as const).map(
-            ([x, z], i) => (
-              <mesh key={i} position={[x, 0.15, z]}>
-                <cylinderGeometry args={[0.022, 0.022, 0.3, 6]} />
-                {m(WOOD_DK)}
-              </mesh>
-            ),
-          )}
-        </group>
-      ))}
-      {/* a leafy floor plant tucked by the stair foot (out of the roam lane) */}
-      <Plant pos={[-0.55, 0, 0.05]} scale={1.05} pot="#c98b58" />
+      {/* a single stool by the table */}
+      <group position={[-1.7, 0, 0.18]}>
+        <mesh position={[0, 0.31, 0]}>
+          <cylinderGeometry args={[0.16, 0.16, 0.06, 12]} />
+          {m("#cdb892")}
+        </mesh>
+        {([[-0.09, -0.09], [0.09, -0.09], [-0.09, 0.09], [0.09, 0.09]] as const).map(
+          ([x, z], i) => (
+            <mesh key={i} position={[x, 0.15, z]}>
+              <cylinderGeometry args={[0.022, 0.022, 0.3, 6]} />
+              {m(WOOD_DK)}
+            </mesh>
+          ),
+        )}
+      </group>
+      {/* a grounded open BOOKSHELF cabinet (books + a plant on top) — replaces
+          the loose floor plant, gives the ground floor a real piece of furniture */}
+      <group position={[-1.45, 0, -1.35]}>
+        <Box args={[0.9, 0.9, 0.05]} pos={[0, 0.47, -0.16]} color={WOOD} />
+        <Box args={[0.06, 0.9, 0.4]} pos={[-0.42, 0.47, 0]} color={WOOD} />
+        <Box args={[0.06, 0.9, 0.4]} pos={[0.42, 0.47, 0]} color={WOOD} />
+        <Box args={[0.84, 0.05, 0.4]} pos={[0, 0.06, 0]} color={WOOD} />
+        <Box args={[0.84, 0.05, 0.38]} pos={[0, 0.5, 0]} color={WOOD_DK} />
+        <Box args={[0.98, 0.06, 0.46]} pos={[0, 0.93, 0]} color={WOOD_LT} />
+        {([0.72, 0.3] as const).map((sy, s) =>
+          ([-0.3, -0.15, 0, 0.15, 0.3] as const).map((bx, i) => (
+            <Box
+              key={`${s}-${i}`}
+              args={[0.1, 0.2 + ((i + s) % 3) * 0.04, 0.26]}
+              pos={[bx, sy, 0.02]}
+              color={
+                ["#d98a6a", "#7fae9b", "#e6b85c", "#9a86b8", "#cf6f63", "#85a86a"][
+                  (s * 2 + i) % 6
+                ]
+              }
+            />
+          )),
+        )}
+        <Plant pos={[0.26, 0.96, 0]} scale={0.52} />
+      </group>
 
       {/* ===== LOFT: a simple bedroom ===== */}
       <group position={[0, FLOOR_H, 0]}>
