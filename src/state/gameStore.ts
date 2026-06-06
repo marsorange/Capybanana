@@ -58,6 +58,9 @@ interface GameState {
   souvenirs: string[];
   misunderstandings: string[];
   battleRecords: BattleRecord[];
+  // 养成: 陪伴天数 (the only visible meter) + the collected 图鉴 card ids.
+  companionDays: number;
+  cardDex: string[];
   lastResult: DayOutcome | null;
   screen: Screen;
   // Whether the owner has passed the one-time "connect an Agent" step. New
@@ -109,6 +112,8 @@ function emptyLocalState() {
     souvenirs: [],
     misunderstandings: [],
     battleRecords: [],
+    companionDays: 0,
+    cardDex: [],
     lastResult: null,
     selectedPostcardId: null,
     pendingPostcardId: null,
@@ -347,6 +352,8 @@ export const useGameStore = create<GameState>()(
           souvenirs: save.souvenirs,
           misunderstandings: save.misunderstandings,
           battleRecords: save.battleRecords,
+          companionDays: save.companionDays,
+          cardDex: save.cardDex,
           lastResult: save.lastResult,
           pendingPostcardId: save.pendingPostcardId,
           cloud: s.cloud ? { ...s.cloud, rev: save.rev } : s.cloud,
@@ -374,6 +381,8 @@ export const useGameStore = create<GameState>()(
         souvenirs: s.souvenirs,
         misunderstandings: s.misunderstandings,
         battleRecords: s.battleRecords,
+        companionDays: s.companionDays,
+        cardDex: s.cardDex,
         lastResult: s.lastResult,
         screen: s.screen,
         hasOnboarded: s.hasOnboarded,

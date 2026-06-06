@@ -152,6 +152,7 @@ export default function HomeScreen() {
   const companionState = useGameStore((s) => s.companionState);
   const packedBag = useGameStore((s) => s.packedBag);
   const postcards = useGameStore((s) => s.postcards);
+  const companionDays = useGameStore((s) => s.companionDays);
   const goTo = useGameStore((s) => s.goTo);
   const bound = useGameStore((s) => !!s.cloud);
   const notice = useGameStore((s) => s.notice);
@@ -168,7 +169,7 @@ export default function HomeScreen() {
     () => postcards.slice(0, 3).map((p) => p.destinationTheme),
     [postcards],
   );
-  const stats = useMemo(() => companionStats(companion.createdAt), [companion.createdAt]);
+  const stats = useMemo(() => companionStats(companionDays), [companionDays]);
   const ready = companionState === "ready" || !!packedBag;
 
   return (

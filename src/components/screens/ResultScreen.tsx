@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 
-import type { DayOutcome } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
@@ -21,53 +20,12 @@ const KIND_THEME: Record<string, KindTheme> = {
   battle: { emoji: "⚔️", caption: "打了一场友谊赛", glow: "#f4d9d8", pedestal: "#eed7d6", accent: "#d95f59" },
 };
 
-const EFFECT_META: Record<string, { label: string; emoji: string }> = {
-  mood: { label: "心情", emoji: "💛" },
-  energy: { label: "体力", emoji: "⚡" },
-  courage: { label: "勇气", emoji: "⛰️" },
-  curiosity: { label: "好奇心", emoji: "🔆" },
-  injury: { label: "伤痛", emoji: "🩹" },
-};
-
 function Pedestal({ color }: { color: string }) {
   return (
     <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <circleGeometry args={[0.95, 40]} />
       <meshLambertMaterial color={color} />
     </mesh>
-  );
-}
-
-function EffectChips({ effects }: { effects: DayOutcome["effects"] }) {
-  const entries = Object.entries(effects).filter(([, v]) => v && v !== 0);
-  if (entries.length === 0) return null;
-  return (
-    <div className="flex flex-wrap justify-center gap-2">
-      {entries.map(([k, v], i) => {
-        const value = v as number;
-        const up = value > 0;
-        const good = k === "injury" ? !up : up;
-        const meta = EFFECT_META[k] ?? { label: k, emoji: "✨" };
-        return (
-          <motion.span
-            key={k}
-            initial={{ scale: 0, y: 6 }}
-            animate={{ scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 320, damping: 18, delay: 0.35 + i * 0.05 }}
-            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-sm ${
-              good ? "border-leaf/45 bg-leaf/12 text-ink" : "border-accent/45 bg-accent/10 text-ink"
-            }`}
-          >
-            <span>{meta.emoji}</span>
-            <span>{meta.label}</span>
-            <span className="font-bold tabular-nums">
-              {up ? "▲" : "▼"}
-              {Math.abs(value)}
-            </span>
-          </motion.span>
-        );
-      })}
-    </div>
   );
 }
 
@@ -164,8 +122,6 @@ export default function ResultScreen() {
               </Panel>
             </motion.div>
           )}
-
-          <EffectChips effects={result.effects} />
         </div>
 
         <div className="shrink-0 px-5 pb-6 pt-3">

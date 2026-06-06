@@ -170,6 +170,36 @@ export const DESTINATIONS: DestinationMeta[] = [
     headTo: "去了灯火热闹的夜车站",
     palette: { sky: "#2e2b48", mid: "#3f3a63", ground: "#555079", accent: "#f2c14e" },
   },
+  {
+    theme: "starfield",
+    label: "星河",
+    emoji: "🌌",
+    baseWeight: 1,
+    locationNames: ["银河观测台", "坠星谷", "无光的山脊", "极光下的湖"],
+    titles: ["银河整夜都没走", "我数了好多颗星", "坐在星空下发呆"],
+    scenes: [
+      "天黑透了，星星密得像撒了一把盐。",
+      "我躺在草地上看银河，凉风把它吹得好像在动。",
+      "有颗星划过去，我赶紧替你许了个愿。",
+    ],
+    headTo: "往没有灯的暗处追星去了",
+    palette: { sky: "#1b1b3a", mid: "#2a2a52", ground: "#39396a", accent: "#a9d8ff" },
+  },
+  {
+    theme: "desert",
+    label: "沙丘绿洲",
+    emoji: "🏜️",
+    baseWeight: 1,
+    locationNames: ["月牙泉边", "起伏的沙丘", "绿洲驿站", "落日沙海"],
+    titles: ["沙子一直暖到傍晚", "翻过一个又一个沙丘", "绿洲边歇了好久"],
+    scenes: [
+      "沙子被晒得暖暖的，踩下去又软又烫。",
+      "爬上沙丘回头看，脚印被风一点点抹平了。",
+      "绿洲的水很清，我趴在边上喝了好几口。",
+    ],
+    headTo: "朝着暖暖的沙丘走了",
+    palette: { sky: "#f3d9a8", mid: "#e3b072", ground: "#cf8f4f", accent: "#d95f59" },
+  },
 ];
 
 const BY_THEME = new Map(DESTINATIONS.map((d) => [d.theme, d] as const));
@@ -178,19 +208,23 @@ export function getDestination(theme: DestinationTheme): DestinationMeta {
   return BY_THEME.get(theme) ?? DESTINATIONS[0];
 }
 
-// Real, recognizable landmarks per theme. Used as the postcard's shown location
-// (e.g. 埃菲尔铁塔) and woven into the AI image prompt as the background scenery.
+// Real, recognizable landmarks per theme. Index === rarity tier:
+// [0]=N 普通, [1]=R 稀有, [2]=SR 史诗, [3]=SSR 传说 — the grandest landmark is
+// the SSR card. landmarkForCard() in gacha.ts reads this by rarity index, so the
+// SAME (destination × rarity) card always shows the same landmark in the 图鉴.
 export const LANDMARKS: Record<DestinationTheme, string[]> = {
-  seaside: ["圣托里尼", "马尔代夫海滩", "尼斯蔚蓝海岸", "巴厘岛海滩"],
-  harbor: ["悉尼歌剧院", "威尼斯运河", "香港维多利亚港", "阿马尔菲海岸"],
-  forest: ["德国黑森林", "屋久岛原始森林", "加州红杉林", "亚马逊雨林"],
-  snow: ["瑞士少女峰", "北海道雪原", "阿尔卑斯雪山", "加拿大班夫"],
-  hotspring: ["日本箱根温泉", "冰岛蓝湖", "别府温泉", "黄石大棱镜温泉"],
-  mountain: ["富士山", "马特洪峰", "黄山", "马丘比丘"],
-  flowerfield: ["普罗旺斯薰衣草田", "北海道富良野花海", "荷兰郁金香花田", "英国湖区"],
-  raincity: ["雨中的伦敦塔桥", "西雅图太空针塔", "雨中的京都清水寺", "重庆洪崖洞"],
-  town: ["巴黎埃菲尔铁塔", "布拉格老城广场", "摩洛哥舍夫沙万蓝城", "意大利五渔村"],
-  nightstation: ["东京新宿夜景", "香港旺角霓虹街", "上海外滩夜景", "巴黎北站"],
+  seaside: ["巴厘岛海滩", "尼斯蔚蓝海岸", "马尔代夫海滩", "圣托里尼"],
+  harbor: ["阿马尔菲海岸", "香港维多利亚港", "威尼斯运河", "悉尼歌剧院"],
+  forest: ["德国黑森林", "加州红杉林", "屋久岛原始森林", "亚马逊雨林"],
+  snow: ["北海道雪原", "加拿大班夫", "阿尔卑斯雪山", "瑞士少女峰"],
+  hotspring: ["别府温泉", "日本箱根温泉", "黄石大棱镜温泉", "冰岛蓝湖"],
+  mountain: ["黄山", "马丘比丘", "马特洪峰", "富士山"],
+  flowerfield: ["英国湖区", "北海道富良野花海", "荷兰郁金香花田", "普罗旺斯薰衣草田"],
+  raincity: ["重庆洪崖洞", "西雅图太空针塔", "雨中的伦敦塔桥", "雨中的京都清水寺"],
+  town: ["意大利五渔村", "布拉格老城广场", "摩洛哥舍夫沙万蓝城", "巴黎埃菲尔铁塔"],
+  nightstation: ["巴黎北站", "香港旺角霓虹街", "上海外滩夜景", "东京新宿夜景"],
+  starfield: ["冰岛星空营地", "智利阿塔卡马星空", "新西兰特卡波湖星空", "挪威北极光"],
+  desert: ["敦煌鸣沙山月牙泉", "迪拜沙漠绿洲", "纳米布红沙丘", "撒哈拉沙漠"],
 };
 
 export function pickLandmark(theme: DestinationTheme): string {
@@ -272,6 +306,18 @@ export const KEYWORD_RULES: KeywordRule[] = [
     themes: ["town"],
     wish: "想逛逛小镇",
     reason: "你想找个小镇慢慢逛",
+  },
+  {
+    test: ["星空", "银河", "星星", "观星", "极光"],
+    themes: ["starfield"],
+    wish: "想去看星星",
+    reason: "你提到了星空",
+  },
+  {
+    test: ["沙漠", "沙丘", "绿洲", "戈壁"],
+    themes: ["desert"],
+    wish: "想去沙漠看看",
+    reason: "你说起了沙漠",
   },
   {
     test: ["随便", "都行", "随你", "看心情", "哪都好"],

@@ -111,7 +111,14 @@ export type DestinationTheme =
   | "flowerfield"
   | "raincity"
   | "town"
-  | "nightstation";
+  | "nightstation"
+  | "starfield"
+  | "desert";
+
+// Postcard gacha rarity, ascending. Each (destination × rarity) pair is one
+// fixed collectible "card"; 12 destinations × 4 rarities = 48-card 图鉴. The
+// rarity is rolled server-side at trip resolution (see src/game/gacha.ts).
+export type Rarity = "N" | "R" | "SR" | "SSR";
 
 export type TripStatus = "traveling" | "returned";
 
@@ -149,8 +156,9 @@ export interface Postcard {
   id: string;
   tripId: string;
   companionId: string;
-  locationName: string; // a real famous landmark (e.g. 埃菲尔铁塔)
+  locationName: string; // the canonical landmark for this card (destination × rarity)
   destinationTheme: DestinationTheme;
+  rarity: Rarity; // gacha rarity, rolled at resolution; drives the 图鉴 slot + frame
   title: string;
   message: string;
   reason: string;

@@ -177,6 +177,46 @@ function Scene({ theme }: { theme: DestinationTheme }) {
           <ellipse cx={232} cy={150} rx={26} ry={6} fill={accent} opacity={0.3} />
         </>
       );
+    case "starfield":
+      return (
+        <>
+          <rect width={320} height={200} fill={sky} />
+          {/* soft galaxy band */}
+          <path d="M-20 40 Q160 90 340 60 L340 96 Q160 126 -20 76 Z" fill={lighten(mid, 0.3)} opacity={0.35} />
+          {[
+            [24, 26], [60, 54], [96, 30], [130, 64], [168, 26], [206, 58],
+            [244, 34], [280, 62], [300, 28], [44, 88], [150, 100], [270, 96],
+            [110, 86], [210, 92], [78, 110], [240, 118],
+          ].map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r={i % 4 === 0 ? 2.2 : 1.3} fill="#fdf6d8" opacity={0.9} />
+          ))}
+          <path d="M196 40 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2 Z" fill={accent} />
+          <path d="M0 150 Q90 132 180 150 T320 146 V200 H0 Z" fill={ground} />
+          <path d="M0 168 Q120 156 240 168 T320 166 V200 H0 Z" fill={mid} opacity={0.8} />
+        </>
+      );
+    case "desert":
+      return (
+        <>
+          <rect width={320} height={200} fill={skyLight} />
+          <circle cx={250} cy={52} r={20} fill={accent} opacity={0.85} />
+          <path d="M0 132 Q90 108 180 130 T320 124 V200 H0 Z" fill={lighten(mid, 0.1)} />
+          <path d="M0 156 Q110 134 220 156 T320 152 V200 H0 Z" fill={mid} />
+          <path d="M0 178 Q120 162 240 178 T320 176 V200 H0 Z" fill={ground} />
+          {/* a little oasis palm */}
+          <line x1={64} y1={170} x2={60} y2={140} stroke="#7a5a36" strokeWidth={3} />
+          {[-1, -0.3, 0.4, 1].map((d, i) => (
+            <path
+              key={i}
+              d={`M60 140 q${d * 22} ${-8 - Math.abs(d) * 4} ${d * 30} ${4 + Math.abs(d) * 2}`}
+              fill="none"
+              stroke="#6f8f52"
+              strokeWidth={3}
+              strokeLinecap="round"
+            />
+          ))}
+        </>
+      );
   }
 }
 

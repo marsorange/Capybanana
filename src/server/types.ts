@@ -66,6 +66,10 @@ export interface CloudSave {
   losses: number;
   draws: number;
   battleRecords: BattleRecord[]; // recent battles (loaded from the battles table)
+  // --- postcard gacha / 养成 ---
+  companionDays: number; // 陪伴天数: +1 per day the Agent took its one main action — the ONLY visible meter
+  pullsSinceRare: number; // travels since the last SR/SSR postcard (gacha soft/hard pity)
+  cardDex: string[]; // collected 图鉴 card ids (`${destination}:${rarity}`), derived from postcards
   rev: number;
   updatedAt: string;
   events: AgentEvent[];

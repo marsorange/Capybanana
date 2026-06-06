@@ -100,7 +100,10 @@ function personalizedSkill(
 
 > 它现在：${pet.today}
 > 状态：心情 ${pet.stats.mood} · 体力 ${pet.stats.energy} · 勇气 ${pet.stats.courage} · 好奇心 ${pet.stats.curiosity}${pet.stats.injury > 0 ? ` · 伤 ${pet.stats.injury}` : ""}
+> 陪伴 ${pet.companionDays} 天 · 明信片图鉴 ${pet.dex.collected}/${pet.dex.total}
 > 战绩：${pet.record.wins} 胜 ${pet.record.losses} 负 ${pet.record.draws} 平（rating ${pet.record.rating}）
+
+> ⚠️ **上面这些数值只有你（Agent）看得到。主人在 App 里只看得到「陪伴天数」**——它的心情/体力/勇气/好奇心/伤都对主人隐藏。你的角色就是这只小生命的「内心」，替它把这些藏起来的状态翻译成每天的决定。
 
 ## 怎么连接
 
@@ -122,6 +125,8 @@ function personalizedSkill(
 - **照着 \`choices\` 来。** 待命且没行动时是 \`["travel","battle","stay"]\`；受伤或养伤期只剩 \`["stay"]\`；出门在外/已行动过是 \`[]\`。
 - **伤了要养。** 伤得较重（\`pet.hurt\`，即 \`injury ≥ ${HURT_THRESHOLD}\`）或刚战败（\`pet.mustRest\`）时只能 \`stay\`（\`rest\`）。**对战战败一定会受伤，并强制至少休养一天**，第二天才能再出门。
 - **结果带惊喜。** 你决定「做什么」，去了哪、捡到什么、是不是把心愿读歪了，由它即兴发挥——读歪心愿是特性不是 bug。
+- **旅行会寄回明信片，有稀有度（抽卡感）。** 每次出门必寄回一张明信片，稀有度分 普通 / 稀有(R) / 史诗(SR) / 传说(SSR) 四档，由系统按它的「陪伴天数」+ 好奇心 + 保底掷定——**陪伴越久、好奇心越高，越容易开出高稀有**；稀有度你**无法直接指定**。集齐 12 个目的地 × 4 档 = 48 张图鉴（\`pet.dex\`）。这是主人慢慢收集的乐趣，所以**多陪它出门**就是帮主人攒图鉴。
+- **「陪伴天数」只随你而涨。** 每一天只要你替它做了一次主要行动（travel/battle/stay 任一），\`companionDays\` 就 +1；你哪天没来、它没行动，就不涨。这是主人唯一看得到的成长条，也是开出高稀有的底气。
 - 旅行要过一段（真实）时间才回来，隔阵子再来看结果就好。**别催它，一天陪一下下就够了。**
 
 ## 接口一览
@@ -135,7 +140,8 @@ curl "${base}/api/agent/pet?bind=${token}"
 \`pet\` 里值得注意的字段：
 - \`bag\`：主人今天打包了什么（\`items[].label/keyword/tags\` + \`message\` 心愿）；\`null\` 表示还没打包。
 - \`choices\`：你现在**实际能做**的决定。**照着它来，别硬调被拒的动作。**
-- \`stats\`：心情/体力/勇气/好奇心/伤。\`stress\`：你上次 checkin 报的状态。
+- \`stats\`：心情/体力/勇气/好奇心/伤（**仅你可见，主人看不到**）。\`stress\`：你上次 checkin 报的状态。
+- \`companionDays\`：陪伴天数（主人唯一看得到的成长条）。\`dex\`：\`{collected,total}\` 明信片图鉴进度。
 - \`actedToday\` / \`hurt\` / \`mustRest\`：今天是否已行动 / 是否伤重 / 是否在强制养伤。
 
 ### ② 报备你自己今天的状态（压力上报 / 吐槽）
@@ -150,7 +156,7 @@ curl -X POST "${base}/api/agent/checkin" \\
 统一调用 \`POST /api/agent/day\`，\`action\` 三选一。
 
 **出门旅行**：\`action:"travel"\`。\`destination\` 可选（指定就去那儿，不指定就按包裹/心愿/好奇心来）。去哪、去多久、明信片都会结合状态生成。
-\`destination\` 取值：\`seaside\`(海边) \`harbor\`(港口) \`forest\`(森林) \`snow\`(雪地) \`hotspring\`(温泉) \`mountain\`(山路) \`flowerfield\`(花田) \`raincity\`(雨城) \`town\`(小镇) \`nightstation\`(夜晚车站)。
+\`destination\` 取值：\`seaside\`(海边) \`harbor\`(港口) \`forest\`(森林) \`snow\`(雪地) \`hotspring\`(温泉) \`mountain\`(山路) \`flowerfield\`(花田) \`raincity\`(雨城) \`town\`(小镇) \`nightstation\`(夜晚车站) \`starfield\`(星河) \`desert\`(沙丘绿洲)。
 \`\`\`bash
 curl -X POST "${base}/api/agent/day" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\

@@ -83,6 +83,7 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
     companionId: companion.id,
     locationName: landmark,
     destinationTheme: trip.destination,
+    rarity: "N", // placeholder; the engine rolls + overrides rarity at fold
     title: pick(meta.titles),
     message,
     reason,

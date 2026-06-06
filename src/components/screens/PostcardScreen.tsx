@@ -7,6 +7,7 @@ import { getDestination } from "@/game/destinations";
 import type { Postcard } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import PostcardArt from "../ui/PostcardArt";
+import { isRareRarity, RARITY_META, RarityBadge } from "../ui/rarity";
 import { BackButton, PrimaryButton } from "../ui/kit";
 
 function fmtDate(iso: string): string {
@@ -22,11 +23,15 @@ function Front({ card }: { card: Postcard }) {
   const dest = getDestination(card.destinationTheme);
   return (
     <div className={CARD}>
-      <div className="relative h-[66%] overflow-hidden rounded-[18px] border-2 border-[#bd8a52]/30">
+      <div
+        className="relative h-[66%] overflow-hidden rounded-[18px] border-2"
+        style={{ borderColor: RARITY_META[card.rarity].ring }}
+      >
         <PostcardArt theme={card.destinationTheme} rounded={false} />
         <div className="absolute left-3 top-3 rotate-[-8deg] rounded-full border-2 border-[#8a5a30]/55 bg-paper/80 px-2 py-0.5 text-[10px] text-ink/70">
           {fmtDate(card.sentAt)}
         </div>
+        <RarityBadge rarity={card.rarity} className="absolute bottom-2 left-2 shadow-sm" />
       </div>
       <div className="absolute right-5 top-5 flex h-16 w-14 flex-col items-center justify-center rounded-[6px] border-2 border-dashed border-[#8a5a30]/60 bg-paper/92 text-center shadow-[0_2px_0_rgba(150,112,60,0.25)]">
         <span className="text-lg leading-none">{dest.emoji}</span>
@@ -98,6 +103,7 @@ export default function PostcardScreen() {
 
   const card = postcards.find((p) => p.id === selectedId) ?? postcards[0];
   const isFresh = pendingId != null && card?.id === pendingId;
+  const rare = card ? isRareRarity(card.rarity) : false;
   const [flipped, setFlipped] = useState(false);
 
   if (!card) {
@@ -115,9 +121,13 @@ export default function PostcardScreen() {
     <div className="screen-bg relative flex h-full flex-col">
       {isFresh ? (
         <div className="px-5 pt-6 text-center">
-          <h1 className="font-hand text-2xl text-ink">明信片飞回来了</h1>
+          <h1 className="font-hand text-2xl text-ink">
+            {rare ? `${RARITY_META[card.rarity].badge} ${RARITY_META[card.rarity].label}明信片！` : "明信片飞回来了"}
+          </h1>
           <p className="mt-0.5 text-sm text-ink-soft">
-            {companion.name} 把慢岛群外的一小段远方寄给你。
+            {rare
+              ? `${companion.name} 这次寄回了一张难得的明信片。`
+              : `${companion.name} 把慢岛群外的一小段远方寄给你。`}
           </p>
         </div>
       ) : (
@@ -134,6 +144,26 @@ export default function PostcardScreen() {
           style={{ aspectRatio: "4 / 5.35" }}
           onClick={() => setFlipped((f) => !f)}
         >
+          {rare && (
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute -inset-5 rounded-[44px]"
+              style={{
+                background: `radial-gradient(circle at 50% 45%, ${RARITY_META[card.rarity].glow} 0%, transparent 68%)`,
+              }}
+              initial={{ opacity: 0.5, scale: 0.96 }}
+              animate={
+                isFresh
+                  ? { opacity: [0.5, 0.95, 0.5], scale: [0.96, 1.02, 0.96] }
+                  : { opacity: 0.55, scale: 1 }
+              }
+              transition={
+                isFresh
+                  ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" }
+                  : { duration: 0.4 }
+              }
+            />
+          )}
           <motion.div
             className="absolute inset-0 [transform-style:preserve-3d]"
             animate={{ rotateY: flipped ? 180 : 0 }}

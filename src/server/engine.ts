@@ -4,6 +4,13 @@ import { advanceLifecycle } from "@/game/clock";
 import { applyOutcome, clamp } from "@/game/applyOutcome";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { DESTINATIONS } from "@/game/destinations";
+import {
+  cardId,
+  isRare,
+  landmarkForCard,
+  rollRarity,
+  TOTAL_CARDS,
+} from "@/game/gacha";
 import { planTrip } from "@/game/planTrip";
 import {
   coerceAppearance,
@@ -116,6 +123,28 @@ function foldOutcome(
   now: number,
 ): CloudSave {
   const name = save.companion?.name ?? "它";
+
+  // Postcard gacha: roll rarity from the VISIBLE 陪伴天数 + HIDDEN curiosity + the
+  // pity counter, pin the card's canonical landmark, and fold the 图鉴 bookkeeping
+  // (new card vs. duplicate). Mutating o.postcard is safe — it's the same object
+  // already prepended to postcards[] by advanceLifecycle.
+  let pullsSinceRare = save.pullsSinceRare;
+  let cardDex = save.cardDex;
+  let dupeCuriosity = 0;
+  if (o.postcard) {
+    const rarity = rollRarity({
+      companionDays: save.companionDays,
+      curiosity: save.capyState.curiosity,
+      pullsSinceRare: save.pullsSinceRare,
+    });
+    o.postcard.rarity = rarity;
+    o.postcard.locationName = landmarkForCard(o.postcard.destinationTheme, rarity);
+    pullsSinceRare = isRare(rarity) ? 0 : save.pullsSinceRare + 1;
+    const id = cardId(o.postcard.destinationTheme, rarity);
+    if (cardDex.includes(id)) dupeCuriosity = 3; // a dup feeds a little hidden luck
+    else cardDex = [...cardDex, id];
+  }
+
   const merged = applyOutcome(
     {
       capy: save.capyState,
@@ -125,11 +154,16 @@ function foldOutcome(
     o,
     patted,
   );
+  const capy = dupeCuriosity
+    ? { ...merged.capy, curiosity: clamp(merged.capy.curiosity + dupeCuriosity) }
+    : merged.capy;
   let next: CloudSave = {
     ...save,
-    capyState: merged.capy,
+    capyState: capy,
     souvenirs: merged.souvenirs,
     misunderstandings: merged.misunderstandings,
+    pullsSinceRare,
+    cardDex,
     lastResult: o,
   };
   if (o.postcard) {
@@ -271,6 +305,9 @@ export function createPet(
     losses: 0,
     draws: 0,
     battleRecords: [],
+    companionDays: 0,
+    pullsSinceRare: 0,
+    cardDex: [],
   };
   return bump(base, now, {
     type: "created",
@@ -467,6 +504,7 @@ export async function startTravel(
       pendingStress: null,
       pendingStressNote: null,
       lastActionDay: dayKey(now),
+      companionDays: save.companionDays + 1, // an engaged day → +1 陪伴天数
     },
     now,
     { type: "departed", text: `${companion.name} 背上包裹，出门去远方了。` },
@@ -511,6 +549,7 @@ export function stayHome(
       pendingStressNote: null,
       companionState: save.packedBag ? "ready" : "idle_home",
       lastActionDay: dayKey(now),
+      companionDays: save.companionDays + 1, // an engaged day → +1 陪伴天数
       restUntilDay: clearRest ? null : save.restUntilDay,
     },
     outcome,
@@ -647,6 +686,7 @@ export async function startBattle(
     pendingStressNote: null,
     companionState: "idle_home",
     lastActionDay: dayKey(now),
+    companionDays: save.companionDays + 1, // an engaged day → +1 陪伴天数
     restUntilDay: forceRest ? nextDayKey(now) : save.restUntilDay,
   };
   const word =
@@ -746,6 +786,8 @@ export interface PetSummary {
   recentMemories: string[];
   souvenirs: string[];
   record: { rating: number; wins: number; losses: number; draws: number };
+  companionDays: number; // 陪伴天数 — the only meter the owner sees; +1 per engaged day
+  dex: { collected: number; total: number }; // postcard 图鉴 collection progress
   bag: PetBag | null; // today's packed supplies (null if nothing packed)
   canDecide: boolean; // true when you can still start today's action (home/ready, not yet acted, not too hurt to do anything)
   choices: string[]; // the actions allowed right now ([] while traveling / already acted; ["stay"] only when hurt or in a forced rest day)
@@ -855,6 +897,8 @@ export function summarizePet(save: CloudSave): PetSummary | null {
       losses: save.losses,
       draws: save.draws,
     },
+    companionDays: save.companionDays,
+    dex: { collected: save.cardDex.length, total: TOTAL_CARDS },
     bag: bagOf(save),
     canDecide,
     choices,

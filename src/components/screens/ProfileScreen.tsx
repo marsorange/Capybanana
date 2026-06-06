@@ -10,7 +10,7 @@ import {
   PRIMARY_COLORS,
 } from "@/game/labels";
 import { companionStats } from "@/game/companionLevel";
-import type { CapyState } from "@/game/types";
+import { TOTAL_CARDS } from "@/game/gacha";
 import { useGameStore } from "@/state/gameStore";
 import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
@@ -25,46 +25,7 @@ function Pedestal() {
   );
 }
 
-const STATS: {
-  key: keyof Pick<CapyState, "mood" | "energy" | "courage" | "curiosity" | "injury">;
-  label: string;
-  color: string;
-}[] = [
-  { key: "mood", label: "心情", color: "#e9a23b" },
-  { key: "energy", label: "体力", color: "#8aa978" },
-  { key: "courage", label: "勇气", color: "#d95f59" },
-  { key: "curiosity", label: "好奇心", color: "#6fa8c9" },
-];
-
-function StatBar({
-  label,
-  value,
-  color,
-  delay,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  delay: number;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-12 shrink-0 whitespace-nowrap text-[13px] text-ink-soft">{label}</span>
-      <div className="h-2.5 flex-1 overflow-hidden rounded-full border border-[#bd8a52]/25 bg-cream-deep">
-        <motion.div
-          className="h-full rounded-full"
-          style={{ backgroundColor: color }}
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-          transition={{ duration: 0.7, delay, ease: "easeOut" }}
-        />
-      </div>
-      <span className="w-7 shrink-0 text-right text-[13px] tabular-nums text-ink">{value}</span>
-    </div>
-  );
-}
-
-function RecordTile({ value, label }: { value: number; label: string }) {
+function RecordTile({ value, label }: { value: number | string; label: string }) {
   return (
     <div className="rounded-2xl border border-[#bd8a52]/30 bg-cream-soft px-2 py-2.5 text-center">
       <p className="font-hand text-xl leading-none text-ink">{value}</p>
@@ -78,6 +39,8 @@ export default function ProfileScreen() {
   const capy = useGameStore((s) => s.capyState);
   const postcards = useGameStore((s) => s.postcards);
   const souvenirs = useGameStore((s) => s.souvenirs);
+  const companionDays = useGameStore((s) => s.companionDays);
+  const cardDex = useGameStore((s) => s.cardDex);
   const goTo = useGameStore((s) => s.goTo);
   const logout = useGameStore((s) => s.logout);
   const bound = useGameStore((s) => !!s.cloud);
@@ -89,7 +52,7 @@ export default function ProfileScreen() {
   const colorName = PRIMARY_COLORS.find(
     (c) => c.hex.toLowerCase() === companion.primaryColor.toLowerCase(),
   )?.name;
-  const stats = useMemo(() => companionStats(companion.createdAt), [companion.createdAt]);
+  const stats = useMemo(() => companionStats(companionDays), [companionDays]);
 
   const adoptedAt = useMemo(() => {
     const d = new Date(companion.createdAt);
@@ -161,8 +124,8 @@ export default function ProfileScreen() {
         {/* records */}
         <div className="grid grid-cols-3 gap-2.5">
           <RecordTile value={postcards.length} label="明信片" />
+          <RecordTile value={`${cardDex.length}/${TOTAL_CARDS}`} label="图鉴" />
           <RecordTile value={souvenirs.length} label="手信" />
-          <RecordTile value={capy.memories.length} label="记忆" />
         </div>
 
         {/* identity chips */}
@@ -176,20 +139,14 @@ export default function ProfileScreen() {
           ))}
         </div>
 
-        {/* stats */}
+        {/* The pet's five core stats are intentionally hidden from the owner —
+            only 陪伴时长 (above) is shown. The Agent reads the stats over the API
+            to decide the day; here we keep a soft, number-free note. */}
         <Panel className="px-4 py-4" sketch={false}>
-          <p className="font-hand text-lg text-ink">今天的岛上天气</p>
-          <p className="mb-3 mt-1 text-[12px] leading-relaxed text-ink-soft">
-            Agent 做决定前会先看这些。体力太低或伤痛太高时，它更适合留在岛上。
+          <p className="font-hand text-lg text-ink">它的小心思</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
+            它今天过得怎么样，只有它的 Agent 最清楚——你只要每天陪它一下，剩下的交给它自己。
           </p>
-          <div className="space-y-2.5">
-            {STATS.map((s, i) => (
-              <StatBar key={s.key} label={s.label} value={capy[s.key]} color={s.color} delay={0.08 * i} />
-            ))}
-            {capy.injury > 0 && (
-              <StatBar label="伤痛" value={capy.injury} color="#b04a44" delay={0.08 * STATS.length} />
-            )}
-          </div>
         </Panel>
 
         {typeInfo?.blurb && (

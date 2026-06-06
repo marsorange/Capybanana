@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 
-import { getDestination } from "@/game/destinations";
+import { DESTINATIONS } from "@/game/destinations";
+import { cardId, landmarkForCard, RARITIES, TOTAL_CARDS } from "@/game/gacha";
 import { useGameStore } from "@/state/gameStore";
 import { cn } from "../ui/cn";
 import PostcardArt from "../ui/PostcardArt";
+import { RARITY_META } from "../ui/rarity";
 import { Panel, PrimaryButton, ScreenHeader } from "../ui/kit";
 
 type Tab = "cards" | "keepsakes" | "battles";
@@ -35,6 +37,7 @@ function Empty({ text }: { text: string }) {
 export default function AlbumScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const postcards = useGameStore((s) => s.postcards);
+  const cardDex = useGameStore((s) => s.cardDex);
   const souvenirs = useGameStore((s) => s.souvenirs);
   const battles = useGameStore((s) => s.battleRecords);
   const pendingId = useGameStore((s) => s.pendingPostcardId);
@@ -42,20 +45,17 @@ export default function AlbumScreen() {
   const goTo = useGameStore((s) => s.goTo);
 
   const [tab, setTab] = useState<Tab>("cards");
-
-  const cards = postcards;
-  const latest = cards[0];
-  const olderCards = cards.slice(1);
+  const owned = new Set(cardDex);
 
   return (
     <div className="screen-bg relative flex h-full flex-col">
       <ScreenHeader
         onBack={() => goTo("home")}
         eyebrow="慢慢攒下的远方"
-        title={`${companion.name} 的明信片手账`}
+        title={`${companion.name} 的明信片图鉴`}
         right={
           <span className="shrink-0 rounded-full border-2 border-[#bd8a52]/40 bg-cream-soft px-2.5 py-1 font-hand text-[13px] text-ink-soft">
-            {postcards.length}/24
+            {cardDex.length}/{TOTAL_CARDS}
           </span>
         }
       />
@@ -79,70 +79,80 @@ export default function AlbumScreen() {
       </div>
 
       <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-5 py-4">
-        {tab === "cards" &&
-          (cards.length === 0 ? (
-            <Empty text="还没有明信片。先准备一个包裹，让 Agent 判断今天有没有风可以出门。" />
-          ) : (
-            <div className="space-y-4">
-              {latest && (
-                <button onClick={() => openPostcard(latest.id)} className="block w-full text-left active:translate-y-0.5">
-                  <Panel className="overflow-hidden p-2">
-                    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[14px] border-2 border-[#bd8a52]/30">
-                      <PostcardArt theme={latest.destinationTheme} rounded={false} />
-                      <span className="absolute left-2.5 top-2.5 rounded-full bg-paper/85 px-2 py-0.5 text-[11px] text-ink-soft">
-                        最新来信
-                      </span>
-                      {latest.id === pendingId && (
-                        <span className="absolute right-2.5 top-2.5 rounded-full bg-accent px-2 py-0.5 text-[10px] text-paper">
-                          new
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-end justify-between gap-2 px-1.5 pb-0.5 pt-2.5">
-                      <div className="min-w-0">
-                        <p className="truncate font-hand text-xl leading-tight text-ink">{latest.title}</p>
-                        <p className="mt-0.5 truncate text-[12px] text-ink-soft">{latest.locationName}</p>
-                      </div>
-                      <span className="shrink-0 text-[12px] text-ink-soft/80">{fmtDate(latest.sentAt)}</span>
-                    </div>
-                  </Panel>
-                </button>
-              )}
-
-              {olderCards.length > 0 && (
-                <>
-                  <p className="px-1 font-hand text-base text-ink-soft">我的明信片</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {olderCards.map((card) => (
-                      <button
-                        key={card.id}
-                        onClick={() => openPostcard(card.id)}
-                        className="block text-left active:translate-y-0.5"
-                      >
-                        <Panel sketch={false} className="overflow-hidden p-1.5">
-                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[11px] border border-[#bd8a52]/25">
-                            <PostcardArt theme={card.destinationTheme} rounded={false} />
-                            {card.id === pendingId && (
-                              <span className="absolute right-1.5 top-1.5 rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-paper">
-                                new
-                              </span>
-                            )}
-                          </div>
-                          <div className="px-1 pb-0.5 pt-2">
-                            <p className="truncate font-hand text-[15px] leading-tight text-ink">{card.locationName}</p>
-                            <p className="mt-0.5 flex justify-between text-[11px] text-ink-soft">
-                              <span className="truncate">{getDestination(card.destinationTheme).label}</span>
-                              <span className="shrink-0">{fmtDate(card.sentAt).slice(5)}</span>
-                            </p>
-                          </div>
-                        </Panel>
-                      </button>
-                    ))}
+        {tab === "cards" && (
+          <div className="space-y-4">
+            <p className="px-1 text-[12px] leading-relaxed text-ink-soft/85">
+              每次出门都可能寄回不同稀有度的明信片。集齐 12 个目的地的 4 种稀有度，凑满 {TOTAL_CARDS} 张。
+            </p>
+            {DESTINATIONS.map((d) => {
+              const ownedHere = RARITIES.filter((r) => owned.has(cardId(d.theme, r))).length;
+              return (
+                <div key={d.theme}>
+                  <div className="mb-1.5 flex items-center justify-between px-0.5">
+                    <p className="font-hand text-[15px] text-ink">
+                      {d.emoji} {d.label}
+                    </p>
+                    <span className="text-[11px] text-ink-soft">{ownedHere}/4</span>
                   </div>
-                </>
-              )}
-            </div>
-          ))}
+                  <div className="grid grid-cols-4 gap-2">
+                    {RARITIES.map((r) => {
+                      const id = cardId(d.theme, r);
+                      const meta = RARITY_META[r];
+                      const pc = owned.has(id)
+                        ? postcards.find((p) => p.destinationTheme === d.theme && p.rarity === r)
+                        : undefined;
+
+                      if (pc) {
+                        return (
+                          <button
+                            key={r}
+                            onClick={() => openPostcard(pc.id)}
+                            className="block text-left active:translate-y-0.5"
+                          >
+                            <div
+                              className="overflow-hidden rounded-[10px] border-2"
+                              style={{ borderColor: meta.ring }}
+                            >
+                              <div className="relative aspect-[4/3] w-full">
+                                <PostcardArt theme={d.theme} rounded={false} />
+                                <span
+                                  className="absolute left-1 top-1 rounded-full px-1 py-px text-[8px] font-medium leading-none text-paper"
+                                  style={{ backgroundColor: meta.ring }}
+                                >
+                                  {r}
+                                </span>
+                                {pc.id === pendingId && (
+                                  <span className="absolute right-1 top-1 rounded-full bg-accent px-1 py-px text-[8px] text-paper">
+                                    new
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="mt-1 truncate text-center text-[10px] text-ink-soft">
+                              {landmarkForCard(d.theme, r)}
+                            </p>
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <div key={r}>
+                          <div
+                            className="grid aspect-[4/3] w-full place-items-center rounded-[10px] border-2 border-dashed bg-cream-soft/60"
+                            style={{ borderColor: `${meta.ring}55` }}
+                          >
+                            <span className="text-base text-ink-soft/35">？</span>
+                          </div>
+                          <p className="mt-1 text-center text-[10px] text-ink-soft/45">{meta.label}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {tab === "keepsakes" &&
           (souvenirs.length === 0 ? (
@@ -167,7 +177,7 @@ export default function AlbumScreen() {
 
         {tab === "battles" &&
           (battles.length === 0 ? (
-            <Empty text="还没有对战记录。让 Agent 在它勇气足、体力够的日子带它去比试一场。" />
+            <Empty text="还没有对战记录。让 Agent 在它状态好的日子带它去比试一场。" />
           ) : (
             <ul className="space-y-2.5">
               {battles.map((b) => {
@@ -208,7 +218,7 @@ export default function AlbumScreen() {
           ))}
       </div>
 
-      {((tab === "cards" && cards.length === 0) ||
+      {((tab === "cards" && postcards.length === 0) ||
         (tab === "keepsakes" && souvenirs.length === 0) ||
         (tab === "battles" && battles.length === 0)) && (
         <div className="shrink-0 px-5 pb-5">

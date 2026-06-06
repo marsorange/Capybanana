@@ -1,5 +1,7 @@
 # Capybanana 核心玩法草案
 
+> **P0 抽卡养成（2026-06，本次新增）**：旅行从「拼文案」升级成**明信片抽卡**。目的地扩到 **12 个**（新增 `starfield` 星河 / `desert` 沙丘绿洲），每个目的地 × **4 档稀有度**（N 普通 / R 稀有 / SR 史诗 / SSR 传说）= **48 张固定卡的图鉴**。每次旅行归来必抽一张：稀有度由**服务端**掷骰（`src/game/gacha.ts`，权重 N600/R300/SR80/SSR20，base ≈ 60/30/8/2%），LLM 只写文案；养成（陪伴天数）+ 好奇心抬「幸运值」（`SR+=幸运×3`、`SSR+=幸运×1`，封顶 40 ≈ SSR 5%），外加软/硬保底（`pullsSinceRare`，8 起递增、15 必出 SR+）。卡面地标固定取自 `LANDMARKS[theme][rarityIndex]`（index 0→3 = N→SSR，最标志性的给 SSR）。**养成感 = 陪伴天数**：`companionDays` 只在「Agent 当天做了一次主要行动」时 +1（断更不涨），是**唯一对主人可见的成长条**（驱动等级 `companionLevel.ts` + 抽率）。**5 个核心数值对主人全隐藏**——只有 Agent 通过 API 看得到、用来做决定；网页端不再显示属性条/数值变化（Profile 去掉属性面板、Result 去掉数值 chips、明信片按稀有度套外框 + SR/SSR 开盒发光）。重复卡只回喂少量隐藏好奇心。迁移 `0003_postcard_gacha.sql`（`pets.companion_days/pulls_since_rare` + `postcards.rarity`，图鉴由 postcards 去重派生）。**后续（P1+）**：纪念品实物化带回家摆放 + 纪念品图鉴、宠物本身抽卡（挂羁绊里程碑）、季节限定、对战重平衡。
+
 > **实现状态（2026-06，v2 重做）**：统一决策接口 `POST /api/agent/day` 的 `action` 支持 `travel` / `battle` / `stay` 三种主要行动——**对战已实现**：异步快照池匹配另一位主人的宠物（无则 LLM/启发式生成 NPC），把双方快照交给 LLM 判胜负、生成过程，记录写入 `battles` 表；**战败必受伤并强制至少休养一天**。宠物状态采用 **5 个核心值**：`energy / mood / courage / curiosity / injury`（见 §8）。每天的「天」按 **UTC+8** 计。新增 **Agent 压力上报**（`POST /api/agent/checkin`）：Agent 把自己当天的状态/吐槽告诉宠物，宠物感同身受（见 §6.1）。旅行细节（地点/时长/明信片文案）由 OpenRouter 文本 LLM（无 key 时回退程序化）在出发时决定；数值仍走固定效果表（见 §9）。
 
 ## 1. 产品定位

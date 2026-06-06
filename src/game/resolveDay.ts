@@ -173,6 +173,7 @@ function travelPostcard(companion: Companion, trip: Trip): Postcard {
     companionId: companion.id,
     locationName: lp.landmark,
     destinationTheme: trip.destination,
+    rarity: "N", // placeholder; the engine rolls + overrides rarity at fold
     title: lp.title,
     message: lp.message,
     reason: lp.reason,

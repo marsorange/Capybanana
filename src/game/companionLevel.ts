@@ -1,15 +1,15 @@
-// The only "gamification" number we keep: a gentle level derived purely from how
-// long the companion has lived with you (陪伴时长). One check-in a day is the
-// whole loop ("每天一分钟，陪它过日子"), so the level is just time, nothing to grind.
+// The only "gamification" number we SHOW the user: a gentle level derived from
+// 陪伴时长 — the number of days the pet's Agent actually engaged (took its one
+// daily action). The pet's five core stats stay hidden; this is the single
+// visible meter. A silent Agent (no action that day) does not advance it, so the
+// level reflects real companionship, nothing to grind.
 //
 // Curve: level L is reached at cumulative day = L*(L+1)/2, so early levels arrive
-// quickly (day 1 → Lv.1, day 3 → Lv.2, day 6 → Lv.3, day 10 → Lv.4 …) then slow
-// down — a soft, non-punishing climb. `progress` fills within the current level.
-
-const DAY = 86_400_000;
+// quickly (1 day → Lv.1, 3 → Lv.2, 6 → Lv.3, 10 → Lv.4 …) then slow — a soft,
+// non-punishing climb. `progress` fills within the current level.
 
 export interface CompanionStats {
-  /** Days together, 1-based (the adoption day is day 1). */
+  /** 陪伴天数 — active days the Agent participated (companionDays). */
   days: number;
   /** Gentle level derived from `days`. */
   level: number;
@@ -19,9 +19,9 @@ export interface CompanionStats {
   daysToNext: number;
 }
 
-export function companionStats(createdAtISO: string, now: number = Date.now()): CompanionStats {
-  const start = new Date(createdAtISO).getTime();
-  const days = Number.isFinite(start) ? Math.max(1, Math.floor((now - start) / DAY) + 1) : 1;
+/** Derive the visible level from 陪伴天数 (the Agent-engagement day count). */
+export function companionStats(companionDays: number): CompanionStats {
+  const days = Math.max(0, Math.floor(companionDays || 0));
 
   const level = Math.max(1, Math.floor((Math.sqrt(8 * days + 1) - 1) / 2));
   const levelStart = (level * (level - 1)) / 2; // cumulative days at this level's start

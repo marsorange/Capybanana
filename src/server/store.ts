@@ -15,8 +15,10 @@ import type {
   PackedBag,
   PackedItem,
   Postcard,
+  Rarity,
   Trip,
 } from "@/game/types";
+import { cardId } from "@/game/gacha";
 import { newToken, tokenHash } from "./bind";
 import { sqlDb } from "./db";
 import type { AgentEvent, AgentEventType, CloudSave, User } from "./types";
@@ -63,6 +65,8 @@ interface PetRow {
   wins: number;
   losses: number;
   draws: number;
+  companion_days: number;
+  pulls_since_rare: number;
   active_trip_id: string | null;
   rev: number;
   created_at: Date | string;
@@ -112,6 +116,7 @@ interface PostcardRow {
   trip_legacy_id: string | null;
   destination_theme: Postcard["destinationTheme"];
   location_name: string;
+  rarity: Rarity | null;
   title: string;
   message: string;
   reason: string | null;
@@ -155,6 +160,9 @@ export function emptySave(): CloudSave {
     losses: 0,
     draws: 0,
     battleRecords: [],
+    companionDays: 0,
+    pullsSinceRare: 0,
+    cardDex: [],
     rev: 0,
     updatedAt: new Date().toISOString(),
     events: [],
@@ -383,6 +391,15 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     losses: Number(pet.losses ?? 0),
     draws: Number(pet.draws ?? 0),
     battleRecords: battleRows.map(battleFromRow),
+    companionDays: Number(pet.companion_days ?? 0),
+    pullsSinceRare: Number(pet.pulls_since_rare ?? 0),
+    // The 图鉴 is derived from the stored postcards: one unique slot per
+    // (destination × rarity) collected.
+    cardDex: Array.from(
+      new Set(
+        postcardRows.map((p) => cardId(p.destination_theme, p.rarity ?? "N")),
+      ),
+    ),
     rev: Number(pet.rev),
     updatedAt: iso(pet.updated_at),
     events: activityRows
@@ -436,6 +453,7 @@ function postcardFromRow(row: PostcardRow): Postcard {
     companionId: "",
     locationName: row.location_name,
     destinationTheme: row.destination_theme,
+    rarity: row.rarity ?? "N",
     title: row.title,
     message: row.message,
     reason: row.reason ?? "",
@@ -550,7 +568,7 @@ async function syncPostcards(
     const tripId = await tripUuidForLegacy(tx, petId, card.tripId);
     await tx`
       insert into postcards (
-        legacy_id, pet_id, trip_id, destination_theme, location_name,
+        legacy_id, pet_id, trip_id, destination_theme, location_name, rarity,
         title, message, reason, image_key, collected, sent_at
       )
       values (
@@ -559,6 +577,7 @@ async function syncPostcards(
         ${tripId ? tx`${tripId}::uuid` : null},
         ${card.destinationTheme},
         ${card.locationName},
+        ${card.rarity},
         ${card.title},
         ${card.message},
         ${card.reason},
@@ -570,6 +589,7 @@ async function syncPostcards(
         trip_id = excluded.trip_id,
         destination_theme = excluded.destination_theme,
         location_name = excluded.location_name,
+        rarity = excluded.rarity,
         title = excluded.title,
         message = excluded.message,
         reason = excluded.reason,
@@ -744,7 +764,8 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         personality, accessory, mood, energy, courage, curiosity, injury,
         traits, memories, souvenirs, misunderstandings, last_result, state,
         last_action_day, rest_until_day, pending_message, pending_stress,
-        pending_stress_note, rating, wins, losses, draws, rev,
+        pending_stress_note, rating, wins, losses, draws,
+        companion_days, pulls_since_rare, rev,
         created_at, updated_at
       )
       values (
@@ -776,6 +797,8 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         ${save.wins},
         ${save.losses},
         ${save.draws},
+        ${save.companionDays},
+        ${save.pullsSinceRare},
         ${save.rev},
         ${new Date(c.createdAt)},
         ${new Date(save.updatedAt)}
@@ -807,6 +830,8 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         wins = excluded.wins,
         losses = excluded.losses,
         draws = excluded.draws,
+        companion_days = excluded.companion_days,
+        pulls_since_rare = excluded.pulls_since_rare,
         rev = excluded.rev,
         updated_at = excluded.updated_at
     `;
