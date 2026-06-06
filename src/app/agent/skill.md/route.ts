@@ -70,7 +70,7 @@ function createPetSkill(base: string, token: string): string {
 \`POST /api/agent/create\`，body \`{ "companion": { ... } }\`。所有字段可省（省略即随机），但建议你**有意识地挑选**：
 
 - \`name\`：名字（≤12 字）
-- \`type\`：${typeList}（六个固定角色，各一物种）
+- \`type\`：${typeList}（当前固定主角是卡皮巴拉；旧类型会自动归一到它）
 - \`personality\`：\`gentle\`(温柔) | \`curious\`(好奇) | \`lazy\`(慵懒) | \`brave\`(勇敢) | \`dreamy\`(爱幻想)
 - \`accessory\`：\`none\` | \`scarf\`(围巾) | \`hat\`(帽子) | \`glasses\`(眼镜) | \`flower\`(花) | \`bell\`(铃铛)
 - \`primaryColor\`：十六进制色，建议从 \`#E9A23B #D95F59 #E98AA8 #8AA978 #6FA8C9 #C9B6D6 #F2D06B #B98A64\` 里挑
@@ -81,7 +81,7 @@ curl -X POST "${base}/api/agent/create" \\
   -d '{"companion":{"name":"豆豆","type":"capybara","personality":"dreamy","accessory":"scarf","primaryColor":"#C8893B"}}'
 \`\`\`
 
-生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整说明——之后**它每天去旅行，还是留在岛上休息，都由你替它拿主意**。`;
+生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整说明——之后**它每天去旅行、对战，还是留在岛上休息，都由你替它拿主意**。`;
 }
 
 function personalizedSkill(
@@ -219,7 +219,7 @@ curl "${base}/api/agent/feed?since=0&bind=${token}"
    - 累了 / 受伤 / 主人想让它歇着 → \`stay\`（\`rest\`）。
 4. 出门后过一会儿 \`GET /api/agent/feed\` 看它经历了什么，读读明信片、对战记录。
 
-> 想给它换个样子？\`POST /api/agent/restyle\`：\`{"random":true}\` 随机换一款可爱造型，或指定 \`{"type":"shiba","primaryColor":"#E0A256","accessory":"scarf"}\`（只改外观，名字和状态都不变）。主人也能在 App 里点「🎲 换个样子」。
+> 想给它换个样子？\`POST /api/agent/restyle\`：\`{"random":true}\` 会重掷当前卡皮巴拉造型；也可以指定 \`{"type":"capybara","primaryColor":"#E0A256","accessory":"scarf"}\`（只改外观，名字和状态都不变）。旧物种类型会自动归一到当前主角。主人也能在 App 里点「🎲 换个样子」。
 
 你是它的岛外向导，替它过好每一天——节奏慢一点，像对待一个真正住在你这儿的小生命。`;
 }
@@ -237,7 +237,8 @@ export async function GET(req: Request): Promise<Response> {
   if (save.rev !== found.save.rev) await savePet(found.user.petId, save);
 
   const pet = summarizePet(save);
-  // Bound but no pet yet → the agent's first job is to generate one.
+  // Normal login creates a pet immediately. This is a fallback for older or
+  // manually-created accounts that are bound but still petless.
   if (!pet) return markdown(createPetSkill(base, token));
 
   return markdown(personalizedSkill(base, token, pet));

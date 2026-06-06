@@ -56,8 +56,10 @@ docker run --name capybanana-pg \
 3. Run `npm run dev`, open `http://localhost:3000`, then use
    "本地调试登录（无需 Supabase）" on the login screen.
 
-Run the SQL in `supabase/migrations/0001_storage_refactor.sql` before logging
-in. The app now uses the relational tables directly; there is no KV fallback.
+Run the SQL migrations in order before logging in:
+`supabase/migrations/0001_storage_refactor.sql`, then
+`supabase/migrations/0002_gameplay_v2.sql`. The app now uses the relational
+tables directly; there is no KV fallback.
 
 ## Scripts
 
@@ -67,15 +69,16 @@ npm run build
 npm run lint
 ```
 
-## Initial Scope
+## Current Scope
 
-This first version focuses on the Agent-driven daily loop (see
+The current version focuses on the Agent-driven daily loop (see
 [`docs/core-gameplay.md`](docs/core-gameplay.md)):
 
 - Sign in with Google; the app mints an Agent **bind token**
-- Adopt a companion (the bound AI Agent generates one)
+- Sign-in creates the default companion if the account does not have one yet
 - Each day the owner packs up to 3 items + a wish; the pet waits in `ready`
 - The Agent calls `POST /api/agent/day` to decide the day — `travel`,
   `battle`, or `stay`
-- Travel may send back a postcard; collect cards, souvenirs and memories
+- Travel may send back a postcard; battle creates records; collect cards,
+  souvenirs and memories
 - Five core stats drive the day: energy / mood / courage / curiosity / injury

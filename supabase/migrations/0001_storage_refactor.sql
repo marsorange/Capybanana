@@ -60,7 +60,7 @@ create table pets (
   last_result jsonb,
 
   state text not null default 'idle_home',
-  -- Reserved for the postponed battle feature (not yet written by the app).
+  -- Battle counters; gameplay v2 writes these when /api/agent/day action=battle.
   rating int not null default 1000,
   wins int not null default 0,
   losses int not null default 0,

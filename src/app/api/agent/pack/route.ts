@@ -1,4 +1,4 @@
-// POST today's bag. The companion decides on its own when to leave.
+// POST today's bag. Packing only puts the pet in `ready`; /api/agent/day decides.
 // Body: { items?: Item[], message?: string, gesture?: "pat" }
 //   Item (agent): { label, keyword?, hint?, tags? }   — free text
 //   Item (web):   a full PackedItem (preset/photo) — passed through

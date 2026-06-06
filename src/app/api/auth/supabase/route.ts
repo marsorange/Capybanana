@@ -1,7 +1,7 @@
 // Supabase Auth bridge. The owner signs in client-side via Supabase (Google
 // OAuth); the browser posts the resulting Supabase access token here. We verify
 // it by asking Supabase who it belongs to, then find/create OUR account keyed by
-// the Supabase user id and hand back the same envelope phone login used to:
+// the Supabase user id and hand back the cloud-session envelope:
 // { user, bindToken, connectUrl, save }. The bind token stays the credential for
 // /api/agent/* — Supabase only authenticates the human owner.
 import { createClient } from "@supabase/supabase-js";
