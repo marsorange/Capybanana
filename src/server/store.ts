@@ -18,7 +18,7 @@ import type {
   Rarity,
   Trip,
 } from "@/game/types";
-import { cardId } from "@/game/gacha";
+import { ALL_CARD_IDS, cardId } from "@/game/gacha";
 import { newToken, tokenHash } from "./bind";
 import { sqlDb } from "./db";
 import type { AgentEvent, AgentEventType, CloudSave, User } from "./types";
@@ -394,12 +394,13 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     companionDays: Number(pet.companion_days ?? 0),
     pullsSinceRare: Number(pet.pulls_since_rare ?? 0),
     // The 图鉴 is derived from the stored postcards: one unique slot per
-    // (destination × rarity) collected.
+    // (destination × rarity) collected. Filtered to the current 24-card set so
+    // legacy postcards on retired themes/rarities don't count.
     cardDex: Array.from(
       new Set(
-        postcardRows.map((p) => cardId(p.destination_theme, p.rarity ?? "N")),
+        postcardRows.map((p) => cardId(p.destination_theme, coerceRarity(p.rarity))),
       ),
-    ),
+    ).filter((id) => ALL_CARD_IDS.has(id)),
     rev: Number(pet.rev),
     updatedAt: iso(pet.updated_at),
     events: activityRows
@@ -446,6 +447,15 @@ function tripFromRow(row: TripRow, pet: PetRow): Trip {
   };
 }
 
+// Map any stored rarity onto the current 3-tier set (legacy 传说 SSR → 史诗 SR,
+// unknown → N) so the UI never indexes a missing RARITY_META entry, even before
+// migration 0004 has run.
+function coerceRarity(r: string | null | undefined): Rarity {
+  if (r === "R" || r === "SR") return r;
+  if (r === "SSR") return "SR";
+  return "N";
+}
+
 function postcardFromRow(row: PostcardRow): Postcard {
   return {
     id: row.legacy_id ?? "",
@@ -453,7 +463,7 @@ function postcardFromRow(row: PostcardRow): Postcard {
     companionId: "",
     locationName: row.location_name,
     destinationTheme: row.destination_theme,
-    rarity: row.rarity ?? "N",
+    rarity: coerceRarity(row.rarity),
     title: row.title,
     message: row.message,
     reason: row.reason ?? "",

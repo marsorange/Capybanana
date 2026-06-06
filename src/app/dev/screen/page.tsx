@@ -31,15 +31,15 @@ const COMPANION: Companion = {
 };
 
 const POSTCARDS: Postcard[] = (
-  ["forest", "seaside", "flowerfield", "mountain", "hotspring", "town"] as const
+  ["forest", "seaside", "flowerfield", "mountain", "snow", "town"] as const
 ).map((theme, i) => ({
   id: `pc-${i}`,
   tripId: `t-${i}`,
   companionId: "dev-capy",
-  locationName: ["森林小径", "海边的风", "花田漫步", "山顶的日出", "温泉小镇", "黄昏小城"][i],
+  locationName: ["森林小径", "海边的风", "花田漫步", "山顶的日出", "初雪的村子", "黄昏小城"][i],
   destinationTheme: theme,
-  rarity: (["N", "R", "SR", "SSR", "R", "N"] as const)[i],
-  title: ["山坡上的问题", "海边的风", "花田漫步", "山顶的日出", "热气腾腾", "灯还亮着"][i],
+  rarity: (["N", "R", "SR", "R", "SR", "N"] as const)[i],
+  title: ["山坡上的问题", "海边的风", "花田漫步", "山顶的日出", "踩雪一整天", "灯还亮着"][i],
   message: "今天的风有点慢。\n路边的猫没有看我。\n我把你的问题带去了山坡，它在那里变轻了一点。",
   reason: "因为你放进去的那只绿色小东西，它想去安静的地方。",
   imageKey: theme,

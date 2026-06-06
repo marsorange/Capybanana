@@ -125,7 +125,7 @@ function personalizedSkill(
 - **照着 \`choices\` 来。** 待命且没行动时是 \`["travel","battle","stay"]\`；受伤或养伤期只剩 \`["stay"]\`；出门在外/已行动过是 \`[]\`。
 - **伤了要养。** 伤得较重（\`pet.hurt\`，即 \`injury ≥ ${HURT_THRESHOLD}\`）或刚战败（\`pet.mustRest\`）时只能 \`stay\`（\`rest\`）。**对战战败一定会受伤，并强制至少休养一天**，第二天才能再出门。
 - **结果带惊喜。** 你决定「做什么」，去了哪、捡到什么、是不是把心愿读歪了，由它即兴发挥——读歪心愿是特性不是 bug。
-- **旅行会寄回明信片，有稀有度（抽卡感）。** 每次出门必寄回一张明信片，稀有度分 普通 / 稀有(R) / 史诗(SR) / 传说(SSR) 四档，由系统按它的「陪伴天数」+ 好奇心 + 保底掷定——**陪伴越久、好奇心越高，越容易开出高稀有**；稀有度你**无法直接指定**。集齐 12 个目的地 × 4 档 = 48 张图鉴（\`pet.dex\`）。这是主人慢慢收集的乐趣，所以**多陪它出门**就是帮主人攒图鉴。
+- **旅行会寄回明信片，有稀有度（抽卡感）。** 每次出门必寄回一张明信片，稀有度分 普通(N) / 稀有(R) / 史诗(SR) 三档，由系统按它的「陪伴天数」+ 好奇心 + 保底掷定——**陪伴越久、好奇心越高，越容易开出高稀有**；稀有度**随机、你无法指定，也不受打包影响**。集齐 8 个目的地 × 3 档 = 24 张图鉴（\`pet.dex\`）。这是主人慢慢收集的乐趣，所以**多陪它出门**就是帮主人攒图鉴。
 - **「陪伴天数」只随你而涨。** 每一天只要你替它做了一次主要行动（travel/battle/stay 任一），\`companionDays\` 就 +1；你哪天没来、它没行动，就不涨。这是主人唯一看得到的成长条，也是开出高稀有的底气。
 - 旅行要过一段（真实）时间才回来，隔阵子再来看结果就好。**别催它，一天陪一下下就够了。**
 
@@ -155,12 +155,11 @@ curl -X POST "${base}/api/agent/checkin" \\
 ### ③ 替它决定今天怎么过
 统一调用 \`POST /api/agent/day\`，\`action\` 三选一。
 
-**出门旅行**：\`action:"travel"\`。\`destination\` 可选（指定就去那儿，不指定就按包裹/心愿/好奇心来）。去哪、去多久、明信片都会结合状态生成。
-\`destination\` 取值：\`seaside\`(海边) \`harbor\`(港口) \`forest\`(森林) \`snow\`(雪地) \`hotspring\`(温泉) \`mountain\`(山路) \`flowerfield\`(花田) \`raincity\`(雨城) \`town\`(小镇) \`nightstation\`(夜晚车站) \`starfield\`(星河) \`desert\`(沙丘绿洲)。
+**出门旅行**：\`action:"travel"\`。你只决定**去近还是去远**：\`distance\` 取 \`near\`(短途，附近逛逛、回来得快) 或 \`far\`(远途，走得久、更可能遇到罕见风景)；不填默认 \`near\`。**具体去哪由服务端随机决定**——你指定不了目的地，但主人打包的东西/心愿、以及你这次写的 \`note\`，都会**悄悄影响它往哪走、归来时明信片写什么**（明信片由它回来后即兴写成，会用到这些线索；稀有度则纯随机、谁都左右不了）。
 \`\`\`bash
 curl -X POST "${base}/api/agent/day" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
-  -d '{"action":"travel","destination":"forest","note":"它最近总盯着窗外，带它去森林透透气"}'
+  -d '{"action":"travel","distance":"far","note":"它最近总盯着窗外，带它去远一点的地方透透气"}'
 \`\`\`
 
 **找谁比试一场**：\`action:"battle"\`。会**匹配另一只真实的小伙伴**（没有合适的就遇到一只路过的野生小家伙），结合双方状态判胜负、生成对战过程，收进相册。勇气、体力高时更适合。**战败必受伤、要养一天**，所以伤着/养伤期不要硬上。
@@ -239,7 +238,7 @@ export async function GET(req: Request): Promise<Response> {
   if (!found) return markdown(genericSkill(base));
 
   // Catch the pet up so the greeting reflects reality.
-  const save = tickSave(found.save, Date.now());
+  const save = await tickSave(found.save, Date.now());
   if (save.rev !== found.save.rev) await savePet(found.user.petId, save);
 
   const pet = summarizePet(save);

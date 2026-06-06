@@ -61,7 +61,7 @@ export async function GET(req: Request): Promise<Response> {
   if (!found)
     return page("换个造型", `<div class="emoji">⚠️</div><h1>令牌无效或已失效</h1>`);
 
-  let save = tickSave(found.save, Date.now());
+  let save = await tickSave(found.save, Date.now());
   if (!save.companion)
     return page(
       "换个造型",

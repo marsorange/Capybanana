@@ -72,7 +72,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const now = Date.now();
-  const save = tickSave(a.save, now);
+  const save = await tickSave(a.save, now);
   if (!save.companion) return jsonError("还没有宠物，请先调用 create", 409);
   if (save.companionState === "traveling")
     return jsonError("它正在旅行，等它回来再收拾包裹", 409);

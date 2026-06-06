@@ -6,7 +6,6 @@ import type {
   DayOutcome,
   ItemTag,
   OutcomeKind,
-  Postcard,
   Trip,
 } from "./types";
 import { pick, uid, weightedPick } from "./util";
@@ -163,25 +162,6 @@ function pickKind(
   return intent; // a concrete OutcomeKind the agent asked for
 }
 
-/** Build the travel postcard: the LLM's pre-generated flavor if present, else procedural. */
-function travelPostcard(companion: Companion, trip: Trip): Postcard {
-  const lp = trip.llmPostcard;
-  if (!lp) return generatePostcard(companion, trip);
-  return {
-    id: uid("pc"),
-    tripId: trip.id,
-    companionId: companion.id,
-    locationName: lp.landmark,
-    destinationTheme: trip.destination,
-    rarity: "N", // placeholder; the engine rolls + overrides rarity at fold
-    title: lp.title,
-    message: lp.message,
-    reason: lp.reason,
-    imageKey: trip.destination,
-    sentAt: new Date().toISOString(),
-  };
-}
-
 export function resolveDay(
   companion: Companion,
   capy: CapyState,
@@ -206,7 +186,7 @@ export function resolveDay(
   };
 
   if (kind === "travel") {
-    const postcard = travelPostcard(companion, trip);
+    const postcard = generatePostcard(companion, trip);
     const souvenir = Math.random() < 0.6 ? pick(SOUVENIRS) : undefined;
     const hurt = Math.random() < TRAVEL_HURT_CHANCE ? TRAVEL_HURT_AMOUNT : 0;
     return {

@@ -3,15 +3,15 @@
 import { advanceLifecycle } from "@/game/clock";
 import { applyOutcome, clamp } from "@/game/applyOutcome";
 import { DEFAULT_CAPY } from "@/game/defaults";
-import { DESTINATIONS } from "@/game/destinations";
 import {
   cardId,
+  countCollected,
   isRare,
   landmarkForCard,
   rollRarity,
   TOTAL_CARDS,
 } from "@/game/gacha";
-import { planTrip } from "@/game/planTrip";
+import { pickDestination } from "@/game/planTrip";
 import {
   coerceAppearance,
   randomCuteCompanion,
@@ -25,20 +25,26 @@ import type {
   BattleSnapshot,
   Companion,
   DayOutcome,
-  DestinationTheme,
   Gesture,
   OutcomeKind,
   PackedItem,
   Trip,
+  TripDistance,
   TripIntent,
 } from "@/game/types";
 import { randInt, uid } from "@/game/util";
 import { judgeBattle, type BattleVerdict } from "./llm/battleJudge";
-import { planTravelStory } from "./llm/travelStory";
+import { composePostcard } from "./llm/postcard";
 import type { AgentEvent, CloudSave } from "./types";
 
-const DESTINATION_THEMES = new Set<string>(DESTINATIONS.map((d) => d.theme));
 const QUIET_MODES = new Set<string>(["home", "yard", "rest"]);
+
+// Trip length by the distance the agent chose (real hours, scaled by
+// CAPY_TIME_SCALE). Near = a short hop; far = a long haul.
+const TRIP_HOURS: Record<TripDistance, [number, number]> = {
+  near: [2, 5],
+  far: [6, 12],
+};
 
 // At/above this injury the pet is "badly hurt" — it can't head out (travel or
 // battle), only stay home and recover (rest heals 18/day).
@@ -115,6 +121,57 @@ export function dayBlockedReason(
   return null;
 }
 
+/**
+ * Roll the gacha rarity, pin the card's canonical landmark, then (re)write the
+ * postcard body via the LLM from the full day context — packed items + owner
+ * wish + the note the Agent sent with its travel call. Runs at RETURN, before
+ * foldOutcome, so the rarity/landmark are known when the text is written (the
+ * model is told the exact landmark → the card front and the body always agree).
+ * Falls back to the procedural text already on the card when there's no LLM key
+ * or the call fails. Mutates o.postcard in place (same object already in
+ * postcards[]).
+ */
+async function dressTravelPostcard(
+  o: DayOutcome,
+  trip: Trip,
+  save: CloudSave,
+  now: number,
+): Promise<void> {
+  const pc = o.postcard;
+  if (!pc) return;
+  const rarity = rollRarity({
+    companionDays: save.companionDays,
+    curiosity: save.capyState.curiosity,
+    pullsSinceRare: save.pullsSinceRare,
+  });
+  const landmark = landmarkForCard(pc.destinationTheme, rarity);
+
+  const llm = await composePostcard({
+    companion: save.companion!,
+    capy: save.capyState,
+    items: trip.items,
+    message: trip.message,
+    note: trip.note,
+    stressNote: save.pendingStressNote,
+    destination: pc.destinationTheme,
+    landmark,
+    rarity,
+    distance: trip.distance ?? "near",
+  });
+
+  pc.rarity = rarity;
+  pc.locationName = landmark;
+  if (llm) {
+    pc.title = llm.title;
+    pc.message = llm.message;
+    pc.reason = llm.reason;
+  }
+  // Always sign off with the exact landmark so the body names the same place the
+  // card front shows — true for both the LLM and the procedural fallback text.
+  pc.message = `${pc.message}\n\n—— 寄自${landmark}`;
+  pc.sentAt = new Date(now).toISOString();
+}
+
 /** Fold a resolved day into the save: stat effects + the right log event. */
 function foldOutcome(
   save: CloudSave,
@@ -124,21 +181,14 @@ function foldOutcome(
 ): CloudSave {
   const name = save.companion?.name ?? "它";
 
-  // Postcard gacha: roll rarity from the VISIBLE 陪伴天数 + HIDDEN curiosity + the
-  // pity counter, pin the card's canonical landmark, and fold the 图鉴 bookkeeping
-  // (new card vs. duplicate). Mutating o.postcard is safe — it's the same object
-  // already prepended to postcards[] by advanceLifecycle.
+  // Postcard 图鉴 bookkeeping. The rarity + landmark + text were already set on
+  // o.postcard by dressTravelPostcard (run just before fold), so here we only
+  // advance the pity counter and the collection.
   let pullsSinceRare = save.pullsSinceRare;
   let cardDex = save.cardDex;
   let dupeCuriosity = 0;
   if (o.postcard) {
-    const rarity = rollRarity({
-      companionDays: save.companionDays,
-      curiosity: save.capyState.curiosity,
-      pullsSinceRare: save.pullsSinceRare,
-    });
-    o.postcard.rarity = rarity;
-    o.postcard.locationName = landmarkForCard(o.postcard.destinationTheme, rarity);
+    const rarity = o.postcard.rarity;
     pullsSinceRare = isRare(rarity) ? 0 : save.pullsSinceRare + 1;
     const id = cardId(o.postcard.destinationTheme, rarity);
     if (cardDex.includes(id)) dupeCuriosity = 3; // a dup feeds a little hidden luck
@@ -197,8 +247,13 @@ function bump(save: CloudSave, now: number, event?: EventDraft): CloudSave {
   return { ...save, rev, updatedAt: at, events };
 }
 
-/** Catch the lifecycle up to `now` (departures + resolutions), logging events. */
-export function tickSave(save: CloudSave, now: number): CloudSave {
+/**
+ * Catch the lifecycle up to `now` (departures + resolutions), logging events.
+ * Async because resolving a returning trip composes its postcard via the LLM
+ * (with a procedural fallback). The LLM only fires on the single request that
+ * first observes a return — every other tick is synchronous in practice.
+ */
+export async function tickSave(save: CloudSave, now: number): Promise<CloudSave> {
   if (!save.companion) return save;
 
   const out = advanceLifecycle(
@@ -239,6 +294,10 @@ export function tickSave(save: CloudSave, now: number): CloudSave {
   }
 
   if (out.outcome) {
+    // Travel outcome → roll rarity + write the postcard (LLM) before folding.
+    if (out.outcome.postcard && out.activeTrip) {
+      await dressTravelPostcard(out.outcome, out.activeTrip, save, now);
+    }
     const patted = out.activeTrip?.gesture === "pat";
     next = foldOutcome(next, out.outcome, patted, now);
   }
@@ -442,42 +501,23 @@ function bagSnapshot(save: CloudSave): {
 }
 
 /**
- * Agent decides: go on a journey. The LLM decides destination / duration /
- * postcard flavor at departure from the full day context; stats stay the fixed
- * table (applied when it returns). Falls back to procedural planning with no key.
+ * Agent decides: go on a journey. The agent only picks near/far; the SERVER
+ * picks the destination at random within that pool (biased by the packed bag,
+ * never dictated) and sets the trip duration from the distance. The postcard +
+ * its gacha rarity are composed procedurally when it returns (see foldOutcome).
  */
-export async function startTravel(
+export function startTravel(
   save: CloudSave,
-  opts: { destination?: string; note?: string },
+  opts: { distance?: string; note?: string },
   now: number,
-): Promise<CloudSave> {
+): CloudSave {
   const companion = save.companion!;
   const { items, message, gesture } = bagSnapshot(save);
-  const preferred: DestinationTheme | undefined =
-    opts.destination && DESTINATION_THEMES.has(opts.destination)
-      ? (opts.destination as DestinationTheme)
-      : undefined;
+  const distance: TripDistance = opts.distance === "far" ? "far" : "near";
 
-  const story = await planTravelStory({
-    companion,
-    capy: save.capyState,
-    items,
-    message,
-    stressNote: save.pendingStressNote,
-    preferred,
-  });
-
-  let destination: DestinationTheme;
-  let durationMs: number;
-  let llmPostcard: Trip["llmPostcard"];
-  if (story) {
-    destination = story.destination;
-    durationMs = Math.max(1, Math.round(story.durationHours * HOUR_MS * timeScale()));
-    llmPostcard = story.postcard;
-  } else {
-    destination = preferred ?? planTrip(items, message).destination;
-    durationMs = Math.max(1, Math.round(randInt(2, 8) * HOUR_MS * timeScale()));
-  }
+  const destination = pickDestination(items, message, distance);
+  const [lo, hi] = TRIP_HOURS[distance];
+  const durationMs = Math.max(1, Math.round(randInt(lo, hi) * HOUR_MS * timeScale()));
 
   const trip: Trip = {
     id: uid("trip"),
@@ -488,8 +528,8 @@ export async function startTravel(
     status: "traveling",
     destination,
     intent: "travel",
+    distance,
     note: opts.note?.slice(0, 80),
-    llmPostcard,
     startedAt: now,
     durationMs,
     returnsAt: now + durationMs,
@@ -507,7 +547,10 @@ export async function startTravel(
       companionDays: save.companionDays + 1, // an engaged day → +1 陪伴天数
     },
     now,
-    { type: "departed", text: `${companion.name} 背上包裹，出门去远方了。` },
+    {
+      type: "departed",
+      text: `${companion.name} 背上包裹，出门去${distance === "far" ? "远方" : "附近"}了。`,
+    },
   );
 }
 
@@ -709,7 +752,7 @@ export async function startBattle(
 }
 
 export type DayDecision =
-  | { action: "travel"; destination?: string; note?: string }
+  | { action: "travel"; distance?: string; note?: string }
   | { action: "stay"; mode?: string; note?: string };
 
 /** travel / stay only — battle needs DB matchmaking and is handled in the route. */
@@ -898,7 +941,7 @@ export function summarizePet(save: CloudSave): PetSummary | null {
       draws: save.draws,
     },
     companionDays: save.companionDays,
-    dex: { collected: save.cardDex.length, total: TOTAL_CARDS },
+    dex: { collected: countCollected(save.cardDex), total: TOTAL_CARDS },
     bag: bagOf(save),
     canDecide,
     choices,

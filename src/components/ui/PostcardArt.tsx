@@ -1,7 +1,6 @@
 "use client";
 
 import { getDestination } from "@/game/destinations";
-import type { DestinationTheme } from "@/game/types";
 import { cn } from "./cn";
 
 const VB = "0 0 320 200";
@@ -15,7 +14,9 @@ function lighten(hex: string, amt = 0.35): string {
   return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
-function Scene({ theme }: { theme: DestinationTheme }) {
+// `theme` is a string (not DestinationTheme) so retired-theme legacy postcards
+// (harbor/hotspring/…) still render their old art instead of crashing.
+function Scene({ theme }: { theme: string }) {
   const { sky, mid, ground, accent } = getDestination(theme).palette;
   const skyLight = lighten(sky, 0.45);
 
@@ -225,7 +226,7 @@ export default function PostcardArt({
   className,
   rounded = true,
 }: {
-  theme: DestinationTheme;
+  theme: string;
   className?: string;
   rounded?: boolean;
 }) {

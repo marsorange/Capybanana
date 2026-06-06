@@ -1,8 +1,9 @@
 // POST: the agent decides how today should go.
 // Body:
-//   { action: "travel", destination?: DestinationTheme, note?: string }
+//   { action: "travel", distance?: "near" | "far", note?: string }
 //   { action: "battle", note?: string }
 //   { action: "stay",   mode?: "home" | "yard" | "rest", note?: string }
+// The agent only chooses near/far — the server picks the actual destination.
 import { authed, commit, commitError, jsonError } from "@/server/api";
 import {
   dayBlockedReason,
@@ -22,7 +23,7 @@ export const dynamic = "force-dynamic";
 
 type Body = {
   action?: unknown;
-  destination?: unknown;
+  distance?: unknown;
   mode?: unknown;
   note?: unknown;
 };
@@ -44,7 +45,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const now = Date.now();
-  const save = tickSave(a.save, now);
+  const save = await tickSave(a.save, now);
   if (!save.companion) return jsonError("还没有宠物，请先调用 create", 409);
 
   const blocked = dayBlockedReason(save, now, action);
@@ -90,8 +91,8 @@ export async function POST(req: Request): Promise<Response> {
     action === "travel"
       ? {
           action,
-          destination:
-            typeof body.destination === "string" ? body.destination : undefined,
+          distance:
+            typeof body.distance === "string" ? body.distance : undefined,
           note,
         }
       : {

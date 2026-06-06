@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request): Promise<Response> {
   const a = await authed(req);
   if (a instanceof Response) return a;
-  const save = tickSave(a.save, Date.now());
+  const save = await tickSave(a.save, Date.now());
   await savePet(a.user.petId, save);
 
   const since = Number(new URL(req.url).searchParams.get("since")) || 0;

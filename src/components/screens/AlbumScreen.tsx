@@ -82,7 +82,7 @@ export default function AlbumScreen() {
         {tab === "cards" && (
           <div className="space-y-4">
             <p className="px-1 text-[12px] leading-relaxed text-ink-soft/85">
-              每次出门都可能寄回不同稀有度的明信片。集齐 12 个目的地的 4 种稀有度，凑满 {TOTAL_CARDS} 张。
+              每次出门都可能寄回不同稀有度的明信片。集齐 8 个目的地的 3 种稀有度，凑满 {TOTAL_CARDS} 张。
             </p>
             {DESTINATIONS.map((d) => {
               const ownedHere = RARITIES.filter((r) => owned.has(cardId(d.theme, r))).length;
@@ -92,9 +92,11 @@ export default function AlbumScreen() {
                     <p className="font-hand text-[15px] text-ink">
                       {d.emoji} {d.label}
                     </p>
-                    <span className="text-[11px] text-ink-soft">{ownedHere}/4</span>
+                    <span className="text-[11px] text-ink-soft">
+                      {ownedHere}/{RARITIES.length}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {RARITIES.map((r) => {
                       const id = cardId(d.theme, r);
                       const meta = RARITY_META[r];

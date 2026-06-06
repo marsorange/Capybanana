@@ -9,6 +9,6 @@ export async function POST(req: Request): Promise<Response> {
   const a = await authed(req);
   if (a instanceof Response) return a;
   const now = Date.now();
-  const save = tickSave(a.save, now);
+  const save = await tickSave(a.save, now);
   return commit(a.user.petId, collectPostcard(save, now));
 }

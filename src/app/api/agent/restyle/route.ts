@@ -20,7 +20,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const now = Date.now();
-  const save = tickSave(a.save, now);
+  const save = await tickSave(a.save, now);
   if (!save.companion) return jsonError("还没有宠物，请先调用 create", 409);
 
   // Empty body → behave like a random re-roll (the common "give me a new look").

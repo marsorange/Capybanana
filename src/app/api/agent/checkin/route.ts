@@ -23,7 +23,7 @@ export async function POST(req: Request): Promise<Response> {
   const note = typeof body.note === "string" ? body.note : undefined;
 
   const now = Date.now();
-  const save = tickSave(a.save, now);
+  const save = await tickSave(a.save, now);
   if (!save.companion) return jsonError("还没有宠物，请先调用 create", 409);
 
   return commit(a.user.petId, checkin(save, { stress, note }, now));

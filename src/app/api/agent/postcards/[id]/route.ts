@@ -12,7 +12,7 @@ export async function GET(
 ): Promise<Response> {
   const a = await authed(req);
   if (a instanceof Response) return a;
-  const save = tickSave(a.save, Date.now());
+  const save = await tickSave(a.save, Date.now());
   await savePet(a.user.petId, save);
 
   const { id } = await params;

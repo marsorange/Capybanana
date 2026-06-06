@@ -1,11 +1,11 @@
 // Shared rarity styling for the postcard gacha — frames, badges, glow. Pure
 // presentation (the roll itself lives in src/game/gacha.ts). Tuned to the cozy
-// 原木 palette: N stays plain, R cool silver-blue, SR/SSR warm gold.
+// 原木 palette: N stays plain, R cool silver-blue, SR warm gold (the top tier).
 import type { Rarity } from "@/game/types";
 import { cn } from "./cn";
 
 export interface RarityStyle {
-  label: string; // 普通 / 稀有 / 史诗 / 传说
+  label: string; // 普通 / 稀有 / 史诗
   badge: string; // glyph in the corner chip
   ring: string; // border color (hex)
   glow: string; // reveal glow (rgba)
@@ -31,19 +31,12 @@ export const RARITY_META: Record<Rarity, RarityStyle> = {
     label: "史诗",
     badge: "★",
     ring: "#e6b34d",
-    glow: "rgba(230,170,70,0.5)",
-    chip: "border-[#e6b34d] bg-[#fdf3da] text-[#b9791f]",
-  },
-  SSR: {
-    label: "传说",
-    badge: "✦",
-    ring: "#f0a93c",
-    glow: "rgba(240,150,40,0.72)",
-    chip: "border-[#f0a93c] bg-gradient-to-r from-[#fbe6b0] to-[#f6c97a] text-[#a8500f]",
+    glow: "rgba(230,170,70,0.55)",
+    chip: "border-[#e6b34d] bg-gradient-to-r from-[#fdf3da] to-[#f6c97a] text-[#b9791f]",
   },
 };
 
-export const isRareRarity = (r: Rarity): boolean => r === "SR" || r === "SSR";
+export const isRareRarity = (r: Rarity): boolean => r === "SR";
 
 /** A compact rarity chip, e.g. "★ 史诗". */
 export function RarityBadge({

@@ -5,7 +5,6 @@ import {
   ITEM_NOUNS,
   KEYWORD_RULES,
   PERSONALITY_LINES,
-  pickLandmark,
 } from "./destinations";
 import { photoItemsOf, presetsOf } from "./packing";
 import type { Companion, DestinationTheme, Postcard, Trip } from "./types";
@@ -74,14 +73,13 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
 
   const reason = [reasonMain, itemsPhrase].filter(Boolean).join("，") + "。";
 
-  // Reveal a real famous landmark as the postcard's location.
-  const landmark = pickLandmark(trip.destination);
-
   return {
     id: uid("pc"),
     tripId: trip.id,
     companionId: companion.id,
-    locationName: landmark,
+    // Placeholder; the engine rolls the rarity at resolution and overrides both
+    // locationName (with the canonical landmark for that card) and rarity below.
+    locationName: "",
     destinationTheme: trip.destination,
     rarity: "N", // placeholder; the engine rolls + overrides rarity at fold
     title: pick(meta.titles),

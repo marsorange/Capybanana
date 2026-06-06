@@ -20,7 +20,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const now = Date.now();
-  const save = tickSave(a.save, now);
+  const save = await tickSave(a.save, now);
   if (save.companion) return jsonError("已经有一只宠物了", 409);
 
   const draft = coerceCompanionDraft(body.companion);

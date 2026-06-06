@@ -22,7 +22,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!text) return jsonError("text 不能为空", 400);
 
   const now = Date.now();
-  const save = tickSave(a.save, now);
+  const save = await tickSave(a.save, now);
   if (!save.companion) return jsonError("还没有宠物，请先调用 create", 409);
   return commit(a.user.petId, sayTo(save, text, now));
 }

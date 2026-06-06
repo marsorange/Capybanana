@@ -70,7 +70,7 @@ export async function POST(req: Request): Promise<Response> {
   // owner's Agent binds and registers it via POST /api/agent/create (the Agent
   // also names it). Until then the save stays petless and the web client waits
   // on the connect screen — an unbound account isn't "on the island" yet.
-  const ticked = tickSave(save, now);
+  const ticked = await tickSave(save, now);
   if (ticked.rev !== save.rev) await savePet(user.petId, ticked);
 
   const connectUrl = `${baseUrl(req)}/agent/skill.md?bind=${user.bindToken}`;
