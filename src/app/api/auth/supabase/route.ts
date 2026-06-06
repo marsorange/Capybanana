@@ -6,10 +6,9 @@
 // /api/agent/* — Supabase only authenticates the human owner.
 import { createClient } from "@supabase/supabase-js";
 
-import { randomCuteCompanion } from "@/game/randomCompanion";
 import { baseUrl, jsonError } from "@/server/api";
 import { SQL_PERSISTENT } from "@/server/db";
-import { createPet, summarizePet, tickSave } from "@/server/engine";
+import { summarizePet, tickSave } from "@/server/engine";
 import { loginBySupabase, savePet } from "@/server/store";
 
 export const runtime = "nodejs";
@@ -67,13 +66,11 @@ export async function POST(req: Request): Promise<Response> {
     data.user.email ?? null,
   );
   const now = Date.now();
-  // Brand-new account (or one left petless): adopt a capybara-cute companion on
-  // the server so login returns a ready-to-play save. Attaching an AI agent stays
-  // optional; the look can be re-rolled later.
-  const seeded = save.companion
-    ? save
-    : createPet(save, randomCuteCompanion(), now);
-  const ticked = tickSave(seeded, now);
+  // A pet is NOT auto-created on login. It only comes into existence when the
+  // owner's Agent binds and registers it via POST /api/agent/create (the Agent
+  // also names it). Until then the save stays petless and the web client waits
+  // on the connect screen — an unbound account isn't "on the island" yet.
+  const ticked = tickSave(save, now);
   if (ticked.rev !== save.rev) await savePet(user.petId, ticked);
 
   const connectUrl = `${baseUrl(req)}/agent/skill.md?bind=${user.bindToken}`;

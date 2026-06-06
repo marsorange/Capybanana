@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { companionStats } from "@/game/companionLevel";
 import { useGameStore } from "@/state/gameStore";
@@ -100,6 +100,53 @@ function EntryBar({ goTo }: { goTo: (s: "pack" | "album" | "profile") => void })
   );
 }
 
+/** Floating paper toast — a soft, cozy hint (e.g. the doorway bag went stale).
+    Auto-dismisses after a few seconds; "重新打包" hops straight to packing. */
+function NoticeToast({
+  text,
+  onPack,
+  onClose,
+}: {
+  text: string;
+  onPack: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const id = setTimeout(onClose, 9000);
+    return () => clearTimeout(id);
+  }, [onClose]);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.32, ease: "easeOut" }}
+      className="pointer-events-auto absolute inset-x-4 top-[88px] z-20"
+    >
+      <div className="sketch tex-grain flex items-start gap-3 rounded-[20px] border-2 border-[#bd8a52]/45 bg-paper px-4 py-3 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_4px_0_rgba(111,84,55,0.18),0_14px_26px_-14px_rgba(58,46,42,0.45)]">
+        <span className="mt-0.5 shrink-0 text-2xl leading-none">🧺</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-hand text-[15px] leading-snug text-ink">{text}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              onClick={onPack}
+              className="rounded-[14px] border-2 border-accent/40 bg-accent/10 px-3 py-1 font-hand text-[13px] text-accent transition active:translate-y-0.5"
+            >
+              重新打包
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-[14px] px-3 py-1 font-hand text-[13px] text-ink-soft transition active:translate-y-0.5"
+            >
+              知道啦
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function HomeScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const companionState = useGameStore((s) => s.companionState);
@@ -107,6 +154,15 @@ export default function HomeScreen() {
   const postcards = useGameStore((s) => s.postcards);
   const goTo = useGameStore((s) => s.goTo);
   const bound = useGameStore((s) => !!s.cloud);
+  const notice = useGameStore((s) => s.notice);
+  const clearNotice = useGameStore((s) => s.clearNotice);
+  const expireStaleBag = useGameStore((s) => s.expireStaleBag);
+
+  // On reaching home (and whenever the bag changes), check if the prepared bag
+  // has gone stale (>24h). If so, the store prompts and clears it server-side.
+  useEffect(() => {
+    expireStaleBag();
+  }, [expireStaleBag, packedBag]);
 
   const wallThemes = useMemo(
     () => postcards.slice(0, 3).map((p) => p.destinationTheme),
@@ -200,6 +256,20 @@ export default function HomeScreen() {
           <MusicToggle />
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {notice && (
+          <NoticeToast
+            key="home-notice"
+            text={notice}
+            onPack={() => {
+              clearNotice();
+              goTo("pack");
+            }}
+            onClose={clearNotice}
+          />
+        )}
+      </AnimatePresence>
 
       <EntryBar goTo={goTo} />
     </div>

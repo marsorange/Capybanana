@@ -29,7 +29,9 @@ export interface AdvanceOutcome {
 
 /**
  * Cloud pets only advance server-authored trips. `ready` never auto-departs:
- * the agent must explicitly choose the day's action.
+ * the agent must explicitly choose the day's action. (Bag expiry is NOT decided
+ * here — the web client checks the bag's age on home entry and asks the server
+ * to clear it; the lifecycle never auto-expires a bag.)
  */
 export function advanceLifecycle(
   input: LifecycleState,

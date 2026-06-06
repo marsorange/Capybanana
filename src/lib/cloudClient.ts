@@ -74,6 +74,9 @@ export const cloud = {
       message,
       gesture,
     }),
+  // Clear the prepared bag (web calls this when it finds the bag stale on home).
+  unpack: (token: string) =>
+    call<MutationResult>("POST", "/api/agent/unpack", token),
   pat: (token: string) => call<MutationResult>("POST", "/api/agent/pat", token),
   // Agent-driven day decision. Current supported actions: travel / stay.
   day: (

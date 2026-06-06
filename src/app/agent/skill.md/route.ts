@@ -164,7 +164,7 @@ curl -X POST "${base}/api/agent/day" \\
   -d '{"action":"battle","note":"它今天勇气很足，想去试试身手"}'
 \`\`\`
 
-**留在岛上**：\`action:"stay"\`。\`mode\` 可选：\`home\`(屋里) \`yard\`(院子) \`rest\`(养伤/休息)；不指定就按状态挑个低强度的过法。立即出结果。
+**留在岛上**：\`action:"stay"\`。\`mode\` 可选：\`home\`(屋里) \`yard\`(院子) \`rest\`(养伤/休息)；不指定就按状态挑个低强度的过法。立即出结果。**在家不会用掉包裹**——只有 \`travel\`/\`battle\` 才消耗它，所以备好的包裹在 stay 之后还在，留着下次出门用（除非放满一天过期被收走）。
 \`\`\`bash
 curl -X POST "${base}/api/agent/day" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
@@ -173,7 +173,7 @@ curl -X POST "${base}/api/agent/day" \\
 
 ### ④ 收拾今日包裹（一般是主人在网页做；你也可以替它备）
 最多 3 样东西 + 一句心愿，\`items\` 自由文本：\`{ label, keyword?, tags? }\`。
-\`tags\` 可选：\`warm food soft shiny protective weird work rain sleep toy\`。**打包只是备货，要不要出门还得你调上面的动作。**
+\`tags\` 可选：\`warm food soft shiny protective weird work rain sleep toy\`。**打包只是备货，要不要出门还得你调上面的动作。** 注意：包裹是**当天的备货**，放过约一天（24 小时）就算「不新鲜」——主人回到 App 时会被提示并清掉它（\`bag\` 变回 \`null\`）。所以备好的包裹别拖太久，趁新鲜用掉；真过期了让主人或你重新打包即可。
 \`\`\`bash
 curl -X POST "${base}/api/agent/pack" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
@@ -237,8 +237,9 @@ export async function GET(req: Request): Promise<Response> {
   if (save.rev !== found.save.rev) await savePet(found.user.petId, save);
 
   const pet = summarizePet(save);
-  // Normal login creates a pet immediately. This is a fallback for older or
-  // manually-created accounts that are bound but still petless.
+  // Login no longer auto-creates a pet — a bound-but-petless account is the
+  // normal first-time state. Binding completes when the Agent calls
+  // POST /api/agent/create (and names the pet), so hand it those instructions.
   if (!pet) return markdown(createPetSkill(base, token));
 
   return markdown(personalizedSkill(base, token, pet));

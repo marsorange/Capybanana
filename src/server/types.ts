@@ -30,6 +30,7 @@ export type AgentEventType =
   | "checkin"
   | "battle"
   | "challenged"
+  | "bagExpired"
   | "restyled";
 
 // One entry in the pet's activity log. `seq` (== the rev at which it was

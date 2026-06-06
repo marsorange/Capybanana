@@ -244,6 +244,8 @@ function eventKind(type: AgentEventType): string {
       return "adopt";
     case "packed":
       return "pack";
+    case "bagExpired":
+      return "pack"; // activities.kind has no 'bagExpired'; payload keeps the real type
     case "said":
       return "say";
     case "checkin":

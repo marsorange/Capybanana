@@ -58,13 +58,27 @@ export default function ConnectAgentScreen() {
         <Panel className="px-4 py-3.5">
           {hasPet ? (
             <>
-              <p className="font-hand text-lg leading-none text-ink">{companion!.name} 正在岛上等消息</p>
+              <p className="font-hand text-lg leading-none text-ink">
+                {hasOnboarded
+                  ? `${companion!.name} 正在岛上等消息`
+                  : `${companion!.name} 已经接入小岛 ✓`}
+              </p>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
                 复制下面这句话发给你的 Agent。它会读取今天的包裹、状态和留言，再决定出门、散步，还是在岛上休息。
               </p>
             </>
           ) : (
-            <p className="text-sm text-ink-soft">正在整理小岛，请稍等一下。</p>
+            <>
+              <p className="font-hand text-lg leading-none text-ink">还差一步：让 Agent 接入小岛</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                把下面这句口令发给你的 Agent。它会读懂口令，为你接生一只专属卡皮巴拉、给它取个名字。
+                <span className="text-ink">注册完成后这只小伙伴才会正式登岛——在此之前还无法进入小岛。</span>
+              </p>
+              <p className="mt-2.5 inline-flex items-center gap-1.5 text-xs text-accent">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+                正在等待 Agent 注册…（每隔几秒自动检查）
+              </p>
+            </>
           )}
         </Panel>
 
@@ -102,7 +116,7 @@ export default function ConnectAgentScreen() {
             {hasOnboarded ? "回小屋" : "进入小岛"}
           </PrimaryButton>
         ) : (
-          <PrimaryButton disabled>小岛准备中</PrimaryButton>
+          <PrimaryButton disabled>等待 Agent 注册…</PrimaryButton>
         )}
         {!hasOnboarded && hasPet && (
           <p className="mt-2 text-center text-[11px] text-ink-soft/70">

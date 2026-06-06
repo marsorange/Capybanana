@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { DEFAULT_CAPY } from "@/game/defaults";
-import { randomCuteCompanion } from "@/game/randomCompanion";
 import type {
   BattleRecord,
   CapyState,
@@ -18,6 +17,15 @@ import type {
 import { cloud } from "@/lib/cloudClient";
 import { supabaseSignOut } from "@/lib/supabaseClient";
 import type { CloudSave } from "@/server/types";
+
+// A prepared "今日包裹" goes stale after ~a day. The web checks this itself on
+// home entry (the server never auto-expires); a NEXT_PUBLIC_ override keeps it
+// testable in dev (e.g. NEXT_PUBLIC_CAPY_BAG_TTL_MIN=1 → stale after a minute).
+const BAG_TTL_OVERRIDE_MIN = Number(process.env.NEXT_PUBLIC_CAPY_BAG_TTL_MIN);
+export const BAG_TTL_MS =
+  Number.isFinite(BAG_TTL_OVERRIDE_MIN) && BAG_TTL_OVERRIDE_MIN > 0
+    ? BAG_TTL_OVERRIDE_MIN * 60_000
+    : 24 * 60 * 60_000;
 
 export type Screen =
   | "login"
@@ -57,6 +65,9 @@ interface GameState {
   hasOnboarded: boolean;
   selectedPostcardId: string | null;
   pendingPostcardId: string | null;
+  // Transient (not persisted) one-line cozy hint shown over home, e.g. when the
+  // packed bag went stale. Cleared on dismiss / re-pack.
+  notice: string | null;
 
   // cloud / account
   cloud: CloudAuth | null;
@@ -75,13 +86,14 @@ interface GameState {
   collectPostcard: () => void;
   reset: () => void;
   completeOnboarding: () => void;
+  clearNotice: () => void;
 
   // cloud actions
   loginWithSupabaseToken: (accessToken: string) => Promise<void>;
   loginWithDevIdentity: (identity?: string) => Promise<void>;
   logout: () => void;
-  ensureCloudPet: () => Promise<void>;
   restyle: () => void;
+  expireStaleBag: () => void;
   cloudPull: () => Promise<void>;
   adoptSave: (save: CloudSave) => void;
 }
@@ -100,6 +112,7 @@ function emptyLocalState() {
     lastResult: null,
     selectedPostcardId: null,
     pendingPostcardId: null,
+    notice: null,
   };
 }
 
@@ -127,7 +140,7 @@ export const useGameStore = create<GameState>()(
           return;
         }
 
-        set({ cloudBusy: true, cloudError: null, screen: "home" });
+        set({ cloudBusy: true, cloudError: null, notice: null, screen: "home" });
         cloud
           .pack(s.cloud.bindToken, items, message, gesture)
           .then(({ save }) => {
@@ -172,6 +185,8 @@ export const useGameStore = create<GameState>()(
       // force the connect screen again (it stays reachable from home).
       completeOnboarding: () => set({ hasOnboarded: true, screen: "home" }),
 
+      clearNotice: () => set({ notice: null }),
+
       // ---- cloud ----
 
       // Bridge a verified Supabase session (Google login) into our bind-token
@@ -194,13 +209,13 @@ export const useGameStore = create<GameState>()(
             cloudBusy: false,
           });
           get().adoptSave(res.save);
-          if (res.save.companion) {
-            // First-time owners pass the connect step once; returning owners go
-            // straight to the island. No pet-display/selection screen in between.
-            set({ screen: get().hasOnboarded ? "home" : "connect" });
-            return;
-          }
-          await get().ensureCloudPet();
+          // No pet is auto-created. The connect screen is the gate: a returning
+          // owner whose Agent already registered a pet goes straight home;
+          // everyone else waits on "connect" until the Agent binds & names it.
+          set({
+            screen:
+              res.save.companion && get().hasOnboarded ? "home" : "connect",
+          });
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
         }
@@ -225,41 +240,12 @@ export const useGameStore = create<GameState>()(
             cloudBusy: false,
           });
           get().adoptSave(res.save);
-          if (res.save.companion) {
-            set({ screen: get().hasOnboarded ? "home" : "connect" });
-            return;
-          }
-          await get().ensureCloudPet();
+          set({
+            screen:
+              res.save.companion && get().hasOnboarded ? "home" : "connect",
+          });
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
-        }
-      },
-
-      ensureCloudPet: async () => {
-        const s = get();
-        if (!s.cloud || s.companion || s.cloudBusy) return;
-        set({ cloudBusy: true, cloudError: null });
-        try {
-          const { save } = await cloud.create(
-            s.cloud.bindToken,
-            randomCuteCompanion(),
-          );
-          get().adoptSave(save);
-          set({ cloudBusy: false, screen: get().hasOnboarded ? "home" : "connect" });
-        } catch (e) {
-          const err = e as Error & { status?: number };
-          if (err.status === 401) return get().logout();
-          if (err.status === 409) {
-            try {
-              const { save } = await cloud.pet(s.cloud.bindToken);
-              get().adoptSave(save);
-              set({ cloudBusy: false, screen: get().hasOnboarded ? "home" : "connect" });
-              return;
-            } catch {
-              /* fall through to surfacing the error below */
-            }
-          }
-          set({ cloudBusy: false, cloudError: err.message });
         }
       },
 
@@ -290,6 +276,26 @@ export const useGameStore = create<GameState>()(
           hasOnboarded: false,
           screen: "login",
         });
+      },
+
+      // Checked on home entry: if the prepared bag has sat past its TTL, surface
+      // a cozy front-end prompt and ask the server to clear it. Self-guarding —
+      // a no-op when there's no bag or it's still fresh, so it's safe to call on
+      // every home mount / poll.
+      expireStaleBag: () => {
+        const s = get();
+        if (!s.cloud || !s.packedBag) return;
+        if (Date.now() - s.packedBag.packedAt < BAG_TTL_MS) return;
+        const name = s.companion?.name ?? "它";
+        set({
+          notice: `包裹放了一天，里面的东西已经不新鲜啦——${name} 悄悄收走了，要不要重新打包？`,
+        });
+        cloud
+          .unpack(s.cloud.bindToken)
+          .then(({ save }) => get().adoptSave(save))
+          .catch((e: Error & { status?: number }) => {
+            if (e.status === 401) get().logout();
+          });
       },
 
       cloudPull: async () => {

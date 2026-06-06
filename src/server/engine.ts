@@ -212,6 +212,27 @@ export function tickSave(save: CloudSave, now: number): CloudSave {
   return next;
 }
 
+/**
+ * Clear the prepared bag back to idle — the web client calls this (via
+ * /api/agent/unpack) when it finds the bag has gone stale on home entry. The
+ * server never judges staleness itself; this just performs the clear. No-op (no
+ * rev bump) when nothing is packed, so it's safe to call idempotently.
+ */
+export function clearBag(save: CloudSave, now: number): CloudSave {
+  if (!save.packedBag) return save;
+  const name = save.companion?.name ?? "它";
+  const next: CloudSave = {
+    ...save,
+    packedBag: null,
+    companionState:
+      save.companionState === "ready" ? "idle_home" : save.companionState,
+  };
+  return bump(next, now, {
+    type: "bagExpired",
+    text: `门口的包裹放了一整天，${name} 把已经不新鲜的东西悄悄收了起来。`,
+  });
+}
+
 /** Create the pet from a chosen draft (no-op if one already exists). */
 export function createPet(
   save: CloudSave,
@@ -459,15 +480,17 @@ export function stayHome(
   now: number,
 ): CloudSave {
   const companion = save.companion!;
-  const { items, message, gesture } = bagSnapshot(save);
   const intent: TripIntent =
     opts.mode && QUIET_MODES.has(opts.mode) ? (opts.mode as OutcomeKind) : "quiet";
+  // A stay-at-home day does NOT use the packed bag — only travel/battle consume
+  // it. The bag (and its pat gesture) stays by the door for a real outing, so
+  // the rest outcome is resolved independently of it.
   const trip: Trip = {
     id: uid("trip"),
     companionId: companion.id,
-    items,
-    message,
-    gesture,
+    items: [],
+    message: "",
+    gesture: undefined,
     status: "returned",
     destination: "town", // unused for a stay-at-home day
     intent,
@@ -482,16 +505,16 @@ export function stayHome(
   const next = foldOutcome(
     {
       ...save,
-      packedBag: null,
-      pendingMessage: null,
+      // Bag intentionally kept (waits for travel/battle, or expires on its own
+      // clock). Stay still spends the day's action + the agent's reported stress.
       pendingStress: null,
       pendingStressNote: null,
-      companionState: "idle_home",
+      companionState: save.packedBag ? "ready" : "idle_home",
       lastActionDay: dayKey(now),
       restUntilDay: clearRest ? null : save.restUntilDay,
     },
     outcome,
-    gesture === "pat",
+    false,
     now,
   );
   return next;

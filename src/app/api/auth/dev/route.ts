@@ -1,9 +1,8 @@
 // Local development auth bridge. Lets developers run the cloud-save flow
 // without Supabase by providing a stable local identity string.
-import { randomCuteCompanion } from "@/game/randomCompanion";
 import { baseUrl, jsonError } from "@/server/api";
 import { SQL_PERSISTENT } from "@/server/db";
-import { createPet, summarizePet, tickSave } from "@/server/engine";
+import { summarizePet, tickSave } from "@/server/engine";
 import { loginByDevIdentity, savePet } from "@/server/store";
 
 export const runtime = "nodejs";
@@ -39,8 +38,8 @@ export async function POST(req: Request): Promise<Response> {
   const { user, save } = await loginByDevIdentity(identity, email);
 
   const now = Date.now();
-  const seeded = save.companion ? save : createPet(save, randomCuteCompanion(), now);
-  const ticked = tickSave(seeded, now);
+  // No auto-created pet — the Agent binds & registers it via POST /api/agent/create.
+  const ticked = tickSave(save, now);
   if (ticked.rev !== save.rev) await savePet(user.petId, ticked);
 
   const connectUrl = `${baseUrl(req)}/agent/skill.md?bind=${user.bindToken}`;

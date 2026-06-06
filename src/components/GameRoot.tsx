@@ -109,9 +109,6 @@ export default function GameRoot() {
   const selectedPostcardId = useGameStore((s) => s.selectedPostcardId);
   const lastResult = useGameStore((s) => s.lastResult);
   const cloudPull = useGameStore((s) => s.cloudPull);
-  const ensureCloudPet = useGameStore((s) => s.ensureCloudPet);
-  const cloudBusy = useGameStore((s) => s.cloudBusy);
-  const cloudError = useGameStore((s) => s.cloudError);
   const hasOnboarded = useGameStore((s) => s.hasOnboarded);
   const bound = useGameStore((s) => !!s.cloud);
 
@@ -140,14 +137,6 @@ export default function GameRoot() {
     };
   }, [hasHydrated, bound, cloudPull]);
 
-  // A bound account with no pet means the server pet hasn't been adopted yet
-  // (legacy account). Adopt one so the owner isn't stranded on the connect
-  // screen. Guarded so it fires once, not on every poll.
-  useEffect(() => {
-    if (!hasHydrated) return;
-    if (bound && !companion && !cloudBusy && !cloudError) void ensureCloudPet();
-  }, [hasHydrated, bound, companion, cloudBusy, cloudError, ensureCloudPet]);
-
   if (!hasHydrated) {
     return (
       <PortraitFrame>
@@ -168,20 +157,11 @@ export default function GameRoot() {
     );
   }
 
-  // Bound but petless: a capybara is being adopted. Show the splash rather than
-  // the connect screen (whose "enter" button is disabled without a pet).
-  if (!companion && !cloudError) {
-    return (
-      <PortraitFrame>
-        <Splash />
-      </PortraitFrame>
-    );
-  }
-
   let effective: Screen = screen;
   if (!companion) {
-    // No pet: a failed adoption falls back to the connect screen so the owner
-    // can retry / attach an agent.
+    // No pet yet: the Agent hasn't bound/registered one. The connect screen is
+    // the gate — it shows the bind command and waits (via cloudPull polling)
+    // until the Agent calls /api/agent/create and names the pet.
     effective = "connect";
   } else if (!hasOnboarded) {
     // First-time owner: the only gate before the island is the one-time
