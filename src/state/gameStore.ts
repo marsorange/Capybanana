@@ -95,7 +95,6 @@ interface GameState {
   loginWithSupabaseToken: (accessToken: string) => Promise<void>;
   loginWithDevIdentity: (identity?: string) => Promise<void>;
   logout: () => void;
-  restyle: () => void;
   expireStaleBag: () => void;
   cloudPull: () => Promise<void>;
   adoptSave: (save: CloudSave) => void;
@@ -254,22 +253,6 @@ export const useGameStore = create<GameState>()(
         }
       },
 
-      restyle: () => {
-        const s = get();
-        if (!s.cloud || s.cloudBusy) return;
-        set({ cloudBusy: true, cloudError: null });
-        cloud
-          .restyle(s.cloud.bindToken, { random: true })
-          .then(({ save }) => {
-            get().adoptSave(save);
-            set({ cloudBusy: false });
-          })
-          .catch((e: Error & { status?: number }) => {
-            if (e.status === 401) return get().logout();
-            set({ cloudBusy: false, cloudError: e.message });
-          });
-      },
-
       logout: () => {
         void supabaseSignOut();
         set({
@@ -307,7 +290,7 @@ export const useGameStore = create<GameState>()(
         const s = get();
         if (!s.cloud) return;
         try {
-          const { save } = await cloud.pet(s.cloud.bindToken);
+          const { save } = await cloud.state(s.cloud.bindToken);
           if (save.rev === s.cloud.rev) return;
           const prevPending = s.pendingPostcardId;
           const prevResult = s.lastResult;

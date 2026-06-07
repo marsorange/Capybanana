@@ -181,13 +181,13 @@ export default function PackScreen() {
     };
   }, [facing]);
 
-  // 拍完即调用 /api/recognize 把“这是什么”填进 label/keyword；失败/超时都保留取色启发式
+  // 拍完即调用 /api/web/recognize 把“这是什么”填进 label/keyword；失败/超时都保留取色启发式
   // （label 一开始就是启发式词，识别成功只是悄悄替换它，所以格子永远有名字、不会卡在“识别中”）。
   const recognize = async (photo: string, id: string) => {
     const ctrl = new AbortController();
     const to = window.setTimeout(() => ctrl.abort(), 7000);
     try {
-      const res = await fetch("/api/recognize", {
+      const res = await fetch("/api/web/recognize", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ photo }),

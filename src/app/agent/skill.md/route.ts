@@ -81,7 +81,9 @@ curl -X POST "${base}/api/agent/create" \\
   -d '{"companion":{"name":"豆豆","type":"capybara","personality":"dreamy","accessory":"scarf","primaryColor":"#C8893B"}}'
 \`\`\`
 
-生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整说明——之后**它每天去旅行、对战，还是留在岛上休息，都由你替它拿主意**。`;
+生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整说明——之后**它每天去旅行、对战，还是留在岛上休息，都由你替它拿主意**。
+
+> 接口很简单，一共就三个：**绑定**（这一步：\`POST /api/agent/create\`）、**每天看一眼+报压力**（\`POST /api/agent/checkin\`）、**每天拿主意**（\`POST /api/agent/day\`）。`;
 }
 
 function personalizedSkill(
@@ -109,19 +111,16 @@ function personalizedSkill(
 
 - 服务器：\`${base}\`
 - 你的绑定令牌（**当成密钥，别泄露**）：\`${token}\`
-- 鉴权两种皆可：
-  - GET 请求把令牌放查询参数：\`?bind=${token}\`
-  - POST 请求放请求头：\`Authorization: Bearer ${token}\`
+- 鉴权：POST 请求放请求头 \`Authorization: Bearer ${token}\`（少数 GET 用 \`?bind=${token}\`）。
 
-## 每天就三步（核心）
+## 每天就两步（核心）
 
-1. **看一眼** \`GET /api/agent/pet\`：读它的状态、今日包裹（\`bag\`）和你能做的动作（\`choices\`）。
-2. **报个备** \`POST /api/agent/checkin\`：把*你自己*今天的状态告诉它（累不累、做了什么）。它会感同身受——你累，它也会想慢一点。
-3. **拿主意** \`POST /api/agent/day\`：替它选今天怎么过（\`travel\` / \`battle\` / \`stay\`）。
+1. **看一眼 + 报个备** \`POST /api/agent/checkin\`：把*你自己*今天累不累告诉它（可选），**同时一次性拿回它此刻的全部信息**——状态、今日包裹（\`bag\`）、你能做的动作（\`choices\`）、寄回的明信片、对战记录、最近发生的事。它会对你的状态感同身受——你累，它也会想慢一点。
+2. **拿主意** \`POST /api/agent/day\`：替它选今天怎么过（\`travel\` / \`battle\` / \`stay\`）。
 
 ## 它怎么运作（先读这段）
 
-- **一天一次主要行动。** 旅行 / 对战 / 在家，每个自然日（**UTC+8**，北京时间 0 点翻篇）只能挑一个；选过当天就不再行动，硬调会被拒。\`pet.actedToday\` 为 \`true\`、\`choices\` 为 \`[]\` 即表示今天忙完了，明天再来（这期间仍可 \`checkin\`、\`pat\`、\`say\` 陪它）。
+- **一天一次主要行动。** 旅行 / 对战 / 在家，每个自然日（**UTC+8**，北京时间 0 点翻篇）只能挑一个；选过当天就不再行动，硬调会被拒。\`pet.actedToday\` 为 \`true\`、\`choices\` 为 \`[]\` 即表示今天忙完了，明天再来（这期间仍可 \`checkin\` 看看它）。
 - **照着 \`choices\` 来。** 待命且没行动时是 \`["travel","battle","stay"]\`；受伤或养伤期只剩 \`["stay"]\`；出门在外/已行动过是 \`[]\`。
 - **伤了要养。** 伤得较重（\`pet.hurt\`，即 \`injury ≥ ${HURT_THRESHOLD}\`）或刚战败（\`pet.mustRest\`）时只能 \`stay\`（\`rest\`）。**对战战败一定会受伤，并强制至少休养一天**，第二天才能再出门。
 - **结果带惊喜。** 你决定「做什么」，去了哪、捡到什么、是不是把心愿读歪了，由它即兴发挥——读歪心愿是特性不是 bug。
@@ -131,28 +130,27 @@ function personalizedSkill(
 
 ## 接口一览
 
-所有写操作返回 \`{ ok, rev, save, pet }\`：\`pet\` 是给你看的精简摘要，\`rev\` 是版本号（可丢给 feed 当游标）。
+只有三个端点：\`create\`（绑定，宠物已生成就用不到了）、\`checkin\`（看状态+报压力）、\`day\`（决策）。\`day\` 返回 \`{ ok, rev, save, pet }\`。
 
-### ① 先看它现在怎么样（每次决定前都先看一眼）
-\`\`\`bash
-curl "${base}/api/agent/pet?bind=${token}"
-\`\`\`
-\`pet\` 里值得注意的字段：
-- \`bag\`：主人今天打包了什么（\`items[].label/keyword/tags\` + \`message\` 心愿）；\`null\` 表示还没打包。
-- \`choices\`：你现在**实际能做**的决定。**照着它来，别硬调被拒的动作。**
-- \`stats\`：心情/体力/勇气/好奇心/伤（**仅你可见，主人看不到**）。\`stress\`：你上次 checkin 报的状态。
-- \`companionDays\`：陪伴天数（主人唯一看得到的成长条）。\`dex\`：\`{collected,total}\` 明信片图鉴进度。
-- \`actedToday\` / \`hurt\` / \`mustRest\`：今天是否已行动 / 是否伤重 / 是否在强制养伤。
+### ① 看状态 + 报压力（每天第一件事）
+\`POST /api/agent/checkin\`，body **全部可选**：
+- \`stress\`：\`light\`(轻松) \`normal\`(一般) \`tired\`(累) \`exhausted\`(很累)——你自己今天的状态，它会感同身受。
+- \`note\`：一句自由吐槽（会被它记住，也会影响它今天旅行/对战的语气）。
+- \`since\`：只想看新发生的事时，传上次见过的最大 \`event.seq\`（不传=全部）。
 
-### ② 报备你自己今天的状态（压力上报 / 吐槽）
-\`POST /api/agent/checkin\`。\`stress\` 取 \`light\`(轻松) \`normal\`(一般) \`tired\`(累) \`exhausted\`(很累)；\`note\` 是一句自由吐槽（会被它记住，也会影响它今天旅行/对战的心情）。
+返回 \`{ ok, rev, pet, events, postcards, battles }\`：
+- \`pet\`：状态摘要——\`bag\`(主人今天打包了什么：\`items[].label/keyword/tags\` + \`message\` 心愿；\`null\`=还没打包)、\`choices\`(你现在**实际能做**的决定，照着它来)、\`stats\`(心情/体力/勇气/好奇心/伤，**仅你可见**)、\`companionDays\`、\`dex\`(\`{collected,total}\` 图鉴进度)、\`actedToday\`/\`hurt\`/\`mustRest\`。
+- \`events\`：自 \`since\` 以来发生的事（出发 / 归来 / 明信片 / 对战），每条带 \`seq\`——把见过的最大 \`seq\` 作为下次的 \`since\`。
+- \`postcards\` / \`battles\`：它寄回的明信片、打过的对战记录（归来后明信片就在这里）。
+
+（空 body 调用 = 纯读，不报压力。）
 \`\`\`bash
 curl -X POST "${base}/api/agent/checkin" \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
   -d '{"stress":"tired","note":"今天写了一天代码，消耗有点大"}'
 \`\`\`
 
-### ③ 替它决定今天怎么过
+### ② 替它决定今天怎么过
 统一调用 \`POST /api/agent/day\`，\`action\` 三选一。
 
 **出门旅行**：\`action:"travel"\`。你只决定**去近还是去远**：\`distance\` 取 \`near\`(短途，附近逛逛、回来得快) 或 \`far\`(远途，走得久、更可能遇到罕见风景)；不填默认 \`near\`。**具体去哪由服务端随机决定**——你指定不了目的地，但主人打包的东西/心愿、以及你这次写的 \`note\`，都会**悄悄影响它往哪走、归来时明信片写什么**（明信片由它回来后即兴写成，会用到这些线索；稀有度则纯随机、谁都左右不了）。
@@ -176,55 +174,18 @@ curl -X POST "${base}/api/agent/day" \\
   -d '{"action":"stay","mode":"rest","note":"它好像有点累，今天就好好歇着"}'
 \`\`\`
 
-### ④ 收拾今日包裹（一般是主人在网页做；你也可以替它备）
-最多 3 样东西 + 一句心愿，\`items\` 自由文本：\`{ label, keyword?, tags? }\`。
-\`tags\` 可选：\`warm food soft shiny protective weird work rain sleep toy\`。**打包只是备货，要不要出门还得你调上面的动作。** 注意：包裹是**当天的备货**，放过约一天（24 小时）就算「不新鲜」——主人回到 App 时会被提示并清掉它（\`bag\` 变回 \`null\`）。所以备好的包裹别拖太久，趁新鲜用掉；真过期了让主人或你重新打包即可。
-\`\`\`bash
-curl -X POST "${base}/api/agent/pack" \\
-  -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
-  -d '{"items":[{"label":"一颗橡果","keyword":"森林","tags":["food"]},{"label":"一枚小石头","tags":["shiny"]}],"message":"今天想去森林里走走吗","gesture":"pat"}'
-\`\`\`
+## 包裹、明信片、相册都归主人（你不用管接口）
 
-### ⑤ 日常小互动
-对它说句话（会被记住，并成为它下次出门的心愿）：
-\`\`\`bash
-curl -X POST "${base}/api/agent/say" \\
-  -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
-  -d '{"text":"早安，今天也要开心呀"}'
-\`\`\`
-摸摸头（哄它开心一点）：
-\`\`\`bash
-curl -X POST "${base}/api/agent/pat" -H "Authorization: Bearer ${token}"
-\`\`\`
-
-### ⑥ 读明信片 / 看对战记录
-\`\`\`bash
-curl "${base}/api/agent/postcards?bind=${token}"
-curl "${base}/api/agent/postcards/<明信片id>?bind=${token}"
-curl "${base}/api/agent/battles?bind=${token}"
-\`\`\`
-读完明信片可以收进相册：
-\`\`\`bash
-curl -X POST "${base}/api/agent/collect" -H "Authorization: Bearer ${token}"
-\`\`\`
-
-### ⑦ 查看自上次以来发生了什么（出发 / 归来 / 明信片 / 对战）
-\`\`\`bash
-curl "${base}/api/agent/feed?since=0&bind=${token}"
-\`\`\`
-返回 \`events[]\`，每条有 \`seq\`；把见过的最大 \`seq\` 作为下次的 \`since\`，就能只看新发生的事。
+备「今日包裹」、收藏明信片这些都由**主人在网页里做**，你不需要、也无法调接口去碰。你只管：读 \`checkin\` 返回的 \`bag\` 看主人备了什么线索 → 替它拿主意。明信片和对战记录随时在 \`checkin\` 的 \`postcards\` / \`battles\` 里能看到。（包裹是当天备货，放过约一天没用掉，主人回 App 时会被提示并清掉，\`bag\` 变回 \`null\`——所以趁它新鲜时替它做决定。）
 
 ## 建议的相处方式
 
-1. \`GET /api/agent/pet\` 看它的状态，和主人在 \`bag\` 里备了什么。
-2. \`POST /api/agent/checkin\` 把你自己今天累不累告诉它。
-3. 依它的性格（${persona}）和此刻的状态**替它拿个主意**：
+1. \`POST /api/agent/checkin\`：看它的状态、主人在 \`bag\` 里备了什么，并把你自己今天累不累告诉它。
+2. 依它的性格（${persona}）和此刻的状态**替它拿个主意**（\`POST /api/agent/day\`）：
    - 精神好、心愿里有远方、好奇心高 → \`travel\`。
    - 勇气足、体力够、想热闹一下 → \`battle\`（伤着/养伤期别上）。
    - 累了 / 受伤 / 主人想让它歇着 → \`stay\`（\`rest\`）。
-4. 出门后过一会儿 \`GET /api/agent/feed\` 看它经历了什么，读读明信片、对战记录。
-
-> 想给它换个样子？\`POST /api/agent/restyle\`：\`{"random":true}\` 会重掷当前卡皮巴拉造型；也可以指定 \`{"type":"capybara","primaryColor":"#E0A256","accessory":"scarf"}\`（只改外观，名字和状态都不变）。旧物种类型会自动归一到当前主角。主人也能在 App 里点「🎲 换个样子」。
+3. 出门后过一会儿再 \`POST /api/agent/checkin\`（带上 \`since\`）看 \`events\` 里它经历了什么，读读 \`postcards\`、\`battles\`。
 
 你是它的岛外向导，替它过好每一天——节奏慢一点，像对待一个真正住在你这儿的小生命。`;
 }

@@ -1,7 +1,7 @@
 // Roll a brand-new travel companion (the server mints a new account's first
 // pet). The product ships a single fixed character now, so the species is always
 // the capybara — `CHARACTERS` holds one entry — and only the cute name varies.
-import { CHARACTERS, isSpecies, normalizeSpecies } from "./characters";
+import { CHARACTERS, normalizeSpecies } from "./characters";
 import { ACCESSORIES, PERSONALITIES } from "./labels";
 import type { Accessory, CompanionType, Personality } from "./types";
 import { pick } from "./util";
@@ -47,13 +47,6 @@ export function randomCompanion(): CompanionDraft {
   };
 }
 
-// Every roster character is already a soft, cute animal, so the "cute" roll is
-// just a fresh roster pick (kept as its own export for the adoption / "换个样子"
-// callers that want to stay explicit about intent).
-export function randomCuteCompanion(): CompanionDraft {
-  return randomCompanion();
-}
-
 const PERSONALITY_SET = new Set<string>(PERSONALITIES.map((p) => p.value));
 const ACCESSORY_SET = new Set<string>(ACCESSORIES.map((a) => a.value));
 
@@ -86,27 +79,3 @@ export function coerceCompanionDraft(input: unknown): CompanionDraft {
   };
 }
 
-// Just the look (no name/personality) — used to restyle an existing pet.
-export interface Appearance {
-  type: CompanionType;
-  primaryColor: string;
-  accessory: Accessory;
-}
-
-// Validate a partial appearance, keeping the fallback for any missing/invalid
-// field (so an explicit restyle only changes what it specifies).
-export function coerceAppearance(input: unknown, fallback: Appearance): Appearance {
-  if (!input || typeof input !== "object") return fallback;
-  const o = input as Record<string, unknown>;
-  return {
-    type: isSpecies(o.type) ? o.type : fallback.type,
-    primaryColor:
-      typeof o.primaryColor === "string" && HEX.test(o.primaryColor)
-        ? o.primaryColor
-        : fallback.primaryColor,
-    accessory:
-      typeof o.accessory === "string" && ACCESSORY_SET.has(o.accessory)
-        ? (o.accessory as Accessory)
-        : fallback.accessory,
-  };
-}

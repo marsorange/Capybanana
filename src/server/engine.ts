@@ -12,12 +12,7 @@ import {
   TOTAL_CARDS,
 } from "@/game/gacha";
 import { pickDestination } from "@/game/planTrip";
-import {
-  coerceAppearance,
-  randomCuteCompanion,
-  type Appearance,
-  type CompanionDraft,
-} from "@/game/randomCompanion";
+import { type CompanionDraft } from "@/game/randomCompanion";
 import { resolveDay } from "@/game/resolveDay";
 import type {
   BattleRecord,
@@ -307,7 +302,7 @@ export async function tickSave(save: CloudSave, now: number): Promise<CloudSave>
 
 /**
  * Clear the prepared bag back to idle — the web client calls this (via
- * /api/agent/unpack) when it finds the bag has gone stale on home entry. The
+ * /api/web/unpack) when it finds the bag has gone stale on home entry. The
  * server never judges staleness itself; this just performs the clear. No-op (no
  * rev bump) when nothing is packed, so it's safe to call idempotently.
  */
@@ -371,41 +366,6 @@ export function createPet(
   return bump(base, now, {
     type: "created",
     text: `${companion.name} 住进了小屋。`,
-  });
-}
-
-/**
- * Change only the pet's look (type/color/accessory) — name, stats, history all
- * stay. `random: true` rolls a fresh capybara-cute look; `appearance` forces
- * specific fields. A no-op (and no rev bump) when nothing actually changes.
- */
-export function restyleCompanion(
-  save: CloudSave,
-  opts: { appearance?: unknown; random?: boolean },
-  now: number,
-): CloudSave {
-  if (!save.companion) return save;
-  const c = save.companion;
-  let target: Appearance = {
-    type: c.type,
-    primaryColor: c.primaryColor,
-    accessory: c.accessory,
-  };
-  if (opts.random) {
-    const r = randomCuteCompanion();
-    target = { type: r.type, primaryColor: r.primaryColor, accessory: r.accessory };
-  }
-  target = coerceAppearance(opts.appearance, target);
-  if (
-    target.type === c.type &&
-    target.primaryColor === c.primaryColor &&
-    target.accessory === c.accessory
-  )
-    return save; // nothing changed
-  const companion: Companion = { ...c, ...target };
-  return bump({ ...save, companion }, now, {
-    type: "restyled",
-    text: `${c.name} 换了个新造型。`,
   });
 }
 
@@ -763,33 +723,6 @@ export async function decideDay(
 ): Promise<CloudSave> {
   if (decision.action === "travel") return startTravel(save, decision, now);
   return stayHome(save, decision, now);
-}
-
-/** A gentle head pat: a small mood lift. */
-export function patHead(save: CloudSave, now: number): CloudSave {
-  const capy = {
-    ...save.capyState,
-    mood: clamp(save.capyState.mood + 3),
-  };
-  const name = save.companion?.name ?? "它";
-  return bump({ ...save, capyState: capy }, now, {
-    type: "pat",
-    text: `你摸了摸 ${name} 的头，它眯起了眼睛。`,
-  });
-}
-
-/** Say something to the pet: remembered, and used as the next trip's note. */
-export function sayTo(save: CloudSave, text: string, now: number): CloudSave {
-  const line = text.trim().slice(0, 50);
-  const capy = {
-    ...save.capyState,
-    mood: clamp(save.capyState.mood + 2),
-    memories: [`你对它说：「${line}」`, ...save.capyState.memories].slice(0, 30),
-  };
-  return bump({ ...save, capyState: capy, pendingMessage: line }, now, {
-    type: "said",
-    text: `你对它说了：「${line}」。`,
-  });
 }
 
 /** Collect the waiting postcard into the album. */

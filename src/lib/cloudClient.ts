@@ -1,7 +1,8 @@
-// Thin client for the cloud API. The owner's web client and an external AI
-// agent talk to the exact same /api/agent/* endpoints; the web client just
-// holds its bind token in the persisted store.
-import type { CompanionDraft } from "@/game/randomCompanion";
+// Thin client for the WEB (owner) API. The browser is a thin client over the
+// same cloud save the external agent drives — it only performs owner actions:
+// login, read state (cloudPull), and pack/unpack/collect the bag. The agent's
+// own endpoints (create / checkin / day) live under /api/agent/* and are NOT
+// called from here.
 import type { Gesture, PackedItem } from "@/game/types";
 import type { CloudSave } from "@/server/types";
 
@@ -60,41 +61,25 @@ export const cloud = {
     call<LoginResult & { ok: true }>("POST", "/api/auth/dev", undefined, {
       identity,
     }),
-  pet: (token: string) => call<MutationResult>("GET", "/api/agent/pet", token),
-  create: (token: string, companion: CompanionDraft) =>
-    call<MutationResult>("POST", "/api/agent/create", token, { companion }),
+  // Poll the latest cloud save (cloudPull).
+  state: (token: string) =>
+    call<MutationResult>("GET", "/api/web/state", token),
+  // Pack today's bag (owner prepares the luggage; the agent decides the day).
   pack: (
     token: string,
     items: PackedItem[],
     message: string,
     gesture?: Gesture,
   ) =>
-    call<MutationResult>("POST", "/api/agent/pack", token, {
+    call<MutationResult>("POST", "/api/web/pack", token, {
       items,
       message,
       gesture,
     }),
   // Clear the prepared bag (web calls this when it finds the bag stale on home).
   unpack: (token: string) =>
-    call<MutationResult>("POST", "/api/agent/unpack", token),
-  pat: (token: string) => call<MutationResult>("POST", "/api/agent/pat", token),
-  // Agent-driven day decision. Current supported actions: travel / stay.
-  day: (
-    token: string,
-    body:
-      | { action: "travel"; destination?: string; note?: string }
-      | { action: "stay"; mode?: string; note?: string },
-  ) => call<MutationResult>("POST", "/api/agent/day", token, body),
-  // Backward-compatible helpers for older callers.
-  travel: (token: string, destination?: string, note?: string) =>
-    cloud.day(token, { action: "travel", destination, note }),
-  stay: (token: string, mode?: string, note?: string) =>
-    cloud.day(token, { action: "stay", mode, note }),
+    call<MutationResult>("POST", "/api/web/unpack", token),
+  // Tuck the waiting postcard into the album.
   collect: (token: string) =>
-    call<MutationResult>("POST", "/api/agent/collect", token),
-  // Re-roll / set the pet's look (type/color/accessory). Empty opts → random.
-  restyle: (
-    token: string,
-    opts?: { random?: boolean; type?: string; primaryColor?: string; accessory?: string },
-  ) => call<MutationResult>("POST", "/api/agent/restyle", token, opts ?? { random: true }),
+    call<MutationResult>("POST", "/api/web/collect", token),
 };

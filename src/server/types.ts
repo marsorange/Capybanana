@@ -30,8 +30,7 @@ export type AgentEventType =
   | "checkin"
   | "battle"
   | "challenged"
-  | "bagExpired"
-  | "restyled";
+  | "bagExpired";
 
 // One entry in the pet's activity log. `seq` (== the rev at which it was
 // appended) is the cursor the agent's `feed?since=` polls against.

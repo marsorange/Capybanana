@@ -258,8 +258,6 @@ function eventKind(type: AgentEventType): string {
       return "say";
     case "checkin":
       return "say"; // activities.kind has no 'checkin'; payload keeps the real type
-    case "restyled":
-      return "restyle";
     case "pat":
       return "pat";
     case "battle":
@@ -270,6 +268,8 @@ function eventKind(type: AgentEventType): string {
     case "returned":
     case "postcard":
       return "travel";
+    default:
+      return "say"; // legacy/unknown event types (e.g. old "restyled") log as a generic note
   }
 }
 

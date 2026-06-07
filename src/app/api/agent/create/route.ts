@@ -1,28 +1,18 @@
-// POST to bring the pet into existence from a chosen (or random) draft.
+// Bind & register the pet (the agent's one-time "绑定" step). The owner logged
+// in on the web (which minted the bind token); the agent calls this with that
+// token to bring the pet into existence and name it.
 // Body: { companion?: { name?, type?, primaryColor?, personality?, accessory? } }
-// Any missing/invalid field is filled with a random pick.
+// Any missing/invalid field is filled with a random pick. Rejects if a pet
+// already exists.
 import { coerceCompanionDraft } from "@/game/randomCompanion";
-import { authed, commit, jsonError } from "@/server/api";
-import { createPet, tickSave } from "@/server/engine";
+import { petAction } from "@/server/api";
+import { createPet } from "@/server/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request): Promise<Response> {
-  const a = await authed(req);
-  if (a instanceof Response) return a;
-
-  let body: { companion?: unknown } = {};
-  try {
-    body = (await req.json()) ?? {};
-  } catch {
-    /* tolerate empty body — a fully random pet is fine */
-  }
-
-  const now = Date.now();
-  const save = await tickSave(a.save, now);
-  if (save.companion) return jsonError("已经有一只宠物了", 409);
-
-  const draft = coerceCompanionDraft(body.companion);
-  return commit(a.user.petId, createPet(save, draft, now));
-}
+export const POST = petAction(
+  (save, { body, now }) =>
+    createPet(save, coerceCompanionDraft(body.companion), now),
+  { requireCompanion: false, requireNoCompanion: true },
+);

@@ -1,6 +1,6 @@
 // Shared helpers for the bind-authenticated route handlers.
 import { readBind } from "./bind";
-import { summarizePet } from "./engine";
+import { summarizePet, tickSave } from "./engine";
 import { resolveBind, savePet } from "./store";
 import type { CloudSave, User } from "./types";
 
@@ -58,4 +58,90 @@ export function baseUrl(req: Request): string {
   const proto = h.get("x-forwarded-proto") ?? "https";
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   return `${proto}://${host}`;
+}
+
+/** Tolerantly parse a JSON request body, returning `{}` for empty/invalid input. */
+export async function readBody(req: Request): Promise<Record<string, unknown>> {
+  try {
+    return ((await req.json()) as Record<string, unknown>) ?? {};
+  } catch {
+    return {}; // empty / non-JSON body is fine — handlers treat fields as optional
+  }
+}
+
+export interface ActionCtx {
+  user: User;
+  now: number;
+  req: Request;
+  body: Record<string, unknown>;
+}
+
+type ActionFn = (
+  save: CloudSave,
+  ctx: ActionCtx,
+) => CloudSave | Response | Promise<CloudSave | Response>;
+
+/**
+ * Wrap a mutating handler in the shared plumbing every route repeats:
+ *   authed → parse body → tickSave → companion gate → run → commit.
+ * The handler returns the next save (committed for you) or its own Response for
+ * cases that need a custom envelope/status. `runtime`/`dynamic` still live as
+ * literal exports in each route file (Next reads them via static analysis).
+ */
+export function petAction(
+  fn: ActionFn,
+  opts: { requireCompanion?: boolean; requireNoCompanion?: boolean } = {},
+): (req: Request) => Promise<Response> {
+  const { requireCompanion = true, requireNoCompanion = false } = opts;
+  return async (req: Request): Promise<Response> => {
+    const a = await authed(req);
+    if (a instanceof Response) return a;
+    const body = await readBody(req);
+    const now = Date.now();
+    const save = await tickSave(a.save, now);
+    if (requireNoCompanion && save.companion)
+      return jsonError("已经有一只宠物了", 409);
+    if (requireCompanion && !save.companion)
+      return jsonError("还没有宠物，请先调用 create", 409);
+    const result = await fn(save, { user: a.user, now, req, body });
+    if (result instanceof Response) return result;
+    return commit(a.user.petId, result);
+  };
+}
+
+/**
+ * The agent's curated "current info" bundle: the pet summary plus recent
+ * activity, postcards and battle records — everything the daily check-in read
+ * used to require four separate endpoints for. `since` filters the event log.
+ */
+export function agentStateBody(save: CloudSave, since = 0) {
+  return {
+    ok: true as const,
+    rev: save.rev,
+    pet: summarizePet(save),
+    events: save.events.filter((e) => e.seq > since),
+    postcards: save.postcards.map((p) => ({
+      id: p.id,
+      title: p.title,
+      locationName: p.locationName,
+      destinationTheme: p.destinationTheme,
+      message: p.message,
+      reason: p.reason,
+      sentAt: p.sentAt,
+    })),
+    battles: save.battleRecords.map((b) => ({
+      id: b.id,
+      day: b.day,
+      opponentName: b.opponentName,
+      opponentSpecies: b.opponentSpecies,
+      isNpc: b.isNpc,
+      result: b.result,
+      title: b.title,
+      story: b.story,
+      injury: b.injury,
+      spoils: b.spoils,
+      ratingDelta: b.ratingDelta,
+      createdAt: b.createdAt,
+    })),
+  };
 }
