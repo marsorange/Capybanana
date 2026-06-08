@@ -271,18 +271,56 @@ function eventKind(type: AgentEventType): string {
   }
 }
 
-async function rotateToken(tx: Query, userId: string): Promise<string> {
+// Bind tokens are split into two isolated scopes (see 0006_token_scopes.sql):
+//   'web'   — browser session credential. MANY can be active at once: each login
+//             mints one and never revokes its siblings, so the owner can be
+//             signed in on several devices/tabs simultaneously (a web session is
+//             an account thing, unrelated to the Agent).
+//   'agent' — the single bind link the Agent holds. Rotated (revoke-then-mint)
+//             only on explicit "换 Agent / 重新生成连接", so swapping Agents
+//             drops exactly the old Agent and nothing else.
+type TokenScope = "web" | "agent";
+
+/** Mint a fresh token of a scope WITHOUT touching any existing token. */
+async function mintToken(
+  tx: Query,
+  userId: string,
+  scope: TokenScope,
+): Promise<string> {
   const token = newToken();
+  await tx`
+    insert into agent_tokens (user_id, token_hash, name)
+    values (${userId}::uuid, ${tokenHash(token)}, ${scope})
+  `;
+  return token;
+}
+
+/** Revoke the active token(s) of a scope, then mint a fresh one. */
+async function rotateToken(
+  tx: Query,
+  userId: string,
+  scope: TokenScope,
+): Promise<string> {
   await tx`
     update agent_tokens
     set revoked_at = now()
-    where user_id = ${userId}::uuid and revoked_at is null
+    where user_id = ${userId}::uuid and name = ${scope} and revoked_at is null
   `;
-  await tx`
-    insert into agent_tokens (user_id, token_hash)
-    values (${userId}::uuid, ${tokenHash(token)})
+  return mintToken(tx, userId, scope);
+}
+
+async function hasActiveToken(
+  tx: Query,
+  userId: string,
+  scope: TokenScope,
+): Promise<boolean> {
+  const rows = await tx<{ one: number }[]>`
+    select 1 as one
+    from agent_tokens
+    where user_id = ${userId}::uuid and name = ${scope} and revoked_at is null
+    limit 1
   `;
-  return token;
+  return rows.length > 0;
 }
 
 async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
@@ -651,11 +689,23 @@ async function syncEvents(
   }
 }
 
+export interface LoginOutcome {
+  user: User; // user.bindToken is a fresh WEB session token (multi-device safe)
+  save: CloudSave;
+  isNew: boolean;
+  // The Agent's bind-link token (plaintext, for building connectUrl). Set ONLY
+  // when the account has no active 'agent' token yet (first time on this
+  // account); otherwise null, because the token is stored hashed and we won't
+  // re-mint an existing link (that would disconnect the live Agent). The web
+  // then reuses its persisted connectUrl, or the owner regenerates explicitly.
+  connectToken: string | null;
+}
+
 async function loginByIdentity(
   kind: "supabase" | "dev",
   identity: string,
   email: string | null,
-): Promise<{ user: User; save: CloudSave; isNew: boolean }> {
+): Promise<LoginOutcome> {
   const sql = sqlDb();
   const authUuid = stableAuthUuid(kind, identity);
 
@@ -691,10 +741,23 @@ async function loginByIdentity(
       row = updated[0];
     }
 
-    const token = await rotateToken(tx, row.id);
-    const user = userFromRow(row, token);
+    // Hand the browser its own fresh web-session token (cloud.bindToken). We
+    // never revoke sibling web tokens, so the owner stays signed in across
+    // devices/tabs; this never touches the Agent's 'agent' token.
+    const webToken = await mintToken(tx, row.id, "web");
     const save = row.pet_id ? await loadSave(tx, row.pet_id) : emptySave();
-    return { user, save, isNew };
+
+    // Mint the Agent bind link only if the account has none yet (first time on
+    // this account). If one already exists we leave it alone — re-minting would
+    // disconnect the live Agent, and a second device that just wants to view the
+    // link can regenerate it explicitly. (Tokens are hashed, so we can only hand
+    // back plaintext at mint time → connectToken is null whenever we don't mint.)
+    const connectToken = (await hasActiveToken(tx, row.id, "agent"))
+      ? null
+      : await mintToken(tx, row.id, "agent");
+
+    const user = userFromRow(row, webToken);
+    return { user, save, isNew, connectToken };
   });
 }
 
@@ -705,7 +768,7 @@ async function loginByIdentity(
 export async function loginBySupabase(
   supabaseUserId: string,
   email: string | null,
-): Promise<{ user: User; save: CloudSave; isNew: boolean }> {
+): Promise<LoginOutcome> {
   return loginByIdentity("supabase", supabaseUserId, email);
 }
 
@@ -716,25 +779,49 @@ export async function loginBySupabase(
 export async function loginByDevIdentity(
   identity: string,
   email: string | null,
-): Promise<{ user: User; save: CloudSave; isNew: boolean }> {
+): Promise<LoginOutcome> {
   return loginByIdentity("dev", identity, email);
 }
 
-/** Resolve a bind token to its owner + current pet save. */
-export async function resolveBind(
-  token: string,
-): Promise<{ user: User; save: CloudSave } | null> {
+/**
+ * The owner's deliberate "重新生成连接 / 换 Agent": mint a fresh 'agent' bind
+ * link, revoking the previous one. The displaced Agent's next call then resolves
+ * as `revoked` (a terminal 401), so it stops its daily loop instead of polling
+ * forever. Returns the new token's plaintext (only available at mint time).
+ */
+export async function regenerateAgentLink(userId: string): Promise<string> {
+  const sql = sqlDb();
+  return sql.begin((tx) => rotateToken(tx, userId, "agent"));
+}
+
+// Outcome of resolving a bind token. `revoked` vs `unknown` is the signal the
+// route layer turns into a *terminal* 401 (vs a transient 5xx): a revoked token
+// means the owner regenerated the link / swapped Agents, so the caller should
+// stop, not retry. (Both web and agent scopes resolve the same way — scope only
+// governs rotation, not access.)
+export type BindResolution =
+  | { status: "ok"; user: User; save: CloudSave }
+  | { status: "revoked" }
+  | { status: "unknown" };
+
+/** Resolve a bind token (web or agent scope) to its owner + current pet save. */
+export async function resolveBind(token: string): Promise<BindResolution> {
   const sql = sqlDb();
   const hash = tokenHash(token);
-  const rows = await sql<UserRow[]>`
-    select u.*
+  // token_hash is unique, so this is at most one row whether or not it's revoked.
+  const rows = await sql<(UserRow & { tok_revoked_at: Date | string | null })[]>`
+    select u.*, t.revoked_at as tok_revoked_at
     from agent_tokens t
     join users u on u.id = t.user_id
-    where t.token_hash = ${hash} and t.revoked_at is null
+    where t.token_hash = ${hash}
     limit 1
   `;
   const row = rows[0];
-  if (!row || !row.pet_id) return null;
+  if (!row) return { status: "unknown" };
+  // Hash matched a token that was rotated out — the connection was replaced.
+  if (row.tok_revoked_at) return { status: "revoked" };
+  // pet_id is set for every account at login; missing it means a malformed row.
+  if (!row.pet_id) return { status: "unknown" };
 
   await sql`
     update agent_tokens
@@ -743,6 +830,7 @@ export async function resolveBind(
   `;
 
   return {
+    status: "ok",
     user: userFromRow(row, token),
     save: await loadSave(sql, row.pet_id),
   };

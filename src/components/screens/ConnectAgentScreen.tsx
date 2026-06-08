@@ -36,10 +36,13 @@ export default function ConnectAgentScreen() {
   const connectUrl = useGameStore((s) => s.connectUrl);
   const companion = useGameStore((s) => s.companion);
   const cloudError = useGameStore((s) => s.cloudError);
+  const cloudBusy = useGameStore((s) => s.cloudBusy);
   const hasOnboarded = useGameStore((s) => s.hasOnboarded);
   const completeOnboarding = useGameStore((s) => s.completeOnboarding);
+  const regenerateConnectLink = useGameStore((s) => s.regenerateConnectLink);
   const goTo = useGameStore((s) => s.goTo);
   const [copied, setCopied] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   const snippet = connectUrl ? `Read ${connectUrl}` : "";
   const hasPet = !!companion;
@@ -68,6 +71,12 @@ export default function ConnectAgentScreen() {
     } catch {
       /* clipboard blocked — the text is selectable below anyway */
     }
+  };
+
+  const regenerate = async () => {
+    await regenerateConnectLink();
+    setConfirmingReset(false);
+    setCopied(false);
   };
 
   const header =
@@ -148,6 +157,52 @@ export default function ConnectAgentScreen() {
           <p className="mt-2 text-[11px] text-ink-soft/70">
             这句话能推开小岛的门，只给你信任的 Agent 看。
           </p>
+
+          {/* (Re)generate the bind link. In the gate (no Agent connected yet)
+              it's harmless — generate/refresh with no confirm. Once an Agent is
+              bound (revisit), regenerating revokes the old link and disconnects
+              that Agent, so confirm first. */}
+          {(mode === "gate" || mode === "revisit") && (
+            <div className="mt-3 border-t border-[#bd8a52]/20 pt-3">
+              {!hasPet ? (
+                <button
+                  onClick={regenerate}
+                  disabled={cloudBusy}
+                  className="w-full text-[12px] text-ink-soft/75 underline decoration-dotted underline-offset-2 disabled:opacity-45"
+                >
+                  {cloudBusy ? "生成中…" : snippet ? "换一句口令" : "生成一句口令"}
+                </button>
+              ) : confirmingReset ? (
+                <div className="rounded-xl border border-accent/35 bg-accent/5 p-3">
+                  <p className="text-[12px] leading-snug text-ink">
+                    重新生成后，<b>现在照看我的 Agent 会立刻失效</b>，要把新口令发给接手的 Agent 才行。确定吗？
+                  </p>
+                  <div className="mt-2.5 flex gap-2">
+                    <button
+                      onClick={regenerate}
+                      disabled={cloudBusy}
+                      className="sketch flex-1 rounded-[14px] border-2 border-accent/55 bg-accent px-4 py-2 font-hand text-[14px] text-cream-soft shadow-[0_3px_0_rgba(111,84,55,0.18)] transition active:translate-y-0.5 disabled:opacity-45"
+                    >
+                      {cloudBusy ? "生成中…" : "确定，换一个"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmingReset(false)}
+                      className="sketch rounded-[14px] border-2 border-[#bd8a52]/45 bg-cream-soft px-4 py-2 font-hand text-[14px] text-ink transition active:translate-y-0.5"
+                    >
+                      再想想
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingReset(true)}
+                  className="w-full text-[12px] text-ink-soft/75 underline decoration-dotted underline-offset-2"
+                >
+                  重新生成口令 / 换一个 Agent
+                </button>
+              )}
+            </div>
+          )}
         </Panel>
 
         {cloudError && <p className="text-center text-sm text-accent">{cloudError}</p>}

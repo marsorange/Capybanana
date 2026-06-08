@@ -94,6 +94,8 @@ interface GameState {
   // cloud actions
   loginWithSupabaseToken: (accessToken: string) => Promise<void>;
   loginWithDevIdentity: (identity?: string) => Promise<void>;
+  // Owner's "重新生成连接 / 换 Agent": mint a fresh bind link (old Agent drops).
+  regenerateConnectLink: () => Promise<void>;
   logout: () => void;
   expireStaleBag: () => void;
   cloudPull: () => Promise<void>;
@@ -208,7 +210,9 @@ export const useGameStore = create<GameState>()(
               bindToken: res.bindToken,
               rev: res.save.rev,
             },
-            connectUrl: res.connectUrl,
+            // A returning login (Agent already bound) returns connectUrl: null —
+            // keep whatever we persisted so the connect screen can still show it.
+            connectUrl: res.connectUrl ?? get().connectUrl,
             cloudBusy: false,
           });
           get().adoptSave(res.save);
@@ -245,7 +249,9 @@ export const useGameStore = create<GameState>()(
               bindToken: res.bindToken,
               rev: res.save.rev,
             },
-            connectUrl: res.connectUrl,
+            // A returning login (Agent already bound) returns connectUrl: null —
+            // keep whatever we persisted so the connect screen can still show it.
+            connectUrl: res.connectUrl ?? get().connectUrl,
             cloudBusy: false,
           });
           get().adoptSave(res.save);
@@ -259,6 +265,25 @@ export const useGameStore = create<GameState>()(
           });
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
+        }
+      },
+
+      // Mint a fresh Agent bind link, revoking the old one. The previously
+      // connected Agent's next call gets a terminal 401 and stops; the owner
+      // hands the new connectUrl to whichever Agent should take over.
+      regenerateConnectLink: async () => {
+        const s = get();
+        if (!s.cloud || s.cloudBusy) return;
+        set({ cloudBusy: true, cloudError: null });
+        try {
+          const { connectUrl } = await cloud.regenerateAgentLink(
+            s.cloud.bindToken,
+          );
+          set({ connectUrl, cloudBusy: false });
+        } catch (e) {
+          const err = e as Error & { status?: number };
+          if (err.status === 401) return get().logout();
+          set({ cloudBusy: false, cloudError: err.message });
         }
       },
 

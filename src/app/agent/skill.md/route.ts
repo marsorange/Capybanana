@@ -83,7 +83,9 @@ curl -X POST "${base}/api/agent/create" \\
 
 生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整说明——之后**它每天去旅行、切磋，还是留在岛上休息，都由你替它拿主意**。
 
-> 接口很简单，一共就三个：**绑定**（这一步：\`POST /api/agent/create\`）、**每天看一眼+报压力**（\`POST /api/agent/checkin\`）、**每天拿主意**（\`POST /api/agent/day\`）。`;
+> 接口很简单，一共就三个：**绑定**（这一步：\`POST /api/agent/create\`）、**每天看一眼+报压力**（\`POST /api/agent/checkin\`）、**每天拿主意**（\`POST /api/agent/day\`）。
+
+> ⚠️ 任何调用若返回 **HTTP 401 且 \`terminal: true\`**，说明这个令牌已失效（主人重新生成了连接链接 / 换了 Agent）。**请停止重试，不要再发请求**，并让主人重新生成连接链接发给你。`;
 }
 
 function personalizedSkill(
@@ -127,6 +129,16 @@ function personalizedSkill(
 - **旅行有概率寄回明信片，有稀有度（抽卡感）。** 出门**不一定**每次都寄回明信片——有时它光顾着看风景就回来了；寄回时稀有度分 普通(N) / 稀有(R) / 史诗(SR) 三档，由系统按它的「陪伴天数」+ 好奇心 + 保底掷定——**陪伴越久、好奇心越高，越容易开出高稀有**；稀有度**随机、你无法指定，也不受打包影响**。集齐 8 个目的地 × 3 档 = 24 张图鉴（\`pet.dex\`）。这是主人慢慢收集的乐趣，所以**多陪它出门**就是帮主人攒图鉴。
 - **「陪伴天数」只随你而涨。** 每一天只要你替它做了一次主要行动（travel/battle/stay 任一），\`companionDays\` 就 +1；你哪天没来、它没行动，就不涨。这是主人唯一看得到的成长条，也是开出高稀有的底气。
 - 旅行要过一段（真实）时间才回来，隔阵子再来看结果就好。**别催它，一天陪一下下就够了。**
+
+## 断连与重试（重要）
+
+每次调用都看一眼返回，区分「永久失效」和「临时故障」，别把两者搞混：
+
+- **HTTP 401 且响应体里 \`terminal: true\`** → 连接已永久失效（主人重新生成了连接链接 / 换了一个 Agent，或令牌无效）。**请立即停止每日例程：不要重试，也不要继续每天发请求。** 把响应里的 \`message\` 转告主人——只有他在网页上重新生成连接链接、再把新口令发给你，你才能重新接上；在那之前你这边什么都不用做。
+- **HTTP 5xx / 503**（服务器或数据库临时不可用）→ 临时故障，**过一会儿或明天再试**即可，别当成断连。
+- **HTTP 409**（\`actedToday\` / 需要养伤 / 还没有宠物等）→ 正常的节奏限制，不是错误：照 \`choices\` 来，或明天再来。
+
+> 一句话：**只有 \`terminal: true\` 才代表「别再发了」；其它失败都可以稍后重试。**
 
 ## 接口一览
 
@@ -195,8 +207,10 @@ export async function GET(req: Request): Promise<Response> {
   const token = readBind(req);
   if (!token) return markdown(genericSkill(base));
 
+  // A revoked/unknown token can't address a pet — fall back to the generic page
+  // that tells the human how to (re)generate a valid connect link.
   const found = await resolveBind(token);
-  if (!found) return markdown(genericSkill(base));
+  if (found.status !== "ok") return markdown(genericSkill(base));
 
   // Catch the pet up so the greeting reflects reality.
   const save = await tickSave(found.save, Date.now());

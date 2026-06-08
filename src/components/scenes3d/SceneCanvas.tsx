@@ -89,21 +89,27 @@ function ZoomApplier({ min, max }: { min: number; max: number }) {
   return null;
 }
 
-// Flip every mesh in the scene to cast + receive shadows (for the first ~1.5s,
-// to catch async/Suspense-mounted meshes) so sunlight reads without hand-
-// flagging hundreds of meshes.
+// Flag meshes for shadowing (for the first ~1s, to catch async/Suspense-mounted
+// meshes) so sunlight reads without hand-flagging every mesh. The discipline
+// that keeps this cheap: EVERY mesh casts (a low-poly prop's depth pass is
+// trivial), but only BIG meshes RECEIVE — receiving means per-fragment shadow
+// sampling in the main pass, so letting hundreds of tiny flowers/pebbles sample
+// the map is pure waste. The island, floors, walls and house roof (the surfaces
+// you actually see a shadow fall on) clear the size gate; confetti props don't.
+const RECEIVE_MIN_RADIUS = 1.2;
 function ShadowEnabler() {
   const scene = useThree((s) => s.scene);
   const frames = useRef(0);
   useFrame(() => {
-    if (frames.current > 90) return;
+    if (frames.current > 60) return;
     frames.current += 1;
     scene.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (mesh.isMesh) {
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-      }
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      const geo = mesh.geometry;
+      if (geo && !geo.boundingSphere) geo.computeBoundingSphere();
+      mesh.receiveShadow = (geo?.boundingSphere?.radius ?? 0) >= RECEIVE_MIN_RADIUS;
     });
   });
   return null;
@@ -226,7 +232,10 @@ export default function SceneCanvas({
       key={instanceKey}
       className={className}
       orthographic={orthographic}
-      shadows={sun ? "soft" : false}
+      // PCF (not soft/PCFSoft) — crisp enough for low-poly, far cheaper. The
+      // sun's own shadow params (1024 map + tight frustum) live in SkyWeather /
+      // the static directional below.
+      shadows={sun ? "percentage" : false}
       dpr={dpr}
       gl={{ alpha: true, antialias: true, powerPreference: "default" }}
       camera={camera}
@@ -237,18 +246,21 @@ export default function SceneCanvas({
       {sun && <ShadowEnabler />}
       {sky ? (
         <>
-          {/* fixed sun + fill lights */}
-          <SkyWeather weather={weather} />
+          {/* fixed sun + fill lights; casts a real (disciplined) shadow when the
+              scene opts into `sun` */}
+          <SkyWeather weather={weather} castShadow={sun} />
           {/* soft contact shadows (小阴影) under the ground-level objects — adds
               grounding/depth without darkening the bright scene. far is low so it
-              only catches the pet + furniture + yard props, not the whole house. */}
+              only catches the pet + furniture + yard props, not the whole house.
+              When the real sun shadow is on, this drops to a faint AO so the two
+              don't stack into a muddy blob. */}
           <ContactShadows
             position={[-0.6, 0.07, -1.0]}
             scale={17}
             resolution={256}
             blur={2.6}
             far={1.7}
-            opacity={0.32}
+            opacity={sun ? 0.16 : 0.32}
             color="#8a6a48"
           />
         </>

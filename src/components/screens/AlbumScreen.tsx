@@ -8,11 +8,10 @@ import PostcardArt from "../ui/PostcardArt";
 import { RARITY_META } from "../ui/rarity";
 import { Panel, PrimaryButton, ScreenHeader } from "../ui/kit";
 
-type Tab = "cards" | "keepsakes" | "battles";
+type Tab = "cards" | "battles";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "cards", label: "明信片" },
-  { id: "keepsakes", label: "手信" },
   { id: "battles", label: "切磋" },
 ];
 
@@ -28,14 +27,20 @@ function fmtDate(iso: string): string {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 }
 
-function Empty({ text }: { text: string }) {
-  return <p className="py-14 text-center text-sm leading-relaxed text-ink-soft/80">{text}</p>;
+function Empty({ emoji, text }: { emoji: string; text: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3.5 py-16 text-center">
+      <span className="grid h-16 w-16 place-items-center rounded-full border-2 border-dashed border-[#bd8a52]/40 bg-cream-soft text-3xl">
+        {emoji}
+      </span>
+      <p className="max-w-[230px] text-sm leading-relaxed text-ink-soft/80">{text}</p>
+    </div>
+  );
 }
 
 export default function AlbumScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const postcards = useGameStore((s) => s.postcards);
-  const souvenirs = useGameStore((s) => s.souvenirs);
   const battles = useGameStore((s) => s.battleRecords);
   const pendingId = useGameStore((s) => s.pendingPostcardId);
   const openPostcard = useGameStore((s) => s.openPostcard);
@@ -72,7 +77,7 @@ export default function AlbumScreen() {
       <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-5 py-4">
         {tab === "cards" &&
           (postcards.length === 0 ? (
-            <Empty text="我还没往家寄明信片呢。等我出趟远门。" />
+            <Empty emoji="💌" text="我还没往家寄明信片呢。等我出趟远门，把远方寄回来给你。" />
           ) : (
             <div className="space-y-3">
               <p className="px-1 text-[12px] leading-relaxed text-ink-soft/85">
@@ -116,30 +121,9 @@ export default function AlbumScreen() {
             </div>
           ))}
 
-        {tab === "keepsakes" &&
-          (souvenirs.length === 0 ? (
-            <Empty text="我还没带回手信呢。等我走远一点。" />
-          ) : (
-            <ul className="space-y-2.5">
-              {souvenirs.map((s, i) => (
-                <li key={i}>
-                  <Panel sketch={false} className="flex items-center gap-3 px-4 py-3">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-[#bd8a52]/30 bg-cream-soft text-2xl">
-                      🎁
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-hand text-[16px] text-ink">{s}</span>
-                      <span className="text-[12px] text-ink-soft">某天，我从远方带回来的</span>
-                    </span>
-                  </Panel>
-                </li>
-              ))}
-            </ul>
-          ))}
-
         {tab === "battles" &&
           (battles.length === 0 ? (
-            <Empty text="还没跟谁比过。等我有精神的日子吧。" />
+            <Empty emoji="🤝" text="还没跟谁切磋过。等我有精神的日子，去会会岛上的小伙伴。" />
           ) : (
             <ul className="space-y-2.5">
               {battles.map((b) => {
@@ -181,7 +165,6 @@ export default function AlbumScreen() {
       </div>
 
       {((tab === "cards" && postcards.length === 0) ||
-        (tab === "keepsakes" && souvenirs.length === 0) ||
         (tab === "battles" && battles.length === 0)) && (
         <div className="shrink-0 px-5 pb-5">
           <PrimaryButton onClick={() => goTo("home")}>回小屋看看</PrimaryButton>

@@ -8,7 +8,6 @@ import { companionStats } from "@/game/companionLevel";
 import { useGameStore } from "@/state/gameStore";
 import HomeModel from "../scenes3d/home/HomeModel";
 import HomeColliders from "../scenes3d/home/HomeColliders";
-import PhysicsToy from "../scenes3d/home/PhysicsToy";
 import InteractionLayer from "../scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
@@ -199,6 +198,10 @@ export default function HomeScreen() {
           controls="orbit"
           orthographic
           sky
+          // disciplined real sun-shadow (1024 map + tight frustum + PCF, see
+          // SkyWeather). Drop this one prop to fall back to the zero-risk,
+          // ContactShadows-only sunny look if a phone shows context loss.
+          sun
           physics
           dpr={[1, 1]}
           cameraPosition={[6, 7, 12]}
@@ -223,7 +226,7 @@ export default function HomeScreen() {
               tap-to-move ground catcher */}
           <HomeColliders />
           {/* physics pet (tap to move) — gone from the scene while it's out
-              traveling; a reference physics prop (tap to toss) stays */}
+              traveling */}
           {!away && (
             <RoamingCompanion
               type={companion.type}
@@ -233,7 +236,6 @@ export default function HomeScreen() {
               clickLines={ready ? READY_LINES : IDLE_LINES}
             />
           )}
-          <PhysicsToy />
           <InteractionLayer />
         </SceneCanvas>
       </div>

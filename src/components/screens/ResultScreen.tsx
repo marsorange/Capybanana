@@ -100,16 +100,6 @@ export default function ResultScreen() {
             </Panel>
           </motion.div>
 
-          {result.souvenir && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
-              <Panel sketch={false} className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm text-ink-soft">
-                <span className="text-lg">🎁</span>
-                <span>
-                  我带回了 <b className="text-ink">{result.souvenir}</b>
-                </span>
-              </Panel>
-            </motion.div>
-          )}
         </div>
 
         <div className="shrink-0 px-5 pb-6 pt-3">

@@ -10,7 +10,6 @@ import {
   PRIMARY_COLORS,
 } from "@/game/labels";
 import { companionStats } from "@/game/companionLevel";
-import { TOTAL_CARDS } from "@/game/gacha";
 import { useGameStore } from "@/state/gameStore";
 import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
@@ -38,7 +37,6 @@ export default function ProfileScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const capy = useGameStore((s) => s.capyState);
   const postcards = useGameStore((s) => s.postcards);
-  const souvenirs = useGameStore((s) => s.souvenirs);
   const companionDays = useGameStore((s) => s.companionDays);
   const cardDex = useGameStore((s) => s.cardDex);
   const goTo = useGameStore((s) => s.goTo);
@@ -122,10 +120,9 @@ export default function ProfileScreen() {
         </Panel>
 
         {/* records */}
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           <RecordTile value={postcards.length} label="明信片" />
-          <RecordTile value={`${cardDex.length}/${TOTAL_CARDS}`} label="图鉴" />
-          <RecordTile value={souvenirs.length} label="手信" />
+          <RecordTile value={cardDex.length} label="图鉴" />
         </div>
 
         {/* identity chips */}

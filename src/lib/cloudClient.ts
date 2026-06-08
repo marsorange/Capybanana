@@ -8,8 +8,10 @@ import type { CloudSave } from "@/server/types";
 
 export interface LoginResult {
   user: { id: string; email: string | null };
-  bindToken: string;
-  connectUrl: string;
+  bindToken: string; // the web session token (cloud.bindToken)
+  // The Agent bind link — null on a returning login once an Agent is bound (the
+  // web reuses its persisted connectUrl, or the owner regenerates it on demand).
+  connectUrl: string | null;
   save: CloudSave;
 }
 
@@ -82,4 +84,7 @@ export const cloud = {
   // Tuck the waiting postcard into the album.
   collect: (token: string) =>
     call<MutationResult>("POST", "/api/web/collect", token),
+  // Mint a fresh Agent bind link (revokes the old one → old Agent disconnects).
+  regenerateAgentLink: (token: string) =>
+    call<{ ok: true; connectUrl: string }>("POST", "/api/auth/agent-link", token),
 };

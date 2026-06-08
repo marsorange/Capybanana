@@ -8,16 +8,37 @@ export function jsonError(message: string, status = 400): Response {
   return Response.json({ ok: false, error: message }, { status });
 }
 
+type AuthErrorCode = "missing_token" | "invalid_token" | "connection_revoked";
+
+// A *terminal* auth failure (HTTP 401, `terminal: true`): the Agent should stop
+// its daily loop and not retry — as opposed to a transient 5xx/503, which it
+// should retry later. skill.md spells this contract out for the Agent.
+const AUTH_ERROR_MESSAGE: Record<AuthErrorCode, string> = {
+  missing_token:
+    "缺少 bind 令牌（用 ?bind= 或 Authorization: Bearer）。请停止每日例程，并让主人在网页上重新生成连接链接发给你。",
+  invalid_token:
+    "绑定令牌无效。请停止每日例程、不要重试；让主人在网页上重新生成连接链接并发给你。",
+  connection_revoked:
+    "这个连接已失效：主人重新生成了连接链接（或换了一个 Agent）。请立即停止每日例程、不要再每天发请求。若主人还想让你继续照看，会把新的连接链接发给你。",
+};
+
+export function authError(code: AuthErrorCode): Response {
+  return Response.json(
+    { ok: false, error: code, terminal: true, message: AUTH_ERROR_MESSAGE[code] },
+    { status: 401 },
+  );
+}
+
 /** Resolve the caller's bind token → owner + current (pre-tick) save. */
 export async function authed(
   req: Request,
 ): Promise<{ user: User; save: CloudSave } | Response> {
   const token = readBind(req);
-  if (!token)
-    return jsonError("缺少 bind 令牌（用 ?bind= 或 Authorization: Bearer）", 401);
-  const found = await resolveBind(token);
-  if (!found) return jsonError("无效或已失效的 bind 令牌", 401);
-  return found;
+  if (!token) return authError("missing_token");
+  const r = await resolveBind(token);
+  if (r.status === "revoked") return authError("connection_revoked");
+  if (r.status === "unknown") return authError("invalid_token");
+  return { user: r.user, save: r.save };
 }
 
 /** Persist the save and reply with the standard envelope (raw save + summary). */

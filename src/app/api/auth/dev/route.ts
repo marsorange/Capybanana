@@ -35,14 +35,18 @@ export async function POST(req: Request): Promise<Response> {
 
   const identity = normalizeIdentity(body.identity);
   const email = `${identity}@local.dev`;
-  const { user, save } = await loginByDevIdentity(identity, email);
+  const { user, save, connectToken } = await loginByDevIdentity(identity, email);
 
   const now = Date.now();
   // No auto-created pet — the Agent binds & registers it via POST /api/agent/create.
   const ticked = await tickSave(save, now);
   if (ticked.rev !== save.rev) await savePet(user.petId, ticked);
 
-  const connectUrl = `${baseUrl(req)}/agent/skill.md?bind=${user.bindToken}`;
+  // See the supabase route: connectToken is null once an Agent is bound; the web
+  // reuses its persisted connectUrl or regenerates explicitly.
+  const connectUrl = connectToken
+    ? `${baseUrl(req)}/agent/skill.md?bind=${connectToken}`
+    : null;
   return Response.json({
     ok: true,
     user: { id: user.id, email: user.email },

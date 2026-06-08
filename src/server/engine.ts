@@ -633,7 +633,6 @@ export async function startBattle(
         ? "它找了个路过的小家伙切磋了一场。"
         : `它和「${opponent.snapshot.name}」切磋了一场。`),
     effects: { ...BATTLE_EFFECTS[verdict.result], injury: verdict.injury },
-    souvenir: verdict.spoils,
     memory: `和「${opponent.snapshot.name}」切磋，${
       verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了"
     }。`,

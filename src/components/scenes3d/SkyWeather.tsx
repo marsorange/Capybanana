@@ -4,10 +4,15 @@ import * as THREE from "three";
 
 // A small fixed SUN + WEATHER light rig for the diorama. It owns the scene's
 // lights when mounted, so SceneCanvas renders it instead of the static lights.
-// Kept light on purpose — only sunshine ("clear") and overcast ("cloudy"); the
-// sun does NOT cast real-time shadows (that was the home scene's biggest GPU
-// cost + WebGL-context-loss trigger). Grounding comes from SceneCanvas's cheap
-// ContactShadows instead.
+// Kept light on purpose — only sunshine ("clear") and overcast ("cloudy").
+//
+// SHADOWS: off by default. When `castShadow` is on, the ONE sun casts a real
+// shadow with a DISCIPLINED budget — a small 1024 map, a frustum tightened to
+// just the island (so a small map still reads crisp), and PCF (not soft) on the
+// Canvas. The 2026-06-08 context-loss spiral came from the opposite of all that
+// (2048 map + soft filter + EVERY mesh flagged castShadow, stacked on Rapier);
+// "reliable shadows" is a budget question, not a Three.js-version one. With the
+// sun off, grounding still comes from SceneCanvas's cheap ContactShadows.
 export type Weather = "clear" | "cloudy";
 
 const NOON = new THREE.Color("#fff4dc");
@@ -37,28 +42,57 @@ function sunAt(t: number) {
 export default function SkyWeather({
   weather = "clear",
   start = 0.47,
+  castShadow = false,
 }: {
   weather?: Weather;
   speed?: number; // retained for API compatibility; the home light is fixed.
   start?: number; // initial time-of-day (0.47 = soft late morning)
+  castShadow?: boolean; // let the ONE sun cast a real (disciplined) shadow
 }) {
   const s = sunAt(start);
-  const wDim = weather === "clear" ? 1 : 0.8;
-  const ambientIntensity = (0.34 + s.elev * 0.08) * (weather === "cloudy" ? 1.1 : 1);
-  const hemiIntensity = (0.46 + s.elev * 0.12) * wDim;
+  const clear = weather === "clear";
+  const wDim = clear ? 1 : 0.8;
+  // Lower the flat fill (ambient + hemi + sky bounce) and let the directional
+  // SUN dominate, so low-poly facets pick up a real lit/shaded split — that
+  // light-vs-shade contrast is what reads as "sunshine". Overcast lifts the fill
+  // back up and dims the sun so it goes soft + even instead.
+  const ambientIntensity = (clear ? 0.22 : 0.42) + s.elev * 0.06;
+  const hemiIntensity = (clear ? 0.3 : 0.46 + s.elev * 0.12) * wDim;
+  // A clear-day sun runs hotter so the contrast (and, when on, the cast shadow)
+  // really lands; overcast keeps the gentle even wash.
+  const sunIntensity = s.intensity * wDim * (clear ? 1.5 : 1);
 
   return (
     <>
       <hemisphereLight args={["#fffdfa", "#eadbbd", hemiIntensity]} />
       <ambientLight intensity={ambientIntensity} color="#fff7ee" />
-      {/* fixed sun — lights only, no real-time shadow map (see file header) */}
+      {/* fixed sun — the scene's key light, and (opt-in) the only shadow caster.
+          Shadow budget kept tight on purpose: 1024 map + a frustum hugging the
+          island so texel density stays high without a big map. PCF vs soft is
+          chosen on the Canvas (SceneCanvas shadows="percentage"). */}
       <directionalLight
         position={[s.dir.x, s.dir.y, s.dir.z]}
-        intensity={s.intensity * wDim}
+        intensity={sunIntensity}
         color={s.color}
+        castShadow={castShadow}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-near={1}
+        shadow-camera-far={42}
+        shadow-camera-left={-9}
+        shadow-camera-right={9}
+        shadow-camera-top={9}
+        shadow-camera-bottom={-9}
+        shadow-bias={-0.0006}
+        shadow-normalBias={0.035}
       />
-      {/* cool sky bounce so shadowed faces still read */}
-      <directionalLight position={[-7, 5, -3]} intensity={0.36} color="#d7e5f8" />
+      {/* cool sky bounce so shadowed faces still read — kept low so the sun keeps
+          its contrast */}
+      <directionalLight
+        position={[-7, 5, -3]}
+        intensity={clear ? 0.24 : 0.36}
+        color="#d7e5f8"
+      />
     </>
   );
 }

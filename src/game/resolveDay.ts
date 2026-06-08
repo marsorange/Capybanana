@@ -42,15 +42,6 @@ const TRAITS = [
   "爱睡懒觉",
 ];
 
-const SOUVENIRS = [
-  "一颗圆圆的小石头",
-  "半张旧车票",
-  "一片会发光的叶子",
-  "一枚有点咸的贝壳",
-  "一颗不知名的种子",
-  "一张皱巴巴的糖纸",
-];
-
 const WEIRD_USES = [
   "一顶帽子",
   "一把奇怪的乐器",
@@ -174,12 +165,10 @@ export function resolveDay(
   };
 
   if (kind === "travel") {
-    const souvenir = Math.random() < 0.6 ? pick(SOUVENIRS) : undefined;
     const hurt = Math.random() < TRAVEL_HURT_CHANCE ? TRAVEL_HURT_AMOUNT : 0;
     const baseTravel = {
       ...base,
       effects: { ...EFFECTS.travel, injury: hurt },
-      souvenir,
       trait: maybeTrait(capy.traits),
     };
     // Not every trip comes home with a postcard.

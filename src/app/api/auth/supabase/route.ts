@@ -61,7 +61,7 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Google 登录校验失败，请重新登录", 401);
   }
 
-  const { user, save } = await loginBySupabase(
+  const { user, save, connectToken } = await loginBySupabase(
     data.user.id,
     data.user.email ?? null,
   );
@@ -73,7 +73,13 @@ export async function POST(req: Request): Promise<Response> {
   const ticked = await tickSave(save, now);
   if (ticked.rev !== save.rev) await savePet(user.petId, ticked);
 
-  const connectUrl = `${baseUrl(req)}/agent/skill.md?bind=${user.bindToken}`;
+  // connectToken (the Agent bind link) is only re-minted while petless; once an
+  // Agent is bound it's null and the web reuses the connectUrl it persisted (or
+  // the owner regenerates it from the connect screen). bindToken is the web
+  // session token — a separate scope, so login never disconnects the Agent.
+  const connectUrl = connectToken
+    ? `${baseUrl(req)}/agent/skill.md?bind=${connectToken}`
+    : null;
   return Response.json({
     ok: true,
     user: { id: user.id, email: user.email },
