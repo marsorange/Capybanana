@@ -5,12 +5,7 @@ import { motion } from "framer-motion";
 
 import { useGameStore } from "@/state/gameStore";
 import { isSupabaseConfigured, signInWithGoogle } from "@/lib/supabaseClient";
-
-// Full-bleed cover art for the login screen. Until a real illustration exists we
-// render NOTHING here — the warm `screen-bg` gradient is the backdrop. (Pointing
-// at a missing file just spammed a 404 on every login.) When the art is ready,
-// drop it in public/ and set BG_IMAGE to its path, e.g. "/login-bg.png".
-const BG_IMAGE = "";
+import ScreenArtwork from "../ui/ScreenArtwork";
 
 export default function LoginScreen() {
   const cloudBusy = useGameStore((s) => s.cloudBusy);
@@ -48,16 +43,12 @@ export default function LoginScreen() {
     // pinned to the bottom. `screen-bg` is the warm fallback before the art
     // loads; the image layer sits on top of it.
     <div className="screen-bg relative flex h-full flex-col overflow-hidden">
-      {/* background illustration (drop art in public/ + set BG_IMAGE) */}
-      {BG_IMAGE && (
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${BG_IMAGE})` }}
-        />
-      )}
-      {/* legibility scrim: faint warm wash up top for the title, soft shade at
-          the bottom so the button + footer read on any art */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-cream/30 via-transparent to-[rgba(38,28,22,0.32)]" />
+      <ScreenArtwork
+        src="/art/lowpoly-login-ref.png"
+        priority
+        overlay="login"
+        imageClassName="object-[50%_50%]"
+      />
 
       <div className="relative z-10 flex h-full flex-col px-6 pb-8 pt-[13vh]">
         <motion.div
@@ -119,7 +110,7 @@ export default function LoginScreen() {
             </p>
           )}
 
-          <p className="flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-cream-soft/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)]">
+          <p className="mx-auto flex w-fit max-w-full items-center justify-center gap-1.5 rounded-full bg-paper/72 px-3 py-1.5 text-center text-[11px] leading-relaxed text-ink-soft shadow-[0_4px_14px_-10px_rgba(58,46,42,0.55)] backdrop-blur-sm">
             <LockMark className="h-3 w-3 shrink-0" />
             {isSupabaseConfigured
               ? "我的小屋、来信和慢慢长大的样子，都会替你收着"

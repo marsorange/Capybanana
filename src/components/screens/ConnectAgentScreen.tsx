@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useGameStore } from "@/state/gameStore";
 import { Panel, PrimaryButton, ScreenHeader } from "../ui/kit";
+import ScreenArtwork from "../ui/ScreenArtwork";
 
 // The daily ritual in the pet's own voice — simple, few words (旅行青蛙 vibe):
 // you pack a little bag, the Agent listens for it, and it sends the day back.
@@ -77,14 +78,21 @@ export default function ConnectAgentScreen() {
         : { eyebrow: "小岛口令", title: "接入 Agent" };
 
   return (
-    <div className="screen-bg relative flex h-full flex-col">
+    <div className="screen-bg relative flex h-full flex-col overflow-hidden">
+      <ScreenArtwork
+        src="/art/lowpoly-agent-ref.png"
+        overlay="panel"
+        imageClassName="object-[50%_50%]"
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-28 bg-gradient-to-b from-cream-soft/85 via-cream-soft/42 to-transparent" />
+
       <ScreenHeader
         onBack={mode === "revisit" ? () => goTo("home") : undefined}
         eyebrow={header.eyebrow}
         title={header.title}
       />
 
-      <div className="no-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-4 pt-5">
+      <div className="no-scrollbar relative z-10 min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-4 pt-5">
         {/* hero: what's happening / why this gate exists */}
         <Panel className="px-4 py-3.5">
           {mode === "gate" && (
@@ -148,7 +156,7 @@ export default function ConnectAgentScreen() {
         {mode !== "revisit" && <StepList />}
       </div>
 
-      <div className="shrink-0 px-5 pb-5 pt-3">
+      <div className="relative z-10 shrink-0 px-5 pb-5 pt-3">
         {mode === "gate" ? (
           <>
             <PrimaryButton disabled>等我安顿好…</PrimaryButton>
