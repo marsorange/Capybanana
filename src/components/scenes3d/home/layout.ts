@@ -1,8 +1,7 @@
 // Single source of truth for the home diorama's STRUCTURE. The visual house
-// (parts/House.tsx), the physics proxy (HomeColliders.tsx), the roaming pet
-// (RoamingCompanion.tsx) and the interaction markers (interaction/*) all derive
-// their geometry from the constants here — so the building, its colliders and
-// the navigation can never drift apart by hand-editing three files.
+// (parts/House.tsx), the roaming pet (RoamingCompanion.tsx) and the interaction
+// markers (interaction/*) all derive their geometry from the constants here — so
+// the building and the navigation can never drift apart by hand-editing files.
 
 export type Vec3 = [number, number, number];
 
@@ -24,15 +23,15 @@ export const EAVE = 4.7; //    wall-top / eave height
 export const WALL_T = 0.14; //  unified wall thickness
 
 // ---------------------------------------------------------------------------
-// Straight staircase — in the right bay, running along z at a constant x, so it
-// is a single tilted ramp the pet climbs with the Rapier character controller
-// (no scripted glide). Bottom sits at the front; top lands on the loft's back
+// Straight staircase — in the right bay, running along z at a constant x. The
+// walker routes a bottom→top waypoint leg here and lerps its y across the rise,
+// so it reads as climbing. Bottom sits at the front; top lands on the loft's back
 // landing strip (z = STAIR_TOP.z = the landing's front edge → no overhang).
 export const STAIR_X = -0.7;
 export const STAIR_WIDTH = 0.95;
 export const STAIR_LEFT = STAIR_X - STAIR_WIDTH / 2; // -1.175, the loft's right edge
-// Bottom pulled back (shorter run) so the flight is STEEPER (~42°, still under the
-// controller's 50° climb cap) — matches the reference's tighter staircase.
+// Bottom pulled back (shorter run) so the flight is STEEPER — matches the
+// reference's tighter staircase.
 export const STAIR_BOTTOM: Vec3 = [STAIR_X, 0, -1.15];
 export const STAIR_TOP: Vec3 = [STAIR_X, FLOOR_H, -3.6];
 export const STAIR_RUN = Math.hypot(

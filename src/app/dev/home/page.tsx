@@ -1,17 +1,15 @@
 "use client";
 
 // TEMPORARY dev-only verification route for the home diorama (the real home
-// scene is behind login). Mirrors HomeScreen's SceneCanvas so colliders, the
-// roaming pet and the stairs can be checked here. Safe to delete.
-import { useState } from "react";
+// scene is behind login). Mirrors HomeScreen's SceneCanvas so the floor catcher
+// and the roaming pet can be checked here. Safe to delete.
 import SceneCanvas from "@/components/scenes3d/SceneCanvas";
 import HomeModel from "@/components/scenes3d/home/HomeModel";
-import HomeColliders from "@/components/scenes3d/home/HomeColliders";
+import HomeFloor from "@/components/scenes3d/home/HomeFloor";
 import InteractionLayer from "@/components/scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "@/components/scenes3d/RoamingCompanion";
 
 export default function DevHome() {
-  const [debug, setDebug] = useState(false);
   return (
     <div style={{ position: "fixed", inset: 0, background: "#f6ecd8" }}>
       <SceneCanvas
@@ -19,8 +17,6 @@ export default function DevHome() {
         orthographic
         sun
         sky
-        physics
-        debugPhysics={debug}
         cameraPosition={[6, 7, 12]}
         target={[-0.6, 0.4, -0.8]}
         zoom={38}
@@ -32,7 +28,7 @@ export default function DevHome() {
         bendStrength={0}
       >
         <HomeModel mode="home" />
-        <HomeColliders />
+        <HomeFloor />
         <RoamingCompanion
           type="capybara"
           color="#a87b4f"
@@ -42,24 +38,6 @@ export default function DevHome() {
         />
         <InteractionLayer />
       </SceneCanvas>
-      <div
-        style={{
-          position: "absolute",
-          left: 12,
-          bottom: 12,
-          fontFamily: "monospace",
-          fontSize: 12,
-        }}
-      >
-        <label>
-          <input
-            type="checkbox"
-            checked={debug}
-            onChange={(e) => setDebug(e.target.checked)}
-          />{" "}
-          debug colliders
-        </label>
-      </div>
     </div>
   );
 }

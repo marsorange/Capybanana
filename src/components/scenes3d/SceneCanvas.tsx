@@ -2,7 +2,6 @@
 
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Physics } from "@react-three/rapier";
 import type { ReactNode } from "react";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -28,12 +27,6 @@ interface SceneCanvasProps {
   // the home diorama uses it.
   sky?: boolean;
   weather?: Weather;
-  // Opt into a Rapier (Rust→WASM) physics world wrapping the scene content.
-  // Only scenes with rigid bodies / colliders (the home scene) need this; the
-  // portrait turntables stay non-physics.
-  physics?: boolean;
-  gravity?: [number, number, number];
-  debugPhysics?: boolean; // draw collider wireframes while tuning
   // "Tiny-planet" curl of the shared toon materials. 0 = flat (the turntables);
   // the home diorama dials in a subtle curl so the island edges droop like a
   // little planet. See sceneBend in materials.ts.
@@ -176,9 +169,6 @@ export default function SceneCanvas({
   sun = false,
   sky = false,
   weather = "clear",
-  physics = false,
-  gravity = [0, -9.81, 0],
-  debugPhysics = false,
   bendStrength = 0,
   bendCenter = FLAT_CENTER,
   bendFalloff = 0.05,
@@ -291,15 +281,7 @@ export default function SceneCanvas({
         </>
       )}
 
-      <Suspense fallback={null}>
-        {physics ? (
-          <Physics gravity={gravity} debug={debugPhysics}>
-            {children}
-          </Physics>
-        ) : (
-          children
-        )}
-      </Suspense>
+      <Suspense fallback={null}>{children}</Suspense>
 
       {orthographic && <ZoomApplier min={minZoom} max={maxZoom} />}
 

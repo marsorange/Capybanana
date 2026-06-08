@@ -29,9 +29,9 @@ export function getToonGradient(): THREE.DataTexture {
 // the home scene dials in a subtle curl. The vertex shader pulls each vertex's
 // world Y down by the squared horizontal distance from `center`, so geometry
 // near the island middle (where the pet actually walks) barely moves while the
-// edges droop into a little planet. Colliders are hand-authored and stay flat
-// by design — the pet's lane is the un-bent middle, so they never disagree
-// where it matters.
+// edges droop into a little planet. This is a VISUAL-only displacement; the pet
+// walks on the flat un-bent middle (its world position is plain Three.js math),
+// so the look and the navigation never disagree where it matters.
 export const sceneBend = {
   strength: { value: 0 },
   center: { value: new THREE.Vector3(0, 0, 0) },
@@ -159,22 +159,6 @@ export function toonFromStandard(
     (mat as unknown as { flatShading: boolean }).flatShading = true;
   }
   applyToonShaderPatch(mat, opts.rim ?? 0.45);
-  return mat;
-}
-
-// Shared, cached flat-shaded material. Lambert (matte diffuse) is the cheap path
-// reserved for DYNAMIC physics props (PhysicsToy etc.): they tumble through the
-// scene, so we deliberately keep them OUT of the planet bend (a rolling ball
-// shouldn't warp) and off the toon ramp to save a shader program. Static decor
-// should use `toonMaterial` instead.
-const flatMaterialCache = new Map<string, THREE.MeshLambertMaterial>();
-
-export function flatMaterial(hex: string): THREE.MeshLambertMaterial {
-  let mat = flatMaterialCache.get(hex);
-  if (!mat) {
-    mat = new THREE.MeshLambertMaterial({ color: hex, flatShading: true });
-    flatMaterialCache.set(hex, mat);
-  }
   return mat;
 }
 

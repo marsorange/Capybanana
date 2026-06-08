@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { companionStats } from "@/game/companionLevel";
 import { useGameStore } from "@/state/gameStore";
 import HomeModel from "../scenes3d/home/HomeModel";
-import HomeColliders from "../scenes3d/home/HomeColliders";
+import HomeFloor from "../scenes3d/home/HomeFloor";
 import InteractionLayer from "../scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
@@ -76,7 +76,7 @@ function EntryBar({ goTo }: { goTo: (s: "home" | "pack" | "album") => void }) {
       transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
       className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-5 pb-4"
     >
-      <div className="ui-bottom-dock pointer-events-auto grid h-[88px] w-full max-w-[350px] grid-cols-3 gap-1 rounded-[30px] p-1.5">
+      <div className="ui-bottom-dock pointer-events-auto grid h-[96px] w-full max-w-[350px] grid-cols-3 gap-1 rounded-[30px] p-1.5">
         {items.map((it) => (
           <button
             key={it.key}
@@ -202,7 +202,6 @@ export default function HomeScreen() {
           // SkyWeather). Drop this one prop to fall back to the zero-risk,
           // ContactShadows-only sunny look if a phone shows context loss.
           sun
-          physics
           dpr={[1, 1]}
           cameraPosition={[6, 7, 12]}
           target={[-0.6, 0.7, -0.8]}
@@ -222,10 +221,9 @@ export default function HomeScreen() {
             onOpenPack={() => goTo("pack")}
             onOpenAlbum={() => goTo("album")}
           />
-          {/* lean physical proxy the pet + props collide against; also the
-              tap-to-move ground catcher */}
-          <HomeColliders />
-          {/* physics pet (tap to move) — gone from the scene while it's out
+          {/* invisible floor: the tap-to-move pick target (native raycast) */}
+          <HomeFloor />
+          {/* roaming pet (tap to move) — gone from the scene while it's out
               traveling */}
           {!away && (
             <RoamingCompanion
