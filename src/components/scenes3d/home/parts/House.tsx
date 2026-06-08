@@ -1,8 +1,8 @@
 "use client";
 
 import { RoundedBox } from "@react-three/drei";
-import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import type { ThreeEvent } from "@react-three/fiber";
+import { useMemo } from "react";
 import * as THREE from "three";
 import { getDestination } from "@/game/destinations";
 import type { DestinationTheme } from "@/game/types";
@@ -501,26 +501,8 @@ function RoofSlope({
   );
 }
 
-// A stone chimney with a lazily rising, looping plume of faceted smoke puffs —
-// the cottage's "someone's home" signal (placed in the roof group's local space).
+// A small stone chimney placed in the roof group's local space.
 function Chimney() {
-  const smoke = useRef<THREE.Group>(null);
-  useFrame((s) => {
-    const g = smoke.current;
-    if (!g) return;
-    const t = s.clock.elapsedTime;
-    const n = g.children.length;
-    g.children.forEach((c, i) => {
-      const mesh = c as THREE.Mesh;
-      const phase = ((t / 4.2 + i / n) % 1 + 1) % 1;
-      mesh.position.y = phase * 2.4;
-      mesh.position.x = Math.sin(phase * 3 + i) * 0.26;
-      // big billowing puffs: start chunky off the stack, swell as they rise
-      mesh.scale.setScalar(0.7 + phase * 1.25);
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      mat.opacity = 0.72 * (1 - phase) * Math.min(1, phase * 4);
-    });
-  });
   return (
     <group position={[0.55, 0.72, -1.0]}>
       {/* gray faceted STONE stack on the right slope */}
@@ -545,21 +527,6 @@ function Chimney() {
         <boxGeometry args={[0.58, 0.14, 0.58]} />
         {m("#6f6759")}
       </mesh>
-      <group ref={smoke} position={[0, 1.34, 0]}>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <mesh key={i}>
-            <icosahedronGeometry args={[0.28, 0]} />
-            <meshStandardMaterial
-              color="#f4f1ea"
-              transparent
-              opacity={0.62}
-              roughness={1}
-              flatShading
-              depthWrite={false}
-            />
-          </mesh>
-        ))}
-      </group>
     </group>
   );
 }
@@ -764,7 +731,7 @@ export default function House({
             <Beam a={[gx, 0.04, 2.22]} b={[gx, 1.78, 0.04]} w={0.15} color={WOOD} />
           </group>
         ))}
-        {/* gray STONE chimney + big smoke, on the RIGHT slope above the hearth */}
+        {/* gray STONE chimney on the RIGHT slope above the hearth */}
         <Chimney />
       </group>
 
@@ -948,8 +915,8 @@ export default function House({
           <MiniCapy pos={[0.2, 0.04, 0]} />
         </group>
         <Frame pos={[-2.5, 1.42, ZB + 0.12]} color="#9ec3d6" w={0.36} h={0.42} />
-        {/* (indoor stone fireplace + chimney breast removed per request — the
-            loft is kept simple; only the small roof chimney + smoke remain) */}
+      {/* (indoor stone fireplace + chimney breast removed per request — the
+            loft is kept simple; only the small roof chimney remains) */}
       </group>
 
       {/* outdoor notice board by the entrance (diegetic -> album). Self-contained

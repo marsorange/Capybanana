@@ -24,8 +24,8 @@ interface SceneCanvasProps {
   minPolar?: number;
   maxPolar?: number;
   sun?: boolean; // enable a real shadow-casting sun
-  // Opt into the dynamic SUN + WEATHER system (a day-cycle sun + drifting clouds
-  // + optional rain). Replaces the static lights; the home diorama uses it.
+  // Opt into the dynamic SUN + WEATHER light system. Replaces the static lights;
+  // the home diorama uses it.
   sky?: boolean;
   weather?: Weather;
   // Opt into a Rapier (Rust→WASM) physics world wrapping the scene content.
@@ -237,7 +237,7 @@ export default function SceneCanvas({
       {sun && <ShadowEnabler />}
       {sky ? (
         <>
-          {/* dynamic day-cycle sun + drifting clouds + optional rain */}
+          {/* fixed sun + fill lights */}
           <SkyWeather weather={weather} />
           {/* soft contact shadows (小阴影) under the ground-level objects — adds
               grounding/depth without darkening the bright scene. far is low so it
@@ -248,7 +248,7 @@ export default function SceneCanvas({
             resolution={256}
             blur={2.6}
             far={1.7}
-            opacity={0.24}
+            opacity={0.32}
             color="#8a6a48"
           />
         </>

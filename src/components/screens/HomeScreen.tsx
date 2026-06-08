@@ -56,12 +56,9 @@ function HudIconTile({
     <button
       onClick={onClick}
       aria-label={label}
-      className="ui-wood-surface ui-wood-press pointer-events-auto grid h-[66px] w-[58px] shrink-0 place-items-center rounded-[18px] pb-1.5 pt-1.5 text-ink"
+      className="ui-wood-surface ui-wood-press pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink"
     >
-      <Icon name={icon} className="h-8 w-8 drop-shadow-[0_3px_2px_rgba(126,83,38,0.2)]" />
-      <span className="font-hand text-[12px] font-bold leading-none text-[#6b4f2e]">
-        {label}
-      </span>
+      <Icon name={icon} className="h-7 w-7 drop-shadow-[0_3px_2px_rgba(126,83,38,0.18)]" />
     </button>
   );
 }
@@ -237,27 +234,27 @@ export default function HomeScreen() {
         </SceneCanvas>
       </div>
 
-      {/* game HUD: owner pill + large tactile shortcut tiles */}
+      {/* game HUD: owner pill + compact controls */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 px-3.5 pt-4">
         <motion.button
           onClick={() => goTo("profile")}
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="ui-wood-surface ui-wood-press pointer-events-auto relative flex h-[72px] min-w-0 max-w-[calc(100%-128px)] flex-1 items-center rounded-[31px] py-2.5 pl-[80px] pr-4 text-left"
+          className="ui-wood-surface ui-wood-press pointer-events-auto relative flex h-16 w-[270px] max-w-[calc(100%-96px)] items-center rounded-[28px] py-2 pl-[70px] pr-3.5 text-left"
         >
           <span className="absolute left-2 top-1/2 -translate-y-1/2">
-            <span className="ui-icon-well h-[66px] w-[66px] rounded-full shadow-[0_8px_14px_-6px_rgba(90,60,30,0.42)]">
-              <CapyAvatar className="h-[58px] w-[58px] shrink-0" />
+            <span className="ui-icon-well h-[56px] w-[56px] rounded-full shadow-[0_8px_14px_-6px_rgba(90,60,30,0.4)]">
+              <CapyAvatar className="h-12 w-12 shrink-0" />
             </span>
           </span>
           <span className="min-w-0">
-            <span className="block truncate font-hand text-[22px] leading-none text-[#4f3828]">
+            <span className="block truncate font-hand text-[20px] leading-none text-[#4f3828]">
               {companion.name}
             </span>
-            <span className="mt-2 flex items-center gap-1.5 whitespace-nowrap text-[12px] leading-none text-ink-soft">
-              <LeafGlyph className="h-4 w-4" />
-              <span className="font-hand text-[14px] font-bold text-leaf">Lv.{stats.level}</span>
+            <span className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] leading-none text-ink-soft">
+              <LeafGlyph className="h-3.5 w-3.5" />
+              <span className="font-hand text-[13px] font-bold text-leaf">Lv.{stats.level}</span>
               <span className="text-ink-soft/55">·</span>
               <span>{stats.days} 天</span>
             </span>
@@ -268,7 +265,7 @@ export default function HomeScreen() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.05, ease: "easeOut" }}
-          className="pointer-events-auto grid shrink-0 grid-cols-2 gap-2"
+          className="pointer-events-auto grid shrink-0 grid-cols-2 gap-1.5"
         >
           {bound && (
             <>

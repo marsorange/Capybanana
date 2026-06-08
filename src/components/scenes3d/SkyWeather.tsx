@@ -1,16 +1,9 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
-import { flatMaterial } from "./materials";
-
-// A small SUN + WEATHER system for the diorama. A directional "sun" arcs across
-// the sky on a slow day cycle (warm at the horizons, brighter+whiter at noon),
-// dragging the ambient/hemisphere fills with it; a drifting low-poly cloud layer
-// sits on top. Deliberately self-contained: it OWNS the scene's lights when
-// mounted, so SceneCanvas renders it instead of the static lights.
+// A small fixed SUN + WEATHER light rig for the diorama. It owns the scene's
+// lights when mounted, so SceneCanvas renders it instead of the static lights.
 // Kept light on purpose — only sunshine ("clear") and overcast ("cloudy"); the
 // sun does NOT cast real-time shadows (that was the home scene's biggest GPU
 // cost + WebGL-context-loss trigger). Grounding comes from SceneCanvas's cheap
@@ -41,109 +34,31 @@ function sunAt(t: number) {
   return { dir, color, intensity, elev, inDay };
 }
 
-function Cloud({ scale }: { scale: number }) {
-  const mat = flatMaterial("#fefdfa");
-  const puffs: [number, number, number, number][] = [
-    [0, 0, 0, 0.8],
-    [0.7, 0.04, 0.1, 0.58],
-    [-0.62, 0.02, -0.08, 0.54],
-    [0.18, 0.24, -0.05, 0.5],
-    [-0.2, 0.18, 0.12, 0.46],
-  ];
-  return (
-    <group scale={scale}>
-      {puffs.map(([x, y, z, r], i) => (
-        <mesh key={i} position={[x, y, z]} material={mat} scale={[1.3, 0.8, 1]}>
-          <icosahedronGeometry args={[r, 0]} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function Clouds({ count }: { count: number }) {
-  const group = useRef<THREE.Group>(null);
-  const data = useMemo(
-    () =>
-      Array.from({ length: count }, (_, i) => {
-        const s = Math.sin(i * 53.7) * 1000;
-        const r = (n: number) => {
-          const v = Math.sin(i * 12.9 + n) * 4375.85;
-          return v - Math.floor(v);
-        };
-        return {
-          x: (r(1) - 0.5) * 26,
-          y: 11.5 + r(2) * 3.5, // up in the sky, clear of the house
-          z: -3 - r(3) * 10, // set back behind the diorama
-          scale: 0.95 + r(4) * 1.05,
-          speed: 0.15 + r(5) * 0.2,
-          phase: s - Math.floor(s),
-        };
-      }),
-    [count],
-  );
-  useFrame((_, dt) => {
-    const g = group.current;
-    if (!g) return;
-    g.children.forEach((c, i) => {
-      c.position.x += data[i].speed * dt;
-      if (c.position.x > 14) c.position.x = -14;
-    });
-  });
-  return (
-    <group ref={group}>
-      {data.map((d, i) => (
-        <group key={i} position={[d.x, d.y, d.z]}>
-          <Cloud scale={d.scale} />
-        </group>
-      ))}
-    </group>
-  );
-}
-
 export default function SkyWeather({
   weather = "clear",
-  speed = 0,
   start = 0.47,
 }: {
   weather?: Weather;
-  speed?: number; // day fraction per second. Home defaults to fixed noon.
+  speed?: number; // retained for API compatibility; the home light is fixed.
   start?: number; // initial time-of-day (0.47 = soft late morning)
 }) {
-  const sun = useRef<THREE.DirectionalLight>(null);
-  const hemi = useRef<THREE.HemisphereLight>(null);
-  const amb = useRef<THREE.AmbientLight>(null);
-  const t = useRef(start);
+  const s = sunAt(start);
   const wDim = weather === "clear" ? 1 : 0.8;
-  const clouds = weather === "clear" ? 4 : 8;
-
-  useFrame((_, dt) => {
-    t.current = (t.current + dt * speed) % 1;
-    const s = sunAt(t.current);
-    if (sun.current) {
-      sun.current.position.copy(s.dir);
-      sun.current.color.copy(s.color);
-      sun.current.intensity = s.intensity * wDim;
-    }
-    if (amb.current)
-      amb.current.intensity = (0.34 + s.elev * 0.08) * (weather === "cloudy" ? 1.1 : 1);
-    if (hemi.current) hemi.current.intensity = (0.46 + s.elev * 0.12) * wDim;
-  });
+  const ambientIntensity = (0.34 + s.elev * 0.08) * (weather === "cloudy" ? 1.1 : 1);
+  const hemiIntensity = (0.46 + s.elev * 0.12) * wDim;
 
   return (
     <>
-      <hemisphereLight ref={hemi} args={["#fffdfa", "#eadbbd", 0.54]} />
-      <ambientLight ref={amb} intensity={0.4} color="#fff7ee" />
-      {/* day-cycle sun — lights only, no real-time shadow map (see file header) */}
+      <hemisphereLight args={["#fffdfa", "#eadbbd", hemiIntensity]} />
+      <ambientLight intensity={ambientIntensity} color="#fff7ee" />
+      {/* fixed sun — lights only, no real-time shadow map (see file header) */}
       <directionalLight
-        ref={sun}
-        position={[8, 12, 5]}
-        intensity={1.86}
-        color="#fff1d2"
+        position={[s.dir.x, s.dir.y, s.dir.z]}
+        intensity={s.intensity * wDim}
+        color={s.color}
       />
       {/* cool sky bounce so shadowed faces still read */}
       <directionalLight position={[-7, 5, -3]} intensity={0.36} color="#d7e5f8" />
-      <Clouds count={clouds} />
     </>
   );
 }
