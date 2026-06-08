@@ -1,32 +1,32 @@
 import type { StaticImageData } from "next/image";
 
-import bed from "@/asset/icon/bed.png";
-import book from "@/asset/icon/book.png";
-import feedbowl from "@/asset/icon/feedbowl.png";
+import feed from "@/asset/icon/feed.png";
 import garden from "@/asset/icon/garden.png";
 import gift from "@/asset/icon/gift.png";
-import house from "@/asset/icon/house.png";
+import handbook from "@/asset/icon/handbook.png";
+import home from "@/asset/icon/home.png";
 import map from "@/asset/icon/map.png";
 import pkg from "@/asset/icon/package.png";
-import photobook from "@/asset/icon/photobook.png";
+import photo from "@/asset/icon/photo.png";
 import plant from "@/asset/icon/plant.png";
 import postmail from "@/asset/icon/postmail.png";
 import setting from "@/asset/icon/setting.png";
+import sleep from "@/asset/icon/sleep.png";
 
 // Hand-rendered low-poly icon set (src/asset/icon, transparent PNGs).
 const ICONS = {
-  bed,
-  book,
-  feedbowl,
+  feed,
   garden,
   gift,
-  house,
+  handbook,
+  home,
   map,
   package: pkg,
-  photobook,
+  photo,
   plant,
   postmail,
   setting,
+  sleep,
 } satisfies Record<string, StaticImageData>;
 
 export type IconName = keyof typeof ICONS;

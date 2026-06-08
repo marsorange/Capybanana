@@ -8,7 +8,7 @@ import type { Vec3 } from "../layout";
 import Icon, { type IconName } from "../../../ui/Icon";
 
 const ICON_BY_LABEL: Record<string, IconName> = {
-  休息: "bed",
+  休息: "sleep",
   打包: "package",
   明信片: "postmail",
 };
@@ -56,7 +56,7 @@ export default function InteractionMarker({
           onClick={onClick}
           className="pointer-events-auto flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-ink/10 bg-paper/92 py-1 pl-1 pr-3 font-hand text-sm text-ink shadow-[0_3px_0_rgba(58,46,42,0.13)] backdrop-blur transition-transform hover:-translate-y-0.5 active:translate-y-px"
         >
-          <Icon name={ICON_BY_LABEL[label] ?? "house"} className="h-6 w-6 shrink-0" />
+          <Icon name={ICON_BY_LABEL[label] ?? "home"} className="h-6 w-6 shrink-0" />
           <span>{label}</span>
         </button>
       </Html>

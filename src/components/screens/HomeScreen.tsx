@@ -67,8 +67,8 @@ function RoundIconBtn({
 function EntryBar({ goTo }: { goTo: (s: "pack" | "album" | "profile") => void }) {
   const items = [
     { key: "pack", label: "打包", icon: "package" as IconName, onClick: () => goTo("pack") },
-    { key: "album", label: "相册", icon: "photobook" as IconName, onClick: () => goTo("album") },
-    { key: "journal", label: "手账", icon: "book" as IconName, onClick: () => goTo("profile") },
+    { key: "album", label: "相册", icon: "photo" as IconName, onClick: () => goTo("album") },
+    { key: "journal", label: "手账", icon: "handbook" as IconName, onClick: () => goTo("profile") },
   ];
   return (
     <motion.nav
@@ -253,7 +253,7 @@ export default function HomeScreen() {
         >
           {bound && (
             <>
-              <RoundIconBtn label="关于 Capybanana" icon="book" onClick={() => goTo("about")} />
+              <RoundIconBtn label="关于 Capybanana" icon="handbook" onClick={() => goTo("about")} />
               <RoundIconBtn label="接入 Agent" icon="setting" onClick={() => goTo("connect")} />
             </>
           )}
