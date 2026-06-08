@@ -132,7 +132,6 @@ export default function DevScreen() {
       packedBag: null,
       postcards: POSTCARDS,
       souvenirs: ["一颗温热的小石头", "半张被风吹皱的车票"],
-      misunderstandings: ["把“早点睡”听成了“早点醒”。"],
       battleRecords: BATTLES,
       pendingPostcardId: null,
       selectedPostcardId: null,

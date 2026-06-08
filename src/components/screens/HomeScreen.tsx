@@ -185,9 +185,9 @@ export default function HomeScreen() {
         <SceneCanvas
           controls="orbit"
           orthographic
-          sun
           sky
           physics
+          dpr={[1, 1]}
           cameraPosition={[6, 7, 12]}
           target={[-0.6, 0.7, -0.8]}
           zoom={52}

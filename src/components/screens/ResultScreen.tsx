@@ -100,18 +100,6 @@ export default function ResultScreen() {
             </Panel>
           </motion.div>
 
-          {result.misunderstanding && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.22 }}
-              className="rounded-[18px] border-2 border-dashed border-[#bd8a52]/45 bg-cream-soft px-4 py-3 text-center"
-            >
-              <p className="mb-1 text-xs font-medium text-accent">我好像听岔了一点</p>
-              <p className="text-sm text-ink-soft">{result.misunderstanding}</p>
-            </motion.div>
-          )}
-
           {result.souvenir && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
               <Panel sketch={false} className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm text-ink-soft">

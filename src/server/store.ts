@@ -53,7 +53,6 @@ interface PetRow {
   traits: string[];
   memories: string[];
   souvenirs: string[];
-  misunderstandings: string[];
   last_result: DayOutcome | null;
   state: CompanionState;
   last_action_day: Date | string | null;
@@ -147,7 +146,6 @@ export function emptySave(): CloudSave {
     activeTrip: null,
     postcards: [],
     souvenirs: [],
-    misunderstandings: [],
     lastResult: null,
     pendingPostcardId: null,
     pendingMessage: null,
@@ -378,7 +376,6 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     activeTrip,
     postcards,
     souvenirs: pet.souvenirs ?? [],
-    misunderstandings: pet.misunderstandings ?? [],
     lastResult: pet.last_result,
     pendingPostcardId: pending ? (pending.legacy_id ?? "") : null,
     pendingMessage: pet.pending_message,
@@ -772,7 +769,7 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
       insert into pets (
         id, legacy_companion_id, owner_id, name, species, primary_color,
         personality, accessory, mood, energy, courage, curiosity, injury,
-        traits, memories, souvenirs, misunderstandings, last_result, state,
+        traits, memories, souvenirs, last_result, state,
         last_action_day, rest_until_day, pending_message, pending_stress,
         pending_stress_note, rating, wins, losses, draws,
         companion_days, pulls_since_rare, rev,
@@ -795,7 +792,6 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         ${cap.traits}::text[],
         ${cap.memories}::text[],
         ${save.souvenirs ?? []}::text[],
-        ${save.misunderstandings ?? []}::text[],
         ${save.lastResult ? tx.json(save.lastResult as never) : null},
         ${save.companionState},
         ${save.lastActionDay ? tx`${save.lastActionDay}::date` : null},
@@ -828,7 +824,6 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
         traits = excluded.traits,
         memories = excluded.memories,
         souvenirs = excluded.souvenirs,
-        misunderstandings = excluded.misunderstandings,
         last_result = excluded.last_result,
         state = excluded.state,
         last_action_day = excluded.last_action_day,

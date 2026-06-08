@@ -9,9 +9,13 @@ import { flatMaterial } from "./materials";
 // A small SUN + WEATHER system for the diorama. A directional "sun" arcs across
 // the sky on a slow day cycle (warm at the horizons, brighter+whiter at noon),
 // dragging the ambient/hemisphere fills with it; a drifting low-poly cloud layer
-// + optional rain sit on top. Deliberately self-contained: it OWNS the scene's
-// lights when mounted, so SceneCanvas renders it instead of the static lights.
-export type Weather = "clear" | "cloudy" | "rain";
+// sits on top. Deliberately self-contained: it OWNS the scene's lights when
+// mounted, so SceneCanvas renders it instead of the static lights.
+// Kept light on purpose — only sunshine ("clear") and overcast ("cloudy"); the
+// sun does NOT cast real-time shadows (that was the home scene's biggest GPU
+// cost + WebGL-context-loss trigger). Grounding comes from SceneCanvas's cheap
+// ContactShadows instead.
+export type Weather = "clear" | "cloudy";
 
 const NOON = new THREE.Color("#fff4d6");
 const HORIZON = new THREE.Color("#ff9b54");
@@ -96,42 +100,6 @@ function Clouds({ count }: { count: number }) {
   );
 }
 
-function Rain() {
-  const ref = useRef<THREE.Points>(null);
-  const N = 220;
-  const geo = useMemo(() => {
-    // deterministic seeded scatter (Math.random is impure during render)
-    const rnd = (k: number) => {
-      const v = Math.sin(k * 91.7 + 13.1) * 47215.13;
-      return v - Math.floor(v);
-    };
-    const pos = new Float32Array(N * 3);
-    for (let i = 0; i < N; i++) {
-      pos[i * 3] = (rnd(i * 3 + 1) - 0.5) * 16;
-      pos[i * 3 + 1] = rnd(i * 3 + 2) * 12;
-      pos[i * 3 + 2] = (rnd(i * 3 + 3) - 0.5) * 16;
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    return g;
-  }, []);
-  useFrame((_, dt) => {
-    const p = ref.current;
-    if (!p) return;
-    const arr = (p.geometry.getAttribute("position") as THREE.BufferAttribute).array as Float32Array;
-    for (let i = 0; i < N; i++) {
-      arr[i * 3 + 1] -= dt * 16;
-      if (arr[i * 3 + 1] < 0.2) arr[i * 3 + 1] = 11 + Math.random();
-    }
-    p.geometry.getAttribute("position").needsUpdate = true;
-  });
-  return (
-    <points ref={ref} geometry={geo}>
-      <pointsMaterial color="#9fb6cf" size={0.09} transparent opacity={0.55} depthWrite={false} />
-    </points>
-  );
-}
-
 export default function SkyWeather({
   weather = "clear",
   speed = 1 / 600,
@@ -145,8 +113,8 @@ export default function SkyWeather({
   const hemi = useRef<THREE.HemisphereLight>(null);
   const amb = useRef<THREE.AmbientLight>(null);
   const t = useRef(start);
-  const wDim = weather === "clear" ? 1 : weather === "cloudy" ? 0.78 : 0.62;
-  const clouds = weather === "clear" ? 4 : weather === "cloudy" ? 8 : 9;
+  const wDim = weather === "clear" ? 1 : 0.8;
+  const clouds = weather === "clear" ? 4 : 8;
 
   useFrame((_, dt) => {
     t.current = (t.current + dt * speed) % 1;
@@ -157,7 +125,7 @@ export default function SkyWeather({
       sun.current.intensity = s.intensity * wDim;
     }
     if (amb.current)
-      amb.current.intensity = (0.5 + s.elev * 0.12) * (weather === "rain" ? 1.1 : 1);
+      amb.current.intensity = (0.5 + s.elev * 0.12) * (weather === "cloudy" ? 1.05 : 1);
     if (hemi.current) hemi.current.intensity = (0.74 + s.elev * 0.2) * wDim;
   });
 
@@ -165,27 +133,16 @@ export default function SkyWeather({
     <>
       <hemisphereLight ref={hemi} args={["#fffefa", "#ecdfc6", 0.8]} />
       <ambientLight ref={amb} intensity={0.5} color="#fff6ea" />
+      {/* day-cycle sun — lights only, no real-time shadow map (see file header) */}
       <directionalLight
         ref={sun}
-        castShadow
         position={[8, 12, 5]}
         intensity={2.2}
         color="#ffeec6"
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-near={0.5}
-        shadow-camera-far={60}
-        shadow-camera-left={-16}
-        shadow-camera-right={16}
-        shadow-camera-top={16}
-        shadow-camera-bottom={-16}
-        shadow-bias={-0.0011}
-        shadow-normalBias={0.025}
       />
       {/* cool sky bounce so shadowed faces still read */}
       <directionalLight position={[-7, 5, -3]} intensity={0.3} color="#c7d8f0" />
       <Clouds count={clouds} />
-      {weather === "rain" && <Rain />}
     </>
   );
 }

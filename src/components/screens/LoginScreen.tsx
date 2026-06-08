@@ -6,12 +6,11 @@ import { motion } from "framer-motion";
 import { useGameStore } from "@/state/gameStore";
 import { isSupabaseConfigured, signInWithGoogle } from "@/lib/supabaseClient";
 
-// Full-bleed cover art for the login screen. Drop the illustration here:
-//   public/login-bg.png
-// Until the file exists the warm `screen-bg` gradient shows through, so the
-// page never looks broken. Swap the path/format if you name the asset
-// differently (e.g. "/login-bg.jpg").
-const BG_IMAGE = "/login-bg.png";
+// Full-bleed cover art for the login screen. Until a real illustration exists we
+// render NOTHING here — the warm `screen-bg` gradient is the backdrop. (Pointing
+// at a missing file just spammed a 404 on every login.) When the art is ready,
+// drop it in public/ and set BG_IMAGE to its path, e.g. "/login-bg.png".
+const BG_IMAGE = "";
 
 export default function LoginScreen() {
   const cloudBusy = useGameStore((s) => s.cloudBusy);
@@ -49,11 +48,13 @@ export default function LoginScreen() {
     // pinned to the bottom. `screen-bg` is the warm fallback before the art
     // loads; the image layer sits on top of it.
     <div className="screen-bg relative flex h-full flex-col overflow-hidden">
-      {/* background illustration (provided later) */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${BG_IMAGE})` }}
-      />
+      {/* background illustration (drop art in public/ + set BG_IMAGE) */}
+      {BG_IMAGE && (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${BG_IMAGE})` }}
+        />
+      )}
       {/* legibility scrim: faint warm wash up top for the title, soft shade at
           the bottom so the button + footer read on any art */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-cream/30 via-transparent to-[rgba(38,28,22,0.32)]" />

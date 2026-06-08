@@ -33,7 +33,6 @@ const TRAIT_CHANCE = 0.12;
 const TRAITS = [
   "爱晒太阳",
   "喜欢收集小石头",
-  "容易读歪留言",
   "胆子变大了一点",
   "对远方很好奇",
   "爱睡懒觉",
@@ -46,15 +45,6 @@ const SOUVENIRS = [
   "一枚有点咸的贝壳",
   "一颗不知名的种子",
   "一张皱巴巴的糖纸",
-];
-
-const MISREADS = [
-  "要把所有东西都摆成一排",
-  "今天是我的生日",
-  "你让我去找另一只卡皮巴拉",
-  "得把包裹埋进土里",
-  "要给每样东西取个名字",
-  "你想吃我带回来的任何东西",
 ];
 
 const WEIRD_USES = [
@@ -172,16 +162,10 @@ export function resolveDay(
 
   const kind = pickKind(capy, tags, msg, trip);
 
-  // optional misunderstanding (误解词典)
-  const misread =
-    msg.trim() && Math.random() < 0.4
-      ? `你说的「${msg.slice(0, 10)}」，我听成了：${pick(MISREADS)}。`
-      : undefined;
-
   const base: ResolvedBase = {
     id: uid("out"),
     kind,
-    reason: misread ?? trip.note ?? "我按自己的心情，过了这一天。",
+    reason: trip.note ?? "我按自己的心情，过了这一天。",
     resolvedAt: new Date().toISOString(),
   };
 
@@ -196,7 +180,6 @@ export function resolveDay(
       effects: { ...EFFECTS.travel, injury: hurt },
       souvenir,
       trait: maybeTrait(capy.traits),
-      misunderstanding: misread,
       memory: `我去过${postcard.locationName}，记得那里像「${postcard.title}」。`,
       postcard,
     };
@@ -211,7 +194,6 @@ export function resolveDay(
       effects: mv?.effects ?? EFFECTS.yard,
       memory: mv?.memory,
       trait: maybeTrait(capy.traits),
-      misunderstanding: misread,
     };
   }
 
@@ -224,7 +206,6 @@ export function resolveDay(
         ? "我窝在角落舔舔爪子，把你给的东西垫在身下，睡了好久。"
         : "我赖在窝里一整天，谁叫都只哼哼两声。",
       effects: EFFECTS.rest,
-      misunderstanding: misread,
     };
   }
 
@@ -237,6 +218,5 @@ export function resolveDay(
     effects: mv?.effects ?? EFFECTS.home,
     memory: mv?.memory,
     trait: maybeTrait(capy.traits),
-    misunderstanding: misread,
   };
 }

@@ -94,7 +94,6 @@ export interface DayOutcome {
     Pick<CapyState, "mood" | "energy" | "courage" | "curiosity" | "injury">
   >;
   souvenir?: string; // a brought-back trinket name
-  misunderstanding?: string; // a "误解词典" entry
   memory?: string; // appended to CapyState.memories (secrets build suspense)
   trait?: string; // a personality trait it picked up
   postcard?: Postcard; // only for travel outcomes

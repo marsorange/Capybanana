@@ -52,7 +52,6 @@ export interface CloudSave {
   activeTrip: Trip | null;
   postcards: Postcard[];
   souvenirs: string[];
-  misunderstandings: string[];
   lastResult: DayOutcome | null;
   pendingPostcardId: string | null;
   pendingMessage: string | null; // a thing the agent "said"; seeds the next trip

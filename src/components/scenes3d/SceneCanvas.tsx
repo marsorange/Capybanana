@@ -4,7 +4,7 @@ import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import type { ReactNode } from "react";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { sceneBend } from "./materials";
 import SkyWeather, { type Weather } from "./SkyWeather";
@@ -40,6 +40,10 @@ interface SceneCanvasProps {
   bendStrength?: number;
   bendCenter?: [number, number, number];
   bendFalloff?: number;
+  // Device-pixel-ratio cap for the renderer's framebuffer. Memory scales with
+  // dpr², so heavy scenes (the home diorama) pass [1, 1] to halve framebuffer
+  // pressure on retina phones — a key lever against WebGL context loss.
+  dpr?: number | [number, number];
   className?: string;
 }
 
@@ -105,7 +109,7 @@ function ShadowEnabler() {
   return null;
 }
 
-function WebGLContextGuard() {
+function WebGLContextGuard({ onLoss }: { onLoss?: () => void }) {
   const gl = useThree((s) => s.gl);
 
   useEffect(() => {
@@ -117,7 +121,11 @@ function WebGLContextGuard() {
         canvas.clientWidth > 0 &&
         canvas.clientHeight > 0
       ) {
+        // Allow R3F to rebuild the renderer for a transient loss…
         e.preventDefault();
+        // …but report it so SceneCanvas can break a recover→lose→recover spiral
+        // (a too-heavy scene that re-exhausts the GPU the instant it restores).
+        onLoss?.();
       }
     };
     const onRestored = () => {
@@ -135,10 +143,16 @@ function WebGLContextGuard() {
       canvas.removeEventListener("webglcontextlost", onLost, false);
       canvas.removeEventListener("webglcontextrestored", onRestored, false);
     };
-  }, [gl]);
+  }, [gl, onLoss]);
 
   return null;
 }
+
+// If the GPU drops the context this many times within the window, stop trying to
+// auto-recover (which just burns battery in a render→lose→render loop) and show
+// a tap-to-reload card instead.
+const LOSS_LIMIT = 4;
+const LOSS_WINDOW_MS = 12000;
 
 export default function SceneCanvas({
   children,
@@ -162,23 +176,63 @@ export default function SceneCanvas({
   bendStrength = 0,
   bendCenter = FLAT_CENTER,
   bendFalloff = 0.05,
+  dpr = [1, 1.25],
   className,
 }: SceneCanvasProps) {
+  // Context-loss spiral breaker: count recover-attempted losses; once they pile
+  // up in a short window, give up auto-recovery and show a reload card. Remount
+  // (key bump) gives a fully fresh context when the user taps reload.
+  const [instanceKey, setInstanceKey] = useState(0);
+  const [dead, setDead] = useState(false);
+  const lossTimes = useRef<number[]>([]);
+
+  const handleContextLoss = useCallback(() => {
+    const now = typeof performance !== "undefined" ? performance.now() : 0;
+    lossTimes.current = lossTimes.current.filter((t) => now - t < LOSS_WINDOW_MS);
+    lossTimes.current.push(now);
+    if (lossTimes.current.length >= LOSS_LIMIT) {
+      lossTimes.current = [];
+      setDead(true);
+    }
+  }, []);
+
+  if (dead) {
+    return (
+      <div
+        className={`flex h-full w-full flex-col items-center justify-center gap-3 px-8 text-center ${className ?? ""}`}
+      >
+        <div className="text-5xl">🪫</div>
+        <p className="font-hand text-xl text-ink">小岛歇了一会儿</p>
+        <p className="text-sm text-ink-soft">画面有点忙不过来，点一下让它重新载入。</p>
+        <button
+          onClick={() => {
+            setDead(false);
+            setInstanceKey((k) => k + 1);
+          }}
+          className="sticker rounded-sticker bg-accent px-6 py-3 text-paper"
+        >
+          重新载入
+        </button>
+      </div>
+    );
+  }
+
   const camera = orthographic
     ? { position: cameraPosition, zoom, near: 0.1, far: 200 }
     : { position: cameraPosition, fov: 38, near: 0.1, far: 200 };
 
   return (
     <Canvas
+      key={instanceKey}
       className={className}
       orthographic={orthographic}
       shadows={sun ? "soft" : false}
-      dpr={[1, 1.25]}
+      dpr={dpr}
       gl={{ alpha: true, antialias: true, powerPreference: "default" }}
       camera={camera}
       style={{ touchAction: "none" }}
     >
-      <WebGLContextGuard />
+      <WebGLContextGuard onLoss={handleContextLoss} />
       <BendApplier strength={bendStrength} center={bendCenter} falloff={bendFalloff} />
       {sun && <ShadowEnabler />}
       {sky ? (
@@ -191,7 +245,7 @@ export default function SceneCanvas({
           <ContactShadows
             position={[-0.6, 0.07, -1.0]}
             scale={17}
-            resolution={384}
+            resolution={256}
             blur={2.6}
             far={1.7}
             opacity={0.42}

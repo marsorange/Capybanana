@@ -57,7 +57,6 @@ interface GameState {
   activeTrip: Trip | null;
   postcards: Postcard[];
   souvenirs: string[];
-  misunderstandings: string[];
   battleRecords: BattleRecord[];
   // 养成: 陪伴天数 (the only visible meter) + the collected 图鉴 card ids.
   companionDays: number;
@@ -110,7 +109,6 @@ function emptyLocalState() {
     activeTrip: null,
     postcards: [],
     souvenirs: [],
-    misunderstandings: [],
     battleRecords: [],
     companionDays: 0,
     cardDex: [],
@@ -333,7 +331,6 @@ export const useGameStore = create<GameState>()(
           activeTrip: save.activeTrip,
           postcards: save.postcards,
           souvenirs: save.souvenirs,
-          misunderstandings: save.misunderstandings,
           battleRecords: save.battleRecords,
           companionDays: save.companionDays,
           cardDex: save.cardDex,
@@ -362,7 +359,6 @@ export const useGameStore = create<GameState>()(
         activeTrip: s.activeTrip,
         postcards: s.postcards,
         souvenirs: s.souvenirs,
-        misunderstandings: s.misunderstandings,
         battleRecords: s.battleRecords,
         companionDays: s.companionDays,
         cardDex: s.cardDex,

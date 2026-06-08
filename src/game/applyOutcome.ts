@@ -20,13 +20,12 @@ export function applyEffects(
 export interface OutcomeAccumulator {
   capy: CapyState;
   souvenirs: string[];
-  misunderstandings: string[];
 }
 
 /**
  * Fold a resolved day into the running state: stat effects, an optional memory,
- * an optional picked-up trait, the head-pat bonus, and any souvenir /
- * misunderstanding the day produced. Returns fresh objects (no mutation).
+ * an optional picked-up trait, the head-pat bonus, and any souvenir the day
+ * produced. Returns fresh objects (no mutation).
  */
 export function applyOutcome(
   prev: OutcomeAccumulator,
@@ -52,8 +51,5 @@ export function applyOutcome(
     souvenirs: outcome.souvenir
       ? [outcome.souvenir, ...prev.souvenirs]
       : prev.souvenirs,
-    misunderstandings: outcome.misunderstanding
-      ? [outcome.misunderstanding, ...prev.misunderstandings]
-      : prev.misunderstandings,
   };
 }
