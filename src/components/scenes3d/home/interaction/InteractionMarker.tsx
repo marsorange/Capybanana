@@ -56,12 +56,12 @@ export default function InteractionMarker({
       <Html position={[labelX, labelY, 0]} center zIndexRange={[25, 0]}>
         <button
           onClick={onClick}
-          className="ui-action-pill pointer-events-auto relative h-[48px] whitespace-nowrap rounded-full py-0 pl-[57px] pr-4 font-hand text-[19px] font-bold leading-[48px] text-[#6b4f2e] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+          className="ui-action-pill pointer-events-auto relative h-[40px] whitespace-nowrap rounded-full py-0 pl-[46px] pr-3.5 font-hand text-[16px] font-bold leading-[40px] text-[#6b4f2e] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
         >
-          <span className="ui-action-badge absolute left-[-6px] top-1/2 grid h-[60px] w-[60px] -translate-y-1/2 place-items-center rounded-full">
+          <span className="ui-action-badge absolute left-[-5px] top-1/2 grid h-[49px] w-[49px] -translate-y-1/2 place-items-center rounded-full">
             <Icon
               name={ICON_BY_LABEL[label] ?? "home"}
-              className="h-[43px] w-[43px] drop-shadow-[0_3px_2px_rgba(126,83,38,0.16)]"
+              className="h-[34px] w-[34px] drop-shadow-[0_3px_2px_rgba(126,83,38,0.16)]"
             />
           </span>
           <span>{label}</span>

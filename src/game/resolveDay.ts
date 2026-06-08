@@ -29,6 +29,10 @@ const EFFECTS: Record<
 const TRAVEL_HURT_CHANCE = 0.25;
 const TRAVEL_HURT_AMOUNT = 15;
 
+// A trip only sometimes mails a postcard home — the rest come back as a quiet
+// "I went out" day (no card, no gacha pull). Tune to taste.
+const POSTCARD_CHANCE = 0.7;
+
 const TRAIT_CHANCE = 0.12;
 const TRAITS = [
   "爱晒太阳",
@@ -170,16 +174,28 @@ export function resolveDay(
   };
 
   if (kind === "travel") {
-    const postcard = generatePostcard(companion, trip);
     const souvenir = Math.random() < 0.6 ? pick(SOUVENIRS) : undefined;
     const hurt = Math.random() < TRAVEL_HURT_CHANCE ? TRAVEL_HURT_AMOUNT : 0;
-    return {
+    const baseTravel = {
       ...base,
-      title: "我真的出门啦",
-      story: `我背上包裹走了挺远，给你寄了张明信片：「${postcard.title}」。`,
       effects: { ...EFFECTS.travel, injury: hurt },
       souvenir,
       trait: maybeTrait(capy.traits),
+    };
+    // Not every trip comes home with a postcard.
+    if (Math.random() >= POSTCARD_CHANCE) {
+      return {
+        ...baseTravel,
+        title: "我出门转了一圈",
+        story: "我背上包裹走了挺远，光顾着看路上的风景，这次没顾上给你寄明信片。",
+        memory: "我又往远处走了走，路上挺好的。",
+      };
+    }
+    const postcard = generatePostcard(companion, trip);
+    return {
+      ...baseTravel,
+      title: "我真的出门啦",
+      story: `我背上包裹走了挺远，给你寄了张明信片：「${postcard.title}」。`,
       memory: `我去过${postcard.locationName}，记得那里像「${postcard.title}」。`,
       postcard,
     };

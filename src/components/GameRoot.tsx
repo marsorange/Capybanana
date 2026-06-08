@@ -15,7 +15,6 @@ import PackScreen from "./screens/PackScreen";
 import PostcardScreen from "./screens/PostcardScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import ResultScreen from "./screens/ResultScreen";
-import TravelingScreen from "./screens/TravelingScreen";
 import CapyLogo from "./screens/CapyLogo";
 import ErrorBoundary from "./ui/ErrorBoundary";
 import PortraitFrame from "./ui/PortraitFrame";
@@ -101,8 +100,6 @@ function renderScreen(screen: Screen) {
       return <HomeScreen />;
     case "pack":
       return <PackScreen />;
-    case "traveling":
-      return <TravelingScreen />;
     case "album":
       return <AlbumScreen />;
     case "postcard":
@@ -136,21 +133,24 @@ export default function GameRoot() {
   useSupabaseAuthBridge();
   useAmbientMusicStartup();
 
-  // Lifecycle clock. Only bound accounts have a pet to advance; the server
-  // resolves the lifecycle, so the web client just polls it.
+  // Pull the cloud save on load and whenever the tab is reopened/refocused — the
+  // server is authoritative, but the user only sees changes (a trip that
+  // resolved, a new postcard) on their NEXT visit, never live. The one exception
+  // is the connect gate: while there's no pet yet, poll on a timer so it advances
+  // on its own once the Agent registers one.
   useEffect(() => {
     if (!hasHydrated || !bound) return;
     cloudPull();
-    const id = setInterval(() => cloudPull(), 5000);
+    const id = companion ? undefined : setInterval(() => cloudPull(), 5000);
     const onWake = () => cloudPull();
     window.addEventListener("focus", onWake);
     document.addEventListener("visibilitychange", onWake);
     return () => {
-      clearInterval(id);
+      if (id) clearInterval(id);
       window.removeEventListener("focus", onWake);
       document.removeEventListener("visibilitychange", onWake);
     };
-  }, [hasHydrated, bound, cloudPull]);
+  }, [hasHydrated, bound, companion, cloudPull]);
 
   if (!hasHydrated) {
     return (
@@ -184,11 +184,14 @@ export default function GameRoot() {
     effective = "connect";
   } else if (screen === "login") {
     effective = "home";
-  } else if (
-    companionState === "traveling" &&
-    (screen === "home" || screen === "pack" || screen === "traveling")
-  ) {
-    effective = "traveling";
+  } else if (screen === "traveling") {
+    // The travel progress page was removed — while the pet is out, the home
+    // scene just goes quiet. Any persisted "traveling" screen lands on home.
+    effective = "home";
+  } else if (companionState === "traveling" && screen === "pack") {
+    // Can't prep a bag while it's out (the server rejects it) — keep the user
+    // on the quiet home scene instead of a pack screen that can't be confirmed.
+    effective = "home";
   } else if (screen === "postcard" && !selectedPostcardId) {
     effective = "album";
   } else if (screen === "result" && !lastResult) {

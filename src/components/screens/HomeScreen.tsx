@@ -173,6 +173,7 @@ export default function HomeScreen() {
   );
   const stats = useMemo(() => companionStats(companionDays), [companionDays]);
   const ready = companionState === "ready" || !!packedBag;
+  const away = companionState === "traveling";
 
   return (
     <div className="relative h-full overflow-hidden bg-cream-soft">
@@ -221,14 +222,17 @@ export default function HomeScreen() {
           {/* lean physical proxy the pet + props collide against; also the
               tap-to-move ground catcher */}
           <HomeColliders />
-          {/* physics pet (tap to move) + a reference physics prop (tap to toss) */}
-          <RoamingCompanion
-            type={companion.type}
-            color={companion.primaryColor}
-            accessory={companion.accessory}
-            seed={companion.id}
-            clickLines={ready ? READY_LINES : IDLE_LINES}
-          />
+          {/* physics pet (tap to move) — gone from the scene while it's out
+              traveling; a reference physics prop (tap to toss) stays */}
+          {!away && (
+            <RoamingCompanion
+              type={companion.type}
+              color={companion.primaryColor}
+              accessory={companion.accessory}
+              seed={companion.id}
+              clickLines={ready ? READY_LINES : IDLE_LINES}
+            />
+          )}
           <PhysicsToy />
           <InteractionLayer />
         </SceneCanvas>
@@ -241,12 +245,10 @@ export default function HomeScreen() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="ui-wood-surface ui-wood-press pointer-events-auto relative flex h-16 w-[270px] max-w-[calc(100%-96px)] items-center rounded-[28px] py-2 pl-[70px] pr-3.5 text-left"
+          className="ui-wood-surface ui-wood-press pointer-events-auto relative flex h-[62px] w-[252px] max-w-[calc(100%-94px)] items-center rounded-[31px] py-2 pl-[76px] pr-3.5 text-left"
         >
-          <span className="absolute left-2 top-1/2 -translate-y-1/2">
-            <span className="ui-icon-well h-[56px] w-[56px] rounded-full shadow-[0_8px_14px_-6px_rgba(90,60,30,0.4)]">
-              <CapyAvatar className="h-12 w-12 shrink-0" />
-            </span>
+          <span className="pointer-events-none absolute -left-1 top-1/2 h-[76px] w-[76px] -translate-y-1/2">
+            <CapyAvatar variant="sticker" className="h-full w-full" />
           </span>
           <span className="min-w-0">
             <span className="block truncate font-hand text-[20px] leading-none text-[#4f3828]">
@@ -275,6 +277,20 @@ export default function HomeScreen() {
           )}
         </motion.div>
       </div>
+
+      {away && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.34, ease: "easeOut" }}
+          className="pointer-events-none absolute inset-x-0 top-[88px] z-20 flex justify-center px-6"
+        >
+          <div className="sketch flex items-center gap-2 rounded-full border-2 border-[#e2c596] bg-paper/95 px-4 py-2 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.16)]">
+            <span className="text-lg">🎒</span>
+            <p className="font-hand text-[14px] text-ink">它背着包裹出门啦，回来再看。</p>
+          </div>
+        </motion.div>
+      )}
 
       <AnimatePresence>
         {notice && (

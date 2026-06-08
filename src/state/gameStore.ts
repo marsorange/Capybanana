@@ -212,12 +212,18 @@ export const useGameStore = create<GameState>()(
             cloudBusy: false,
           });
           get().adoptSave(res.save);
-          // No pet is auto-created. The connect screen is the gate: a returning
-          // owner whose Agent already registered a pet goes straight home;
-          // everyone else waits on "connect" until the Agent binds & names it.
+          // No pet is auto-created. The connect screen is the gate: an owner
+          // whose Agent already registered a pet goes straight home — a
+          // persisted companion is itself proof the bind happened (possibly on
+          // another device/browser), so don't gate on the device-local
+          // hasOnboarded flag. Mark onboarded so GameRoot won't re-trap them.
+          // Everyone else waits on "connect" until the Agent binds & names the
+          // pet; it then arrives via cloudPull and connect flips to its one-time
+          // "ready" celebration.
+          const alreadyBound = !!res.save.companion;
           set({
-            screen:
-              res.save.companion && get().hasOnboarded ? "home" : "connect",
+            hasOnboarded: get().hasOnboarded || alreadyBound,
+            screen: alreadyBound ? "home" : "connect",
           });
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
@@ -243,9 +249,13 @@ export const useGameStore = create<GameState>()(
             cloudBusy: false,
           });
           get().adoptSave(res.save);
+          // A persisted companion is proof the Agent already bound — go straight
+          // home regardless of the device-local hasOnboarded flag (see the
+          // Supabase login above).
+          const alreadyBound = !!res.save.companion;
           set({
-            screen:
-              res.save.companion && get().hasOnboarded ? "home" : "connect",
+            hasOnboarded: get().hasOnboarded || alreadyBound,
+            screen: alreadyBound ? "home" : "connect",
           });
         } catch (e) {
           set({ cloudBusy: false, cloudError: (e as Error).message });
@@ -298,11 +308,6 @@ export const useGameStore = create<GameState>()(
             let screen = cur.screen;
             const arrivedPostcard =
               !!save.pendingPostcardId && save.pendingPostcardId !== prevPending;
-            if (
-              save.companionState === "traveling" &&
-              (screen === "home" || screen === "pack")
-            )
-              screen = "traveling";
             if (arrivedPostcard && (screen === "home" || screen === "traveling")) {
               patch.selectedPostcardId = save.pendingPostcardId;
               screen = "postcard";
