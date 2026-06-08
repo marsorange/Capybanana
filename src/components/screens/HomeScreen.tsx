@@ -245,11 +245,9 @@ export default function HomeScreen() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="ui-wood-surface ui-wood-press pointer-events-auto relative flex h-[62px] w-[252px] max-w-[calc(100%-94px)] items-center rounded-[31px] py-2 pl-[76px] pr-3.5 text-left"
+          className="ui-wood-surface ui-wood-press pointer-events-auto flex h-[60px] w-fit max-w-[calc(100%-94px)] items-center gap-2.5 rounded-[30px] py-2 pl-2 pr-4 text-left"
         >
-          <span className="pointer-events-none absolute -left-1 top-1/2 h-[76px] w-[76px] -translate-y-1/2">
-            <CapyAvatar variant="sticker" className="h-full w-full" />
-          </span>
+          <CapyAvatar variant="sticker" className="h-[44px] w-[44px] shrink-0" />
           <span className="min-w-0">
             <span className="block truncate font-hand text-[20px] leading-none text-[#4f3828]">
               {companion.name}
