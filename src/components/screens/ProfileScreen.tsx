@@ -67,7 +67,7 @@ export default function ProfileScreen() {
       {/* fixed top bar — always visible */}
       <div className="relative z-20 flex shrink-0 items-center gap-3 px-5 pb-1 pt-5">
         <BackButton onClick={() => goTo("home")} />
-        <p className="font-hand text-lg text-ink-soft">岛屿伙伴手账</p>
+        <p className="font-hand text-lg text-ink-soft">我和你的手账</p>
       </div>
 
       {/* portrait + every card scroll together so nothing is hard-cut at the
@@ -143,9 +143,9 @@ export default function ProfileScreen() {
             only 陪伴时长 (above) is shown. The Agent reads the stats over the API
             to decide the day; here we keep a soft, number-free note. */}
         <Panel className="px-4 py-4" sketch={false}>
-          <p className="font-hand text-lg text-ink">它的小心思</p>
+          <p className="font-hand text-lg text-ink">我的小心思</p>
           <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-            它今天过得怎么样，只有它的 Agent 最清楚——你只要每天陪它一下，剩下的交给它自己。
+            今天好不好，我会悄悄告诉岛外向导。你每天来陪我一下，就够啦。
           </p>
         </Panel>
 

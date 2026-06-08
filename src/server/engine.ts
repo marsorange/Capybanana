@@ -395,8 +395,8 @@ export function packBag(
   return bump(base, now, {
     type: "packed",
     text: finalMessage
-      ? `今天的包裹收拾好了，留言：「${finalMessage}」。`
-      : "今天的包裹收拾好了。",
+      ? `我收好了今天的包裹，也把你的话藏进去：「${finalMessage}」。`
+      : "我收好了今天的包裹。",
   });
 }
 
@@ -509,7 +509,7 @@ export function startTravel(
     now,
     {
       type: "departed",
-      text: `${companion.name} 背上包裹，出门去${distance === "far" ? "远方" : "附近"}了。`,
+      text: `我背上包裹，出门去${distance === "far" ? "远方" : "附近"}了。`,
     },
   );
 }
@@ -562,7 +562,7 @@ export function stayHome(
   return next;
 }
 
-// ---- Battle (对战) -----------------------------------------------------------
+// ---- Battle (切磋) -----------------------------------------------------------
 
 /** A compact view of the pet for matchmaking + the LLM judge. */
 export function snapshotOf(save: CloudSave): BattleSnapshot {
@@ -633,11 +633,11 @@ export async function startBattle(
     reason:
       opts.note?.slice(0, 80) ??
       (opponent.isNpc
-        ? "它找了个路过的小家伙比试了一场。"
-        : `它和「${opponent.snapshot.name}」打了一场友谊赛。`),
+        ? "它找了个路过的小家伙切磋了一场。"
+        : `它和「${opponent.snapshot.name}」切磋了一场。`),
     effects: { ...BATTLE_EFFECTS[verdict.result], injury: verdict.injury },
     souvenir: verdict.spoils,
-    memory: `和「${opponent.snapshot.name}」比试，${
+    memory: `和「${opponent.snapshot.name}」切磋，${
       verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了"
     }。`,
     resolvedAt: new Date(now).toISOString(),
@@ -653,7 +653,7 @@ export async function startBattle(
     false,
   );
 
-  // 战败必养伤：force at least one rest day on a loss (or if now badly hurt).
+  // 切磋输了要养伤：force at least one rest day on a loss (or if now badly hurt).
   const forceRest =
     verdict.result === "lose" || merged.capy.injury >= HURT_THRESHOLD;
 
@@ -696,7 +696,7 @@ export async function startBattle(
     verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了";
   next = bump(next, now, {
     type: "battle",
-    text: `${companion.name} 和「${opponent.snapshot.name}」比试了一场，${word}。`,
+    text: `${companion.name} 和「${opponent.snapshot.name}」切磋了一场，${word}。`,
   });
 
   return {
@@ -815,7 +815,7 @@ function describeToday(save: CloudSave, now: number): string {
   const decision =
     mustRest(save, now) || isHurt(save)
       ? `它受了伤，今天先让它 stay（rest）在家养伤吧。`
-      : `等你替它拿主意：今天去旅行、找谁比试一场，还是在家待着？`;
+      : `等你替它拿主意：今天去旅行、找谁切磋一场，还是在家待着？`;
   if (save.companionState === "ready") {
     const b = save.packedBag;
     const things =

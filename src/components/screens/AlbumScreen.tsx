@@ -15,7 +15,7 @@ type Tab = "cards" | "keepsakes" | "battles";
 const TABS: { id: Tab; label: string }[] = [
   { id: "cards", label: "明信片" },
   { id: "keepsakes", label: "手信" },
-  { id: "battles", label: "对战" },
+  { id: "battles", label: "切磋" },
 ];
 
 const RESULT_META: Record<string, { label: string; emoji: string; tone: string }> = {
@@ -52,7 +52,7 @@ export default function AlbumScreen() {
       <ScreenHeader
         onBack={() => goTo("home")}
         eyebrow="慢慢攒下的远方"
-        title={`${companion.name} 的明信片图鉴`}
+        title={`${companion.name} 寄回来的`}
         right={
           <span className="shrink-0 rounded-full border-2 border-[#bd8a52]/40 bg-cream-soft px-2.5 py-1 font-hand text-[13px] text-ink-soft">
             {cardDex.length}/{TOTAL_CARDS}
@@ -82,7 +82,7 @@ export default function AlbumScreen() {
         {tab === "cards" && (
           <div className="space-y-4">
             <p className="px-1 text-[12px] leading-relaxed text-ink-soft/85">
-              每次出门都可能寄回不同稀有度的明信片。集齐 8 个目的地的 3 种稀有度，凑满 {TOTAL_CARDS} 张。
+              我去过的地方，都在这儿了。
             </p>
             {DESTINATIONS.map((d) => {
               const ownedHere = RARITIES.filter((r) => owned.has(cardId(d.theme, r))).length;
@@ -158,7 +158,7 @@ export default function AlbumScreen() {
 
         {tab === "keepsakes" &&
           (souvenirs.length === 0 ? (
-            <Empty text="还没带回手信。远方需要一点时间，也需要一点体力。" />
+            <Empty text="我还没带回手信呢。等我走远一点。" />
           ) : (
             <ul className="space-y-2.5">
               {souvenirs.map((s, i) => (
@@ -169,7 +169,7 @@ export default function AlbumScreen() {
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate font-hand text-[16px] text-ink">{s}</span>
-                      <span className="text-[12px] text-ink-soft">从某一天带回来的小证据</span>
+                      <span className="text-[12px] text-ink-soft">某天，我从远方带回来的</span>
                     </span>
                   </Panel>
                 </li>
@@ -179,7 +179,7 @@ export default function AlbumScreen() {
 
         {tab === "battles" &&
           (battles.length === 0 ? (
-            <Empty text="还没有对战记录。让 Agent 在它状态好的日子带它去比试一场。" />
+            <Empty text="还没跟谁比过。等我有精神的日子吧。" />
           ) : (
             <ul className="space-y-2.5">
               {battles.map((b) => {
@@ -191,7 +191,7 @@ export default function AlbumScreen() {
                         <span className="min-w-0">
                           <span className="block truncate font-hand text-[16px] text-ink">{b.title}</span>
                           <span className="text-[12px] text-ink-soft">
-                            对手 {b.opponentName}
+                            我遇见了 {b.opponentName}
                             {b.isNpc ? "（路过的小家伙）" : ""}
                           </span>
                         </span>
@@ -207,7 +207,7 @@ export default function AlbumScreen() {
                       <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{b.story}</p>
                       <p className="mt-1.5 flex justify-between text-[11px] text-ink-soft/80">
                         <span>
-                          {b.injury > 0 ? `🩹 受伤 ${b.injury}` : "毫发无伤"}
+                          {b.injury > 0 ? `🩹 擦破了一点 ${b.injury}` : "我没事"}
                           {b.spoils ? ` · 🎁 ${b.spoils}` : ""}
                         </span>
                         <span>{fmtDate(b.createdAt)}</span>

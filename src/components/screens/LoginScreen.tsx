@@ -72,7 +72,7 @@ export default function LoginScreen() {
             Capybanana
           </h1>
           <div className="storybook-ribbon mx-auto mt-3 px-4 py-1.5 text-sm font-semibold">
-            每天一分钟，陪它过日子
+            我在小岛上等你
           </div>
         </motion.div>
 
@@ -91,7 +91,7 @@ export default function LoginScreen() {
             className="flex w-full items-center justify-center gap-3 rounded-[22px] border border-[#bd8a52]/25 bg-paper/95 px-4 py-4 font-hand text-base text-ink shadow-[0_10px_28px_-10px_rgba(40,28,18,0.5),inset_0_1.5px_0_rgba(255,255,255,0.8)] backdrop-blur-sm transition active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <GoogleMark className="h-5 w-5" />
-            {busy ? "正在打开小岛…" : "用 Google 继续"}
+            {busy ? "正在推开小岛的门…" : "用 Google 找到我"}
           </button>
 
           {devAuthEnabled && (
@@ -107,7 +107,7 @@ export default function LoginScreen() {
                 disabled={busy}
                 className="w-full rounded-[14px] border-2 border-[#bd8a52]/45 bg-cream-soft px-4 py-2.5 text-sm text-ink transition active:translate-y-0.5 disabled:opacity-60"
               >
-                {busy ? "进入中…" : "本地进入"}
+                {busy ? "进岛中…" : "本地进岛"}
               </button>
             </div>
           )}
@@ -121,7 +121,7 @@ export default function LoginScreen() {
           <p className="flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-cream-soft/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)]">
             <LockMark className="h-3 w-3 shrink-0" />
             {isSupabaseConfigured
-              ? "云端保存你的小屋、来信和成长记录"
+              ? "我的小屋、来信和慢慢长大的样子，都会替你收着"
               : devAuthEnabled
                 ? "当前是本地开发入口"
                 : "小岛入口暂未配置完成，请稍后再试。"}

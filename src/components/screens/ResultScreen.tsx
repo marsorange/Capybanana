@@ -13,11 +13,11 @@ type KindTheme = { emoji: string; caption: string; glow: string; pedestal: strin
 // pale so the page stays light. Loosely keyed (with a fallback below) so it
 // survives any OutcomeKind tweak.
 const KIND_THEME: Record<string, KindTheme> = {
-  home: { emoji: "🏡", caption: "在岛上窝了一天", glow: "#ffe6b8", pedestal: "#f1e2c0", accent: "#e9a23b" },
-  yard: { emoji: "🌿", caption: "在小岛边缘晃悠", glow: "#d8eebb", pedestal: "#dce8c6", accent: "#8aa978" },
-  travel: { emoji: "✈️", caption: "出远门回来啦", glow: "#c5e7e3", pedestal: "#d3e7e2", accent: "#6fa8c9" },
-  rest: { emoji: "😴", caption: "好好休息的一天", glow: "#e7d8f1", pedestal: "#e7dcef", accent: "#b59ed0" },
-  battle: { emoji: "⚔️", caption: "打了一场友谊赛", glow: "#f4d9d8", pedestal: "#eed7d6", accent: "#d95f59" },
+  home: { emoji: "🏡", caption: "今天没出门，窝了一天", glow: "#ffe6b8", pedestal: "#f1e2c0", accent: "#e9a23b" },
+  yard: { emoji: "🌿", caption: "在岛上四处晃了晃", glow: "#d8eebb", pedestal: "#dce8c6", accent: "#8aa978" },
+  travel: { emoji: "✈️", caption: "我回来啦", glow: "#c5e7e3", pedestal: "#d3e7e2", accent: "#6fa8c9" },
+  rest: { emoji: "😴", caption: "好好睡了一天", glow: "#e7d8f1", pedestal: "#e7dcef", accent: "#b59ed0" },
+  battle: { emoji: "⚔️", caption: "切磋了一场", glow: "#f4d9d8", pedestal: "#eed7d6", accent: "#d95f59" },
 };
 
 function Pedestal({ color }: { color: string }) {
@@ -94,7 +94,7 @@ export default function ResultScreen() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
             <Panel className="px-5 py-4">
               <p className="mb-1.5 text-[11px] font-medium" style={{ color: theme.accent }}>
-                今天留下了什么
+                跟你说说今天
               </p>
               <p className="text-[15px] leading-relaxed text-ink">{result.story}</p>
             </Panel>
@@ -107,7 +107,7 @@ export default function ResultScreen() {
               transition={{ delay: 0.22 }}
               className="rounded-[18px] border-2 border-dashed border-[#bd8a52]/45 bg-cream-soft px-4 py-3 text-center"
             >
-              <p className="mb-1 text-xs font-medium text-accent">误解词典 +1</p>
+              <p className="mb-1 text-xs font-medium text-accent">我好像听岔了一点</p>
               <p className="text-sm text-ink-soft">{result.misunderstanding}</p>
             </motion.div>
           )}
@@ -117,7 +117,7 @@ export default function ResultScreen() {
               <Panel sketch={false} className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm text-ink-soft">
                 <span className="text-lg">🎁</span>
                 <span>
-                  它带回了 <b className="text-ink">{result.souvenir}</b>
+                  我带回了 <b className="text-ink">{result.souvenir}</b>
                 </span>
               </Panel>
             </motion.div>

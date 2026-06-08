@@ -50,11 +50,11 @@ const SOUVENIRS = [
 
 const MISREADS = [
   "要把所有东西都摆成一排",
-  "今天是它的生日",
-  "你让它去找另一只卡皮巴拉",
+  "今天是我的生日",
+  "你让我去找另一只卡皮巴拉",
   "得把包裹埋进土里",
   "要给每样东西取个名字",
-  "你想吃它带回来的任何东西",
+  "你想吃我带回来的任何东西",
 ];
 
 const WEIRD_USES = [
@@ -81,13 +81,13 @@ function microVariant(
   const r = Math.random();
   if (r < 0.15 && labels.length) {
     return {
-      story: `它把你给的「${pick(labels)}」弄丢了，回来时一脸无辜地看着你。`,
+      story: `你给我的「${pick(labels)}」，我走丢了…回来只敢偷偷看你。`,
       effects: { mood: -4 },
     };
   }
   if (r < 0.32 && labels.length >= 2) {
     return {
-      story: `它把「${labels[0]}」和「${labels[1]}」拼成了${pick(WEIRD_USES)}，还挺得意。`,
+      story: `我把「${labels[0]}」和「${labels[1]}」拼成了${pick(WEIRD_USES)}，挺得意的。`,
       effects: { mood: 6, courage: 3 },
       memory: `${labels[0]} + ${labels[1]} = 某种神秘装置`,
     };
@@ -104,14 +104,14 @@ function any(text: string, words: string[]): boolean {
 
 function homeStory(tags: ItemTag[]): string {
   if (has(tags, "sleep") || has(tags, "soft"))
-    return "它把带来的东西堆成一个窝，睡了一整天，偶尔翻个身。";
+    return "我把带来的东西堆成一个窝，睡了一整天，偶尔翻个身。";
   if (has(tags, "warm"))
-    return "它窝在暖暖的角落，把东西抱在怀里取暖，谁叫都不动。";
+    return "我窝在暖暖的角落，抱着东西取暖，谁叫都不想动。";
   if (has(tags, "work"))
-    return "它把东西在桌上摆得整整齐齐，装模作样地「上了一天班」。";
+    return "我把东西在桌上摆得整整齐齐，假装「上了一天班」。";
   if (has(tags, "food"))
-    return "它把吃的藏来藏去，最后全塞进了枕头底下留到明天。";
-  return "它今天没出门，把包裹里的东西翻来覆去玩了好久。";
+    return "我把吃的藏来藏去，最后全塞进枕头底下，留到明天。";
+  return "我今天没出门，把包裹里的东西翻来覆去玩了好久。";
 }
 
 function yardStory(tags: ItemTag[]): string {
@@ -123,8 +123,8 @@ function yardStory(tags: ItemTag[]): string {
     "把东西在台阶上摆成一道风景",
   ];
   let line = pick(acts);
-  if (has(tags, "rain")) line = "趁着小雨在院子里踩了几个水坑";
-  return `它只在院子里待了一会儿：${line}。`;
+  if (has(tags, "rain")) line = "趁着小雨踩了几个水坑";
+  return `我只在院子里待了一会儿：${line}。`;
 }
 
 type ResolvedBase = Pick<DayOutcome, "id" | "kind" | "reason" | "resolvedAt">;
@@ -175,13 +175,13 @@ export function resolveDay(
   // optional misunderstanding (误解词典)
   const misread =
     msg.trim() && Math.random() < 0.4
-      ? `它把你说的「${msg.slice(0, 10)}」理解成了：${pick(MISREADS)}。`
+      ? `你说的「${msg.slice(0, 10)}」，我听成了：${pick(MISREADS)}。`
       : undefined;
 
   const base: ResolvedBase = {
     id: uid("out"),
     kind,
-    reason: misread ?? trip.note ?? "它按自己的心情过了这一天。",
+    reason: misread ?? trip.note ?? "我按自己的心情，过了这一天。",
     resolvedAt: new Date().toISOString(),
   };
 
@@ -191,13 +191,13 @@ export function resolveDay(
     const hurt = Math.random() < TRAVEL_HURT_CHANCE ? TRAVEL_HURT_AMOUNT : 0;
     return {
       ...base,
-      title: "它真的出门啦",
-      story: `它背上包裹走了挺远，寄回了一张明信片：「${postcard.title}」。`,
+      title: "我真的出门啦",
+      story: `我背上包裹走了挺远，给你寄了张明信片：「${postcard.title}」。`,
       effects: { ...EFFECTS.travel, injury: hurt },
       souvenir,
       trait: maybeTrait(capy.traits),
       misunderstanding: misread,
-      memory: `去过${postcard.locationName}，记得那里像「${postcard.title}」。`,
+      memory: `我去过${postcard.locationName}，记得那里像「${postcard.title}」。`,
       postcard,
     };
   }
@@ -206,7 +206,7 @@ export function resolveDay(
     const mv = microVariant(trip);
     return {
       ...base,
-      title: mv ? "院子里出了点意外" : "它在院子里晃了晃",
+      title: mv ? "院子里出了点意外" : "我在院子里晃了晃",
       story: mv?.story ?? yardStory(tags),
       effects: mv?.effects ?? EFFECTS.yard,
       memory: mv?.memory,
@@ -219,10 +219,10 @@ export function resolveDay(
     const hurt = capy.injury > 0;
     return {
       ...base,
-      title: hurt ? "它今天在养伤" : "它今天没什么精神",
+      title: hurt ? "我今天在养伤" : "我今天没什么精神",
       story: hurt
-        ? "它窝在角落舔了舔爪子，把你给的东西垫在身下，睡了好久。"
-        : "它赖在窝里一整天，谁叫都只是哼哼两声。",
+        ? "我窝在角落舔舔爪子，把你给的东西垫在身下，睡了好久。"
+        : "我赖在窝里一整天，谁叫都只哼哼两声。",
       effects: EFFECTS.rest,
       misunderstanding: misread,
     };
@@ -232,7 +232,7 @@ export function resolveDay(
   const mv = microVariant(trip);
   return {
     ...base,
-    title: mv ? "今天有点意外" : "它今天待在家里",
+    title: mv ? "今天有点意外" : "我今天待在家里",
     story: mv?.story ?? homeStory(tags),
     effects: mv?.effects ?? EFFECTS.home,
     memory: mv?.memory,

@@ -18,10 +18,10 @@ const WEATHERS = [
 ];
 
 function statusLine(p: number): string {
-  if (p < 0.34) return "它刚出门不久，包裹应该还背得很紧。";
-  if (p < 0.7) return "小岛安静下来，远方正在发生一点小事。";
-  if (p < 0.98) return "它好像快想好要寄什么回来了。";
-  return "门口快有动静了。";
+  if (p < 0.34) return "我刚出门，背包还鼓鼓的。";
+  if (p < 0.7) return "走得有点远了，挺好的。";
+  if (p < 0.98) return "想好要给你寄什么啦。";
+  return "我马上就到家咯。";
 }
 
 export default function TravelingScreen() {
@@ -69,7 +69,7 @@ export default function TravelingScreen() {
       <div className="flex flex-1 flex-col px-5 py-4">
         <Panel className="p-4">
           <div className="mb-1 flex items-center justify-between">
-            <span className="font-hand text-lg text-ink">今日路程</span>
+            <span className="font-hand text-lg text-ink">回家的路</span>
             <span className="font-hand text-base text-accent">{pct}%</span>
           </div>
           <JournalMap progress={progress} />
@@ -83,7 +83,7 @@ export default function TravelingScreen() {
         </Panel>
 
         <p className="mt-auto pt-4 text-center text-xs leading-relaxed text-ink-soft/70">
-          Agent 没把目的地提前写在门口。等它回来，故事会自己落进相册里。
+          去哪是秘密——等我回来。
         </p>
       </div>
     </div>

@@ -111,7 +111,7 @@ export function petAction(
 
 /**
  * The agent's curated "current info" bundle: the pet summary plus recent
- * activity, postcards and battle records — everything the daily check-in read
+ * activity, postcards and sparring records — everything the daily check-in read
  * used to require four separate endpoints for. `since` filters the event log.
  */
 export function agentStateBody(save: CloudSave, since = 0) {

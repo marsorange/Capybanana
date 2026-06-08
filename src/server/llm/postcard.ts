@@ -65,9 +65,9 @@ function buildPrompt(ctx: PostcardContext): string {
     ctx.note ? `送它出门的人留了句话：「${ctx.note}」。可让旅程的语气稍稍呼应。` : "",
     ctx.stressNote ? `照看它的人今天说：「${ctx.stressNote}」。它会有点感同身受。` : "",
     `它的状态（影响语气，别直接报数字）：体力 ${capy.energy} / 心情 ${capy.mood} / 勇气 ${capy.courage} / 好奇心 ${capy.curiosity}。`,
-    `用它自己的口吻写，温柔、童真、具体可感，别喊口号。`,
+    `全程用第一人称「我」写，像它在跟主人小声说话，温柔、童真、具体可感，别喊口号。`,
     `只返回 JSON，不要多余文字：`,
-    `{"title":"<≤12字、有画面感的标题>","message":"<2-4句明信片正文，写到地标和打包的东西>","reason":"<一句话：它为什么去了那里 / 和包裹的关系>"}`,
+    `{"title":"<≤12字、有画面感的标题>","message":"<2-4句明信片正文，第一人称，写到地标和打包的东西>","reason":"<一句话，第一人称：我为什么去了那里 / 和包裹的关系>"}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -93,7 +93,7 @@ export async function composePostcard(
     return {
       title: str(raw.title, "我出门走了走"),
       message: str(raw.message, "今天的风很轻，我想起了你。"),
-      reason: str(raw.reason, "它把今天交给了风和脚步。"),
+      reason: str(raw.reason, "我把今天交给了风和脚步。"),
     };
   } catch {
     return null; // network / parse / API error → procedural fallback

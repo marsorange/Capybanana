@@ -5,12 +5,28 @@ import { useState } from "react";
 import { useGameStore } from "@/state/gameStore";
 import { Panel, PrimaryButton, ScreenHeader } from "../ui/kit";
 
-function SmallTile({ icon, label, text }: { icon: string; label: string; text: string }) {
+// The daily ritual in the pet's own voice — simple, few words (旅行青蛙 vibe):
+// you pack a little bag, the Agent listens for it, and it sends the day back.
+const DAILY_STEPS = [
+  { icon: "🎒", label: "给我备个小包裹" },
+  { icon: "🌤️", label: "让 Agent 听听我的小心思" },
+  { icon: "💌", label: "等我把远方寄回来" },
+];
+
+function StepList() {
   return (
-    <Panel sketch={false} className="px-3 py-3">
-      <p className="text-2xl leading-none">{icon}</p>
-      <p className="mt-1 font-hand text-base leading-tight text-ink">{label}</p>
-      <p className="mt-1 text-xs leading-relaxed text-ink-soft">{text}</p>
+    <Panel className="p-4">
+      <p className="mb-3 text-[11px] font-medium text-accent">以后，你每天来看看我——</p>
+      <ul className="space-y-3">
+        {DAILY_STEPS.map((s) => (
+          <li key={s.label} className="flex items-center gap-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/10 text-lg leading-none">
+              {s.icon}
+            </span>
+            <p className="font-hand text-[15px] leading-snug text-ink">{s.label}</p>
+          </li>
+        ))}
+      </ul>
     </Panel>
   );
 }
@@ -22,61 +38,87 @@ export default function ConnectAgentScreen() {
   const hasOnboarded = useGameStore((s) => s.hasOnboarded);
   const completeOnboarding = useGameStore((s) => s.completeOnboarding);
   const goTo = useGameStore((s) => s.goTo);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const snippet = connectUrl ? `Read ${connectUrl}` : "";
   const hasPet = !!companion;
 
-  // First-time onboarding: the connect screen is the only gate before the
-  // island, so there's no back button — the one way forward is "进入小岛".
+  // Three states this screen serves:
+  //   gate    — no pet yet: the Agent hasn't registered one. The hard gate.
+  //   ready   — pet exists, first time through:登记成功, enter the island.
+  //   revisit — onboarded already, reopened from home to re-copy the口令.
+  const mode: "gate" | "ready" | "revisit" = !hasPet
+    ? "gate"
+    : hasOnboarded
+      ? "revisit"
+      : "ready";
+
   const enterIsland = () => {
     if (!hasOnboarded) completeOnboarding();
     else goTo("home");
   };
 
-  const copy = async (key: string, text: string) => {
-    if (!text) return;
+  const copy = async () => {
+    if (!snippet) return;
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(key);
-      setTimeout(() => setCopied((c) => (c === key ? null : c)), 1600);
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
     } catch {
       /* clipboard blocked — the text is selectable below anyway */
     }
   };
 
+  const header =
+    mode === "gate"
+      ? { eyebrow: "岛上有谁醒了", title: "把我交给你的 Agent" }
+      : mode === "ready"
+        ? { eyebrow: "我探出了头", title: `我叫${companion!.name}啦` }
+        : { eyebrow: "小岛口令", title: "接入 Agent" };
+
   return (
     <div className="screen-bg relative flex h-full flex-col">
       <ScreenHeader
-        onBack={hasOnboarded ? () => goTo("home") : undefined}
-        eyebrow="把小岛信箱交给 Agent"
-        title="今日照看口令"
+        onBack={mode === "revisit" ? () => goTo("home") : undefined}
+        eyebrow={header.eyebrow}
+        title={header.title}
       />
 
       <div className="no-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-4 pt-5">
-        {/* live status */}
+        {/* hero: what's happening / why this gate exists */}
         <Panel className="px-4 py-3.5">
-          {hasPet ? (
+          {mode === "gate" && (
             <>
-              <p className="font-hand text-lg leading-none text-ink">
-                {hasOnboarded
-                  ? `${companion!.name} 正在岛上等消息`
-                  : `${companion!.name} 已经接入小岛 ✓`}
-              </p>
+              <p className="font-hand text-lg leading-tight text-ink">我刚到这座岛，还没有名字。</p>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                复制下面这句话发给你的 Agent。它会读取今天的包裹、状态和留言，再决定出门、散步，还是在岛上休息。
+                把下面这句话交给你的 Agent。它会替我取个名字，也会听见我每天的小心思。
               </p>
-            </>
-          ) : (
-            <>
-              <p className="font-hand text-lg leading-none text-ink">还差一步：让 Agent 接入小岛</p>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                把下面这句口令发给你的 Agent。它会读懂口令，为你接生一只专属卡皮巴拉、给它取个名字。
-                <span className="text-ink">注册完成后这只小伙伴才会正式登岛——在此之前还无法进入小岛。</span>
+              <p className="mt-2 text-sm leading-relaxed text-ink">
+                等我安顿好，你就能上岛找我啦。
               </p>
               <p className="mt-2.5 inline-flex items-center gap-1.5 text-xs text-accent">
                 <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-                正在等待 Agent 注册…（每隔几秒自动检查）
+                我在岛上，等你的 Agent…
+              </p>
+            </>
+          )}
+          {mode === "ready" && (
+            <>
+              <p className="font-hand text-lg leading-tight text-ink">
+                你的 Agent 给我取名「{companion!.name}」
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                我在这座岛上住下啦。往后每天，来看看我就好。
+              </p>
+            </>
+          )}
+          {mode === "revisit" && (
+            <>
+              <p className="font-hand text-lg leading-tight text-ink">
+                我是{companion!.name}，还在岛上。
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                想换个照看我的 Agent，或者再发一次口令，把下面这句给它。
               </p>
             </>
           )}
@@ -84,43 +126,44 @@ export default function ConnectAgentScreen() {
 
         {/* the skill-doc command link */}
         <Panel className="p-4">
-          <p className="mb-2 text-[11px] font-medium text-accent">发给 Agent 的小岛口令</p>
+          <p className="mb-2 text-[11px] font-medium text-accent">交给 Agent 的一句话</p>
           <code className="block break-all rounded-xl border border-[#bd8a52]/25 bg-cream-soft px-3 py-2.5 text-sm text-ink">
-            {snippet || "口令还没准备好，请回到小岛后再试。"}
+            {snippet || "口令还没准备好，等我回到小岛再试。"}
           </code>
           <button
             disabled={!snippet}
-            onClick={() => copy("cmd", snippet)}
+            onClick={copy}
             className="sketch mt-3 w-full rounded-[16px] border-2 border-[#bd8a52]/55 bg-cream-soft px-5 py-2.5 font-hand text-[15px] text-ink shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.16)] transition active:translate-y-0.5 disabled:opacity-45"
           >
-            {copied === "cmd" ? "已复制 ✓" : "复制口令"}
+            {copied ? "已复制，悄悄带走吧" : "复制口令"}
           </button>
           <p className="mt-2 text-[11px] text-ink-soft/70">
-            这句话可以打开你的小岛信箱，只发给你信任的 Agent。
+            这句话能推开小岛的门，只给你信任的 Agent 看。
           </p>
         </Panel>
 
         {cloudError && <p className="text-center text-sm text-accent">{cloudError}</p>}
 
-        <div className="grid grid-cols-2 gap-3">
-          <SmallTile icon="🎒" label="看包裹" text="读取你今天放进背包的真实线索和心愿。" />
-          <SmallTile icon="🧭" label="看天气" text="根据体力、心情和伤痛判断今天走多远。" />
-          <SmallTile icon="🏝️" label="照看小岛" text="太累时让它留在岛上，别硬把它推出门。" />
-          <SmallTile icon="💌" label="寄来信" text="旅行回来后，把远方变成一张明信片。" />
-        </div>
+        {/* the daily loop, for first-timers (gate / ready); returning owners know it */}
+        {mode !== "revisit" && <StepList />}
       </div>
 
       <div className="shrink-0 px-5 pb-5 pt-3">
-        {hasPet ? (
-          <PrimaryButton onClick={enterIsland}>
-            {hasOnboarded ? "回小屋" : "进入小岛"}
-          </PrimaryButton>
+        {mode === "gate" ? (
+          <>
+            <PrimaryButton disabled>等我安顿好…</PrimaryButton>
+            <p className="mt-2 text-center text-[11px] text-ink-soft/70">
+              等我有了名字，这扇门就开了。
+            </p>
+          </>
         ) : (
-          <PrimaryButton disabled>等待 Agent 注册…</PrimaryButton>
+          <PrimaryButton onClick={enterIsland}>
+            {mode === "ready" ? "进岛找我" : "回小屋"}
+          </PrimaryButton>
         )}
-        {!hasOnboarded && hasPet && (
+        {mode === "ready" && (
           <p className="mt-2 text-center text-[11px] text-ink-soft/70">
-            稍后也能从小岛上的「接入 Agent」再来复制口令。
+            以后想换 Agent 或再发口令，从岛上的「接入 Agent」来。
           </p>
         )}
       </div>

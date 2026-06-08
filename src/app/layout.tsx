@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Capybanana · 随心陪伴养成",
-  description: "每天一分钟，陪你的低边形卡皮巴拉伙伴长大一点。",
+  description: "每天一分钟，来小岛上陪我长大一点。",
 };
 
 export const viewport: Viewport = {

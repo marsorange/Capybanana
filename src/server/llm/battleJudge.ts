@@ -40,14 +40,14 @@ function heuristic(ctx: BattleContext): BattleVerdict {
   const opp = ctx.opponent.name;
   const story =
     result === "win"
-      ? `${ctx.self.name} 鼓起勇气冲了上去，几个回合下来把 ${opp} 逗得手忙脚乱，赢得漂漂亮亮。`
+      ? `我鼓起勇气冲上去，几个回合就把 ${opp} 逗得手忙脚乱，赢得漂漂亮亮。`
       : result === "lose"
-        ? `${opp} 比想象中厉害，${ctx.self.name} 拼到最后还是慢了一步，灰头土脸地回来了。`
-        : `两只小家伙你追我赶，闹腾了好一阵，谁也没占到便宜，最后笑作一团。`;
+        ? `${opp} 比我想的厉害，我拼到最后还是慢了半步，灰头土脸地回来了。`
+        : `我俩你追我赶，闹了好一阵，谁也没占到便宜，最后笑作一团。`;
   return {
     result,
     title:
-      result === "win" ? "今天它赢啦" : result === "lose" ? "它输了一场" : "打成了平手",
+      result === "win" ? "今天我赢啦" : result === "lose" ? "我输了一场" : "打成了平手",
     story,
     injury: injuryFor(result),
     spoils: result === "win" && Math.random() < 0.5 ? pick(SPOILS) : undefined,
@@ -69,14 +69,14 @@ export async function judgeBattle(ctx: BattleContext): Promise<BattleVerdict> {
       spoils?: string;
     }>({
       system:
-        "你是一个陪伴养成小游戏里友好对战的裁判，只输出 JSON。胜负主要看勇气与体力，但允许一点意外。",
+        "你是一个陪伴养成小游戏里友好切磋的裁判，只输出 JSON。胜负主要看勇气与体力，但允许一点意外。",
       prompt: [
-        `两只低多边形小动物来了一场友好的小比试。`,
+        `两只低多边形小动物来了一场友好的小切磋。`,
         `我方 ${describe(ctx.self)}。`,
         `对手 ${describe(ctx.opponent)}${ctx.opponentIsNpc ? "（一只路过的野生小家伙）" : ""}。`,
         ctx.stressNote ? `照看我方的 Agent 今天说：「${ctx.stressNote}」。` : "",
-        `判断谁赢，并写一段温和、童真、不血腥的 2-4 句过程描述。我方受的伤给 0-40 的整数（赢应较小，输应较大）。`,
-        `只返回 JSON：{"winner":"self|opponent|draw","title":"<≤8字标题>","story":"<过程>","injury":<int>,"spoils":"<可选战利品，没有就省略>"}`,
+        `判断谁赢，并以**我方第一人称「我」**写一段温和、童真、不血腥的 2-4 句过程描述（像它回家跟主人讲今天这场）。我方受的伤给 0-40 的整数（赢应较小，输应较大）。`,
+        `只返回 JSON：{"winner":"self|opponent|draw","title":"<≤8字标题，第一人称>","story":"<过程，第一人称>","injury":<int>,"spoils":"<可选战利品，没有就省略>"}`,
       ]
         .filter(Boolean)
         .join("\n"),

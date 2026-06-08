@@ -4,13 +4,14 @@
 // companion into the store and renders by `screen`, like GameRoot, but without
 // the login gate or cloud polling.
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { DEFAULT_CAPY } from "@/game/defaults";
 import { useGameStore, type Screen } from "@/state/gameStore";
 import type { BattleRecord, Companion, Postcard } from "@/game/types";
 import PortraitFrame from "@/components/ui/PortraitFrame";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import AboutScreen from "@/components/screens/AboutScreen";
 import AlbumScreen from "@/components/screens/AlbumScreen";
 import ConnectAgentScreen from "@/components/screens/ConnectAgentScreen";
 import HomeScreen from "@/components/screens/HomeScreen";
@@ -41,7 +42,7 @@ const POSTCARDS: Postcard[] = (
   rarity: (["N", "R", "SR", "R", "SR", "N"] as const)[i],
   title: ["山坡上的问题", "海边的风", "花田漫步", "山顶的日出", "踩雪一整天", "灯还亮着"][i],
   message: "今天的风有点慢。\n路边的猫没有看我。\n我把你的问题带去了山坡，它在那里变轻了一点。",
-  reason: "因为你放进去的那只绿色小东西，它想去安静的地方。",
+  reason: "因为你放进去的那只绿色小东西，我想找个安静的地方。",
   imageKey: theme,
   sentAt: new Date(Date.now() - (i + 1) * 86_400_000).toISOString(),
 }));
@@ -54,8 +55,8 @@ const BATTLES: BattleRecord[] = [
     opponentSpecies: "raccoon",
     isNpc: true,
     result: "win",
-    title: "今天它赢啦",
-    story: "麻薯鼓起勇气冲了上去，几个回合下来把小灰逗得手忙脚乱，赢得漂漂亮亮。",
+    title: "今天我赢啦",
+    story: "我鼓起勇气冲上去，几个回合就把小灰逗得手忙脚乱，赢得漂漂亮亮。",
     injury: 5,
     spoils: "一枚对手的纽扣",
     ratingDelta: 15,
@@ -68,8 +69,8 @@ const BATTLES: BattleRecord[] = [
     opponentSpecies: "duck",
     isNpc: false,
     result: "lose",
-    title: "它输了一场",
-    story: "圆圆比想象中厉害，麻薯拼到最后还是慢了一步，灰头土脸地回来了。",
+    title: "我输了一场",
+    story: "圆圆比我想的厉害，我拼到最后还是慢了半步，灰头土脸地回来了。",
     injury: 22,
     ratingDelta: -15,
     createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
@@ -78,6 +79,8 @@ const BATTLES: BattleRecord[] = [
 
 function renderScreen(screen: Screen) {
   switch (screen) {
+    case "about":
+      return <AboutScreen />;
     case "connect":
       return <ConnectAgentScreen />;
     case "profile":
@@ -103,6 +106,13 @@ export default function DevScreen() {
   const screen = useGameStore((s) => s.screen);
   const selectedPostcardId = useGameStore((s) => s.selectedPostcardId);
   const lastResult = useGameStore((s) => s.lastResult);
+  // Connect-screen state previews: ?nopet=1 → the new-user gate (no pet yet),
+  // ?fresh=1 → just-registered (pet exists, not onboarded), default → revisit.
+  const [noPet] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("nopet") === "1",
+  );
 
   useEffect(() => {
     useGameStore.setState({
@@ -116,7 +126,7 @@ export default function DevScreen() {
         courage: 58,
         injury: 0,
         traits: ["爱发呆", "怕吵", "喜欢绿色"],
-        memories: ["你昨天留的那句话它还记得。", "山坡上的问题滚了一圈变小了。"],
+        memories: ["你昨天留的那句话，我还记得。", "山坡上的问题滚了一圈，变小了。"],
       },
       companionState: "idle_home",
       packedBag: null,
@@ -130,7 +140,7 @@ export default function DevScreen() {
         id: "r0",
         kind: "yard",
         title: "在岛上窝了一天",
-        story: "它把背包放在门口，趴在草地上晒了一下午太阳。",
+        story: "我把背包放在门口，趴在草地上晒了一下午太阳。",
         reason: "你说今天想慢一点。",
         effects: { mood: 4, energy: 6 },
         souvenir: "一颗温热的小石头",
@@ -154,7 +164,7 @@ export default function DevScreen() {
     // Optional ?s=<screen> to jump straight to a screen for previewing.
     const s = new URLSearchParams(window.location.search).get("s");
     const screens = [
-      "home", "pack", "album", "postcard", "profile", "connect", "result", "traveling", "login",
+      "home", "pack", "album", "postcard", "profile", "about", "connect", "result", "traveling", "login",
     ];
     if (s && screens.includes(s)) {
       useGameStore.setState({
@@ -163,6 +173,19 @@ export default function DevScreen() {
         ...(s === "traveling" ? { companionState: "traveling" } : {}),
       });
     }
+    // Connect-screen state overrides (see noPet note above).
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("nopet") === "1") {
+      useGameStore.setState({
+        companion: null,
+        hasOnboarded: false,
+        companionState: "idle_home",
+        activeTrip: null,
+        screen: "connect",
+      });
+    } else if (params.get("fresh") === "1") {
+      useGameStore.setState({ hasOnboarded: false, screen: "connect" });
+    }
     // ?r=battle previews a battle outcome on the result screen.
     if (new URLSearchParams(window.location.search).get("r") === "battle") {
       useGameStore.setState({
@@ -170,9 +193,9 @@ export default function DevScreen() {
         lastResult: {
           id: "rb",
           kind: "battle",
-          title: "今天它赢啦",
-          story: "麻薯鼓起勇气冲了上去，几个回合下来把对手逗得手忙脚乱，赢得漂漂亮亮。",
-          reason: "它今天勇气很足，想去试试身手。",
+          title: "今天我赢啦",
+          story: "我鼓起勇气冲上去，几个回合就把对手逗得手忙脚乱，赢得漂漂亮亮。",
+          reason: "我今天勇气很足，想去试试身手。",
           effects: { energy: -15, courage: 5, mood: 8, injury: 5 },
           souvenir: "一枚对手的纽扣",
           resolvedAt: new Date().toISOString(),
@@ -181,7 +204,7 @@ export default function DevScreen() {
     }
   }, []);
 
-  if (companion?.id !== COMPANION.id) return null;
+  if (!noPet && companion?.id !== COMPANION.id) return null;
 
   // Mirror GameRoot's light redirects so we never land on a blank screen.
   let effective: Screen = screen === "login" ? "home" : screen;

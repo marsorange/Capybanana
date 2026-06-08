@@ -173,7 +173,7 @@ export interface PackedBag {
 
 export type CompanionState = "idle_home" | "ready" | "traveling";
 
-// --- Battle (对战) -----------------------------------------------------------
+// --- Battle (切磋) -----------------------------------------------------------
 
 export type BattleResult = "win" | "lose" | "draw";
 

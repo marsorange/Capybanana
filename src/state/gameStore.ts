@@ -31,6 +31,7 @@ export type Screen =
   | "login"
   | "connect"
   | "profile"
+  | "about"
   | "home"
   | "pack"
   | "traveling"
@@ -140,7 +141,7 @@ export const useGameStore = create<GameState>()(
       prepareBag: (items, message, gesture) => {
         const s = get();
         if (!s.cloud) {
-          set({ screen: "login", cloudError: "请先登录后再准备包裹。" });
+          set({ screen: "login", cloudError: "先找到我，再给我准备包裹吧。" });
           return;
         }
 
@@ -274,9 +275,8 @@ export const useGameStore = create<GameState>()(
         const s = get();
         if (!s.cloud || !s.packedBag) return;
         if (Date.now() - s.packedBag.packedAt < BAG_TTL_MS) return;
-        const name = s.companion?.name ?? "它";
         set({
-          notice: `包裹放了一天，里面的东西已经不新鲜啦——${name} 悄悄收走了，要不要重新打包？`,
+          notice: "门口的包裹放了一天，有点凉了，我先收起来啦。要不要再给我备一个？",
         });
         cloud
           .unpack(s.cloud.bindToken)

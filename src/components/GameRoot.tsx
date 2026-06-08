@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { completeOAuthLogin, getSupabase } from "@/lib/supabaseClient";
 import { useGameStore, type Screen } from "@/state/gameStore";
 import AlbumScreen from "./screens/AlbumScreen";
+import AboutScreen from "./screens/AboutScreen";
 import ConnectAgentScreen from "./screens/ConnectAgentScreen";
 import HomeScreen from "./screens/HomeScreen";
 import LoginScreen from "./screens/LoginScreen";
@@ -83,6 +84,8 @@ function renderScreen(screen: Screen) {
       return <ConnectAgentScreen />;
     case "profile":
       return <ProfileScreen />;
+    case "about":
+      return <AboutScreen />;
     case "home":
       return <HomeScreen />;
     case "pack":

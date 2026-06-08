@@ -58,7 +58,7 @@ function Back({ card, companionName }: { card: Postcard; companionName: string }
       <div className="flex h-full flex-col p-2">
         <div className="flex items-start justify-between gap-3 border-b-2 border-dashed border-[#bd8a52]/30 pb-2">
           <div className="min-w-0">
-            <p className="text-[11px] text-accent">寄给你的今日小事</p>
+            <p className="text-[11px] text-accent">今天的一点小事</p>
             <h2 className="mt-0.5 font-hand text-xl leading-tight text-ink">{card.title}</h2>
           </div>
           <span className="shrink-0 rounded-full border-2 border-[#bd8a52]/35 bg-cream-soft px-2 py-0.5 text-[11px] text-ink-soft">
@@ -78,7 +78,7 @@ function Back({ card, companionName }: { card: Postcard; companionName: string }
 
         <div className="grid grid-cols-[1fr_42%] gap-3 border-t-2 border-dashed border-[#bd8a52]/30 pt-3">
           <div className="rounded-2xl border border-[#bd8a52]/25 bg-cream-soft px-3 py-2">
-            <p className="mb-0.5 text-[11px] font-medium text-accent">它为什么会去这里</p>
+            <p className="mb-0.5 text-[11px] font-medium text-accent">我为什么去了那儿</p>
             <p className="text-[12px] leading-snug text-ink-soft">{card.reason}</p>
           </div>
           <div className="rounded-2xl border-2 border-[#bd8a52]/30 bg-paper px-3 py-2">
@@ -109,7 +109,7 @@ export default function PostcardScreen() {
   if (!card) {
     return (
       <div className="screen-bg flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-ink-soft">还没有明信片。</p>
+        <p className="text-ink-soft">我还没寄过明信片。</p>
         <PrimaryButton className="w-auto px-8" onClick={() => goTo("home")}>
           回小屋
         </PrimaryButton>
@@ -122,12 +122,10 @@ export default function PostcardScreen() {
       {isFresh ? (
         <div className="px-5 pt-6 text-center">
           <h1 className="font-hand text-2xl text-ink">
-            {rare ? `${RARITY_META[card.rarity].badge} ${RARITY_META[card.rarity].label}明信片！` : "明信片飞回来了"}
+            {rare ? `${RARITY_META[card.rarity].badge} ${RARITY_META[card.rarity].label}明信片！` : "我给你寄信啦"}
           </h1>
           <p className="mt-0.5 text-sm text-ink-soft">
-            {rare
-              ? `${companion.name} 这次寄回了一张难得的明信片。`
-              : `${companion.name} 把慢岛群外的一小段远方寄给你。`}
+            {rare ? "这张，我等了好久才遇上。" : "把远方的一小段，寄给你。"}
           </p>
         </div>
       ) : (
@@ -176,7 +174,7 @@ export default function PostcardScreen() {
       </div>
 
       <p className="px-5 text-center text-xs text-ink-soft/80">
-        点一下翻到{flipped ? "风景面" : "信件面"}
+        点一下，翻到{flipped ? "风景面" : "信件面"}
       </p>
 
       <div className="shrink-0 px-5 pb-5 pt-3">

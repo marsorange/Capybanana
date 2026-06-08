@@ -16,15 +16,15 @@ import Icon, { type IconName } from "../ui/Icon";
 import CapyAvatar from "../ui/CapyAvatar";
 
 const IDLE_LINES = [
-  "今天也想和你待在一起。",
-  "要不要帮我收拾今日包裹呀？",
-  "（它凑过来蹭了蹭你）",
-  "我在想昨天那个东西能怎么玩。",
+  "今天也想和你待在一块儿。",
+  "要不要给我备个小包裹？",
+  "（它凑过来，蹭了蹭你）",
+  "昨天那个东西，我还在想怎么玩。",
 ];
 const READY_LINES = [
-  "包裹放在门口啦，等 Agent 看看今天适不适合出门。",
-  "嗯…也许去远方，也许就在岛上晒一会儿。",
-  "你留的那句话，我已经藏进背包里了。",
+  "包裹放门口啦，今天去哪儿还没定。",
+  "也许去远方，也许就在岛上晒太阳。",
+  "你留的那句话，我悄悄藏进包里了。",
 ];
 
 function LeafGlyph({ className = "" }: { className?: string }) {
@@ -252,7 +252,10 @@ export default function HomeScreen() {
           className="pointer-events-auto flex shrink-0 items-center gap-2"
         >
           {bound && (
-            <RoundIconBtn label="接入 Agent" icon="setting" onClick={() => goTo("connect")} />
+            <>
+              <RoundIconBtn label="关于 Capybanana" icon="book" onClick={() => goTo("about")} />
+              <RoundIconBtn label="接入 Agent" icon="setting" onClick={() => goTo("connect")} />
+            </>
           )}
           <MusicToggle />
         </motion.div>

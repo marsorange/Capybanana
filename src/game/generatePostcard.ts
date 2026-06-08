@@ -65,7 +65,7 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
   else if (byPhoto && photoHint)
     reasonMain = `因为你拍的那样东西，有种「${photoHint}」的感觉`;
   else if (byPhoto) reasonMain = "因为你拍下的那样东西，把我带到了这里";
-  else reasonMain = "它没找到明确目的地，就把今天交给了风和脚步";
+  else reasonMain = "我没想好要去哪，就把今天交给了风和脚步";
 
   const nouns = presets.map((p) => ITEM_NOUNS[p]);
   if (photos.length > 0) nouns.push("你拍下的东西");
