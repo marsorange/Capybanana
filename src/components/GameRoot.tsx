@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect } from "react";
 
+import { getMusicPref, setMusicEnabled } from "@/lib/ambientMusic";
 import { completeOAuthLogin, getSupabase } from "@/lib/supabaseClient";
 import { useGameStore, type Screen } from "@/state/gameStore";
 import AlbumScreen from "./screens/AlbumScreen";
@@ -76,6 +77,16 @@ function useSupabaseAuthBridge() {
   }, [loginWithSupabaseToken]);
 }
 
+function useAmbientMusicStartup() {
+  useEffect(() => {
+    if (!getMusicPref()) return;
+    setMusicEnabled(true);
+    const kick = () => setMusicEnabled(true);
+    window.addEventListener("pointerdown", kick, { once: true });
+    return () => window.removeEventListener("pointerdown", kick);
+  }, []);
+}
+
 function renderScreen(screen: Screen) {
   switch (screen) {
     case "login":
@@ -123,6 +134,7 @@ export default function GameRoot() {
 
   // Bridge a Supabase (Google) session into a bound account when one appears.
   useSupabaseAuthBridge();
+  useAmbientMusicStartup();
 
   // Lifecycle clock. Only bound accounts have a pet to advance; the server
   // resolves the lifecycle, so the web client just polls it.

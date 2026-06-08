@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -11,9 +12,9 @@ import PhysicsToy from "../scenes3d/home/PhysicsToy";
 import InteractionLayer from "../scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "../scenes3d/RoamingCompanion";
 import SceneCanvas from "../scenes3d/SceneCanvas";
-import MusicToggle from "../ui/MusicToggle";
 import Icon, { type IconName } from "../ui/Icon";
 import CapyAvatar from "../ui/CapyAvatar";
+import MusicToggle from "../ui/MusicToggle";
 
 const IDLE_LINES = [
   "今天也想和你待在一块儿。",
@@ -41,8 +42,8 @@ function LeafGlyph({ className = "" }: { className?: string }) {
   );
 }
 
-/** A round paper icon button for the top-right cluster (Agent, etc.). */
-function RoundIconBtn({
+/** A chunky paper tile for top-right shortcuts. */
+function HudIconTile({
   label,
   icon,
   onClick,
@@ -55,42 +56,44 @@ function RoundIconBtn({
     <button
       onClick={onClick}
       aria-label={label}
-      className="sketch tex-grain pointer-events-auto grid h-11 w-11 place-items-center rounded-full border-2 border-[#bd8a52]/45 bg-paper text-ink shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.18)] transition active:translate-y-0.5"
+      className="ui-wood-surface ui-wood-press pointer-events-auto grid h-[66px] w-[58px] shrink-0 place-items-center rounded-[18px] pb-1.5 pt-1.5 text-ink"
     >
-      <Icon name={icon} className="h-6 w-6" />
+      <Icon name={icon} className="h-8 w-8 drop-shadow-[0_3px_2px_rgba(126,83,38,0.2)]" />
+      <span className="font-hand text-[12px] font-bold leading-none text-[#6b4f2e]">
+        {label}
+      </span>
     </button>
   );
 }
 
-/** Floating entry bar — three simple shortcuts off the home scene. A puffy,
-    centered, translucent pill with the low-poly toy icons (the cozy-game look). */
-function EntryBar({ goTo }: { goTo: (s: "pack" | "album" | "profile") => void }) {
+/** Floating tab dock — three main home entries. */
+function EntryBar({ goTo }: { goTo: (s: "home" | "pack" | "album") => void }) {
   const items = [
-    { key: "pack", label: "打包", icon: "package" as IconName, onClick: () => goTo("pack") },
-    { key: "album", label: "相册", icon: "photo" as IconName, onClick: () => goTo("album") },
-    { key: "journal", label: "手账", icon: "handbook" as IconName, onClick: () => goTo("profile") },
+    { key: "home", label: "小屋", icon: "home" as IconName, active: true, onClick: () => goTo("home") },
+    { key: "pack", label: "背包", icon: "package" as IconName, onClick: () => goTo("pack") },
+    { key: "album", label: "明信片", icon: "postmail" as IconName, onClick: () => goTo("album") },
   ];
   return (
     <motion.nav
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-5"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-5 pb-4"
     >
-      <div className="sketch tex-wood pointer-events-auto relative flex items-center gap-1 rounded-[26px] border-2 border-[#cdab6e] p-2 shadow-[inset_0_1.5px_0_rgba(255,250,236,0.65),0_5px_0_rgba(150,112,60,0.4),0_16px_30px_-18px_rgba(120,90,50,0.4)]">
-        {/* carved decorative groove */}
-        <span className="pointer-events-none absolute inset-[5px] rounded-[20px] border border-dashed border-[#a07c48]/35" />
+      <div className="ui-bottom-dock pointer-events-auto grid h-[88px] w-full max-w-[350px] grid-cols-3 gap-1 rounded-[30px] p-1.5">
         {items.map((it) => (
           <button
             key={it.key}
             onClick={it.onClick}
-            className="group relative flex w-[78px] flex-col items-center justify-center gap-1 rounded-[20px] py-2 transition hover:bg-white/20 active:translate-y-0.5"
+            className={`ui-bottom-tab flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[24px] px-1 py-1.5 ${
+              it.active ? "ui-bottom-tab-active" : ""
+            }`}
           >
             <Icon
               name={it.icon}
-              className="h-8 w-8 drop-shadow-[0_2px_2px_rgba(140,104,56,0.3)] transition group-active:scale-95"
+              className="h-[48px] w-[48px] drop-shadow-[0_3px_2px_rgba(120,84,40,0.22)]"
             />
-            <span className="wood-text font-hand text-[13px] leading-none">
+            <span className="font-hand text-[15px] font-bold leading-none">
               {it.label}
             </span>
           </button>
@@ -123,20 +126,22 @@ function NoticeToast({
       transition={{ duration: 0.32, ease: "easeOut" }}
       className="pointer-events-auto absolute inset-x-4 top-[88px] z-20"
     >
-      <div className="sketch tex-grain flex items-start gap-3 rounded-[20px] border-2 border-[#bd8a52]/45 bg-paper px-4 py-3 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_4px_0_rgba(111,84,55,0.18),0_14px_26px_-14px_rgba(58,46,42,0.45)]">
-        <span className="mt-0.5 shrink-0 text-2xl leading-none">🧺</span>
+      <div className="sketch tex-grain flex items-start gap-3 rounded-[24px] border-2 border-[#e2c596] bg-paper/95 px-4 py-3 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_5px_0_rgba(143,101,54,0.16),0_16px_28px_-18px_rgba(58,46,42,0.48)]">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[17px] bg-[#f6edd8] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <Icon name="package" className="h-9 w-9" />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="font-hand text-[15px] leading-snug text-ink">{text}</p>
           <div className="mt-2 flex items-center gap-2">
             <button
               onClick={onPack}
-              className="rounded-[14px] border-2 border-accent/40 bg-accent/10 px-3 py-1 font-hand text-[13px] text-accent transition active:translate-y-0.5"
+              className="rounded-[15px] border-2 border-accent/35 bg-accent/10 px-3.5 py-1.5 font-hand text-[13px] font-semibold text-accent transition active:translate-y-0.5"
             >
               重新打包
             </button>
             <button
               onClick={onClose}
-              className="rounded-[14px] px-3 py-1 font-hand text-[13px] text-ink-soft transition active:translate-y-0.5"
+              className="rounded-[15px] px-3.5 py-1.5 font-hand text-[13px] text-ink-soft transition active:translate-y-0.5"
             >
               知道啦
             </button>
@@ -173,13 +178,23 @@ export default function HomeScreen() {
   const ready = companionState === "ready" || !!packedBag;
 
   return (
-    <div
-      className="relative h-full overflow-hidden"
-      style={{
-        background:
-          "radial-gradient(120% 90% at 78% 6%, #fdf3d6 0%, #f4e8cd 42%, #ecdcbd 100%)",
-      }}
-    >
+    <div className="relative h-full overflow-hidden bg-cream-soft">
+      <div className="pointer-events-none absolute inset-0">
+        {/* unoptimized: the Next image optimizer kept hanging on this large PNG
+            in dev (and upscaling it in prod), leaving the sky blank — serve the
+            raw file so the painterly sky always shows behind the diorama. */}
+        <Image
+          src="/art/home-sky-soft.png"
+          alt=""
+          fill
+          priority
+          unoptimized
+          sizes="(max-width: 640px) 100vw, 460px"
+          className="select-none object-cover"
+        />
+        <div className="ui-home-sky-shade absolute inset-0" />
+      </div>
+
       {/* full-bleed 3D diorama — the page IS the scene; UI just floats over it */}
       <div className="absolute inset-0">
         <SceneCanvas
@@ -222,25 +237,29 @@ export default function HomeScreen() {
         </SceneCanvas>
       </div>
 
-      {/* the only floating chrome: a thin identity + controls bar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2.5 px-4 pt-4">
+      {/* game HUD: owner pill + large tactile shortcut tiles */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 px-3.5 pt-4">
         <motion.button
           onClick={() => goTo("profile")}
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="sketch tex-grain pointer-events-auto flex min-w-0 items-center gap-2.5 rounded-[20px] border-2 border-[#bd8a52]/45 bg-paper py-1.5 pl-1.5 pr-4 text-left shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.18),0_12px_24px_-14px_rgba(58,46,42,0.45)] active:translate-y-0.5"
+          className="ui-wood-surface ui-wood-press pointer-events-auto relative flex h-[72px] min-w-0 max-w-[calc(100%-128px)] flex-1 items-center rounded-[31px] py-2.5 pl-[80px] pr-4 text-left"
         >
-          <CapyAvatar className="h-11 w-11 shrink-0 ring-2 ring-[#cda269]" />
+          <span className="absolute left-2 top-1/2 -translate-y-1/2">
+            <span className="ui-icon-well h-[66px] w-[66px] rounded-full shadow-[0_8px_14px_-6px_rgba(90,60,30,0.42)]">
+              <CapyAvatar className="h-[58px] w-[58px] shrink-0" />
+            </span>
+          </span>
           <span className="min-w-0">
-            <span className="block truncate font-hand text-[19px] leading-none text-ink">
+            <span className="block truncate font-hand text-[22px] leading-none text-[#4f3828]">
               {companion.name}
             </span>
-            <span className="mt-1.5 flex items-center gap-1.5 text-[11px] leading-none text-ink-soft">
-              <LeafGlyph className="h-3.5 w-3.5" />
-              <span className="font-semibold text-leaf">Lv.{stats.level}</span>
+            <span className="mt-2 flex items-center gap-1.5 whitespace-nowrap text-[12px] leading-none text-ink-soft">
+              <LeafGlyph className="h-4 w-4" />
+              <span className="font-hand text-[14px] font-bold text-leaf">Lv.{stats.level}</span>
               <span className="text-ink-soft/55">·</span>
-              <span>陪伴 {stats.days} 天</span>
+              <span>{stats.days} 天</span>
             </span>
           </span>
         </motion.button>
@@ -249,15 +268,14 @@ export default function HomeScreen() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.05, ease: "easeOut" }}
-          className="pointer-events-auto flex shrink-0 items-center gap-2"
+          className="pointer-events-auto grid shrink-0 grid-cols-2 gap-2"
         >
           {bound && (
             <>
-              <RoundIconBtn label="关于 Capybanana" icon="handbook" onClick={() => goTo("about")} />
-              <RoundIconBtn label="接入 Agent" icon="setting" onClick={() => goTo("connect")} />
+              <MusicToggle />
+              <HudIconTile label="设置" icon="setting" onClick={() => goTo("connect")} />
             </>
           )}
-          <MusicToggle />
         </motion.div>
       </div>
 

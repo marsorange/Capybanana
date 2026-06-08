@@ -4,9 +4,10 @@
 //
 // Module singleton: one <audio> element survives screen changes. Browsers block
 // audio until a user gesture, so playback is only kicked off from a tap (the
-// MusicToggle button, or a one-time pointer listener that restores a saved "on"
-// preference). The public API (getMusicPref / setMusicEnabled) is unchanged so
-// callers don't care that the source is now a real file rather than procedural.
+// MusicToggle button, app startup, or a one-time pointer listener that restores
+// the default "on" preference). The public API (getMusicPref / setMusicEnabled)
+// is unchanged so callers don't care that the source is now a real file rather
+// than procedural.
 
 const STORAGE_KEY = "capybanana-music";
 const SRC = "/capy.mp3";
@@ -64,13 +65,14 @@ function stop(): void {
   fade(0, () => audio?.pause());
 }
 
-/** Read the persisted preference (defaults to off — needs a gesture anyway). */
+/** Read the persisted preference (defaults to on; playback may still need a gesture). */
 export function getMusicPref(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === "1";
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    return saved == null ? true : saved === "1";
   } catch {
-    return false;
+    return true;
   }
 }
 

@@ -39,6 +39,7 @@ export default function InteractionLayer() {
         pos={POSTCARD_BOARD}
         label="明信片"
         labelY={1.75}
+        labelX={-0.55}
         onClick={() => walk(POSTCARD.pos, 0, () => goTo("album"))}
       />
       {/* 休息 — the bed up in the loft (the pet climbs the stairs to get there) */}

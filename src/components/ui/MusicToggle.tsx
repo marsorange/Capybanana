@@ -30,9 +30,12 @@ export default function MusicToggle() {
       onClick={toggle}
       aria-label={on ? "关闭背景音乐" : "开启背景音乐"}
       aria-pressed={on}
-      className="sketch tex-grain pointer-events-auto grid h-11 w-11 place-items-center rounded-full border-2 border-[#bd8a52]/45 bg-paper shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.18)] transition active:translate-y-0.5"
+      className="ui-wood-surface ui-wood-press pointer-events-auto grid h-[66px] w-[58px] shrink-0 place-items-center rounded-[18px] pb-1.5 pt-1.5 text-ink"
     >
-      <NoteIcon on={on} className="h-5 w-5" />
+      <NoteIcon on={on} className="h-8 w-8 drop-shadow-[0_2px_2px_rgba(126,83,38,0.18)]" />
+      <span className="font-hand text-[12px] font-bold leading-none text-[#6b4f2e]">
+        音乐
+      </span>
     </button>
   );
 }

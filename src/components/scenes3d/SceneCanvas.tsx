@@ -248,8 +248,8 @@ export default function SceneCanvas({
             resolution={256}
             blur={2.6}
             far={1.7}
-            opacity={0.42}
-            color="#5c4632"
+            opacity={0.24}
+            color="#8a6a48"
           />
         </>
       ) : (

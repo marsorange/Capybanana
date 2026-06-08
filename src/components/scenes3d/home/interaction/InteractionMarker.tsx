@@ -20,6 +20,7 @@ interface Props {
   onClick?: () => void;
   /** lift the label higher (e.g. tall props like the tree) */
   labelY?: number;
+  labelX?: number;
 }
 
 // A labelled, tappable interaction point: a pulsing ground ring marks the spot
@@ -30,6 +31,7 @@ export default function InteractionMarker({
   color = "#e8b85c",
   onClick,
   labelY = 0.95,
+  labelX = 0,
 }: Props) {
   const ring = useRef<THREE.Mesh>(null);
   useFrame((s) => {
@@ -51,12 +53,17 @@ export default function InteractionMarker({
           depthWrite={false}
         />
       </mesh>
-      <Html position={[0, labelY, 0]} center zIndexRange={[25, 0]}>
+      <Html position={[labelX, labelY, 0]} center zIndexRange={[25, 0]}>
         <button
           onClick={onClick}
-          className="pointer-events-auto flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-ink/10 bg-paper/92 py-1 pl-1 pr-3 font-hand text-sm text-ink shadow-[0_3px_0_rgba(58,46,42,0.13)] backdrop-blur transition-transform hover:-translate-y-0.5 active:translate-y-px"
+          className="ui-action-pill pointer-events-auto relative h-[48px] whitespace-nowrap rounded-full py-0 pl-[57px] pr-4 font-hand text-[19px] font-bold leading-[48px] text-[#6b4f2e] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
         >
-          <Icon name={ICON_BY_LABEL[label] ?? "home"} className="h-6 w-6 shrink-0" />
+          <span className="ui-action-badge absolute left-[-6px] top-1/2 grid h-[60px] w-[60px] -translate-y-1/2 place-items-center rounded-full">
+            <Icon
+              name={ICON_BY_LABEL[label] ?? "home"}
+              className="h-[43px] w-[43px] drop-shadow-[0_3px_2px_rgba(126,83,38,0.16)]"
+            />
+          </span>
           <span>{label}</span>
         </button>
       </Html>

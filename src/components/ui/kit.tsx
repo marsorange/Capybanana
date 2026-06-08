@@ -12,7 +12,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "./cn";
 
 const PANEL =
-  "tex-grain rounded-[20px] border-2 border-[#bd8a52]/45 bg-paper shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.16),0_12px_24px_-16px_rgba(58,46,42,0.4)]";
+  "tex-grain rounded-[22px] border-2 border-[#e4c89c] bg-paper/95 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.14),0_14px_26px_-18px_rgba(58,46,42,0.42)]";
 
 export function Panel({
   className,
@@ -39,7 +39,7 @@ export function BackButton({
     <button
       onClick={onClick}
       aria-label={label}
-      className="sketch tex-wood grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-[#cdab6e] shadow-[inset_0_1.5px_0_rgba(255,250,236,0.6),0_3px_0_rgba(150,112,60,0.4)] transition active:translate-y-0.5"
+      className="sketch tex-grain grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border-2 border-[#e4c89c] bg-paper/95 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.16)] transition active:translate-y-0.5"
     >
       <svg
         viewBox="0 0 24 24"
@@ -92,7 +92,7 @@ export function PrimaryButton({
     <button
       style={{ ["--sketch-color" as string]: "rgba(150,70,58,0.55)" }}
       className={cn(
-        "sketch relative w-full rounded-[20px] border-2 border-[#b8504a] bg-gradient-to-b from-[#ef7e74] to-[#d9554f] px-6 py-3.5 text-center font-hand text-lg font-semibold text-[#fffdf8] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.35),0_4px_0_rgba(150,70,58,0.55)] transition active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0",
+        "sketch relative w-full rounded-[24px] border-2 border-[#b8504a] bg-gradient-to-b from-[#f28c70] to-[#df614f] px-6 py-4 text-center font-hand text-xl font-bold text-[#fffdf8] shadow-[inset_0_2px_0_rgba(255,255,255,0.38),0_6px_0_rgba(150,70,58,0.46),0_14px_24px_-18px_rgba(58,46,42,0.45)] transition active:translate-y-1 active:shadow-[inset_0_2px_0_rgba(255,255,255,0.38),0_2px_0_rgba(150,70,58,0.46)] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0",
         className,
       )}
       {...rest}

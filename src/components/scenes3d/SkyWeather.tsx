@@ -17,7 +17,7 @@ import { flatMaterial } from "./materials";
 // ContactShadows instead.
 export type Weather = "clear" | "cloudy";
 
-const NOON = new THREE.Color("#fff4d6");
+const NOON = new THREE.Color("#fff4dc");
 const HORIZON = new THREE.Color("#ff9b54");
 const NIGHT = new THREE.Color("#5a6b9a");
 
@@ -35,8 +35,9 @@ function sunAt(t: number) {
   const warm = 1 - elev; // warmer toward the horizons
   const color = new THREE.Color().copy(NOON).lerp(HORIZON, warm * 0.35);
   if (!inDay) color.copy(NIGHT);
-  // bright, sunny — even low sun stays luminous; only a short, mild night dip
-  const intensity = inDay ? 2.5 + elev * 1.3 : 0.8;
+  // Soft high sun: enough direction for low-poly facets, but not so hot that
+  // the cream walls and sky art wash out.
+  const intensity = inDay ? 1.45 + elev * 0.42 : 0.62;
   return { dir, color, intensity, elev, inDay };
 }
 
@@ -102,12 +103,12 @@ function Clouds({ count }: { count: number }) {
 
 export default function SkyWeather({
   weather = "clear",
-  speed = 1 / 600,
-  start = 0.45,
+  speed = 0,
+  start = 0.47,
 }: {
   weather?: Weather;
-  speed?: number; // day fraction per second (slow — full day ≈ 10 min)
-  start?: number; // initial time-of-day (late morning = bright)
+  speed?: number; // day fraction per second. Home defaults to fixed noon.
+  start?: number; // initial time-of-day (0.47 = soft late morning)
 }) {
   const sun = useRef<THREE.DirectionalLight>(null);
   const hemi = useRef<THREE.HemisphereLight>(null);
@@ -125,23 +126,23 @@ export default function SkyWeather({
       sun.current.intensity = s.intensity * wDim;
     }
     if (amb.current)
-      amb.current.intensity = (0.5 + s.elev * 0.12) * (weather === "cloudy" ? 1.05 : 1);
-    if (hemi.current) hemi.current.intensity = (0.74 + s.elev * 0.2) * wDim;
+      amb.current.intensity = (0.34 + s.elev * 0.08) * (weather === "cloudy" ? 1.1 : 1);
+    if (hemi.current) hemi.current.intensity = (0.46 + s.elev * 0.12) * wDim;
   });
 
   return (
     <>
-      <hemisphereLight ref={hemi} args={["#fffefa", "#ecdfc6", 0.8]} />
-      <ambientLight ref={amb} intensity={0.5} color="#fff6ea" />
+      <hemisphereLight ref={hemi} args={["#fffdfa", "#eadbbd", 0.54]} />
+      <ambientLight ref={amb} intensity={0.4} color="#fff7ee" />
       {/* day-cycle sun — lights only, no real-time shadow map (see file header) */}
       <directionalLight
         ref={sun}
         position={[8, 12, 5]}
-        intensity={2.2}
-        color="#ffeec6"
+        intensity={1.86}
+        color="#fff1d2"
       />
       {/* cool sky bounce so shadowed faces still read */}
-      <directionalLight position={[-7, 5, -3]} intensity={0.3} color="#c7d8f0" />
+      <directionalLight position={[-7, 5, -3]} intensity={0.36} color="#d7e5f8" />
       <Clouds count={clouds} />
     </>
   );
