@@ -188,14 +188,15 @@ export default function PackScreen() {
         onBack={() => goTo("home")}
         eyebrow="今天，我可以带上点什么"
         title="今日包裹"
-        right={<Banana className="h-7 w-7 rotate-[14deg]" />}
+        compact
+        right={<Banana className="h-6 w-6 rotate-[14deg]" />}
       />
 
       {/* ── scrollable content ─────────────────────────────────────────────── */}
-      <div className="no-scrollbar relative z-10 flex-1 space-y-4 overflow-y-auto px-4 pb-3 pt-4">
+      <div className="no-scrollbar relative z-10 flex-1 space-y-3 overflow-y-auto px-4 pb-2 pt-3">
         {/* viewfinder */}
         <div
-          className="sketch tex-grain relative overflow-hidden rounded-[26px] border-[4px] border-cream-soft bg-paper/80 shadow-[0_6px_0_rgba(111,84,55,.18),0_18px_32px_-24px_rgba(58,46,42,.56)]"
+          className="sketch tex-grain relative mx-auto w-full max-w-[350px] overflow-hidden rounded-[22px] border-[3px] border-cream-soft bg-paper/80 shadow-[0_5px_0_rgba(111,84,55,.16),0_16px_28px_-24px_rgba(58,46,42,.52)]"
           style={{ aspectRatio: "4 / 3", background: "#2b2620" }}
         >
           <video
@@ -218,7 +219,7 @@ export default function PackScreen() {
           {camPhase === "live" && (
             <button
               onClick={switchCamera}
-              className="ui-wood-surface ui-wood-press absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full text-ink"
+              className="ui-wood-surface ui-wood-press absolute right-2.5 top-2.5 grid h-9 w-9 place-items-center rounded-full text-ink"
               aria-label="切换镜头"
             >
               <Switch className="h-4 w-4" />
@@ -226,7 +227,7 @@ export default function PackScreen() {
           )}
           {camPhase === "live" && (
             <div className="absolute inset-x-0 bottom-3 flex justify-center">
-              <span className="rounded-full px-3.5 py-1 text-[11px] text-paper backdrop-blur-sm" style={{ background: `${LEAF_DK}e6` }}>
+              <span className="rounded-full px-3 py-1 text-[11px] text-paper backdrop-blur-sm" style={{ background: `${LEAF_DK}e6` }}>
                 {full ? "都收下啦！" : "放在中间，让我看看"}
               </span>
             </div>
@@ -234,39 +235,39 @@ export default function PackScreen() {
         </div>
 
         {/* three item slots */}
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 gap-2">
           {[0, 1, 2].map((i) => {
             const item = photos[i];
             const busy = item ? busyIds.includes(item.id) : false;
             return (
               <div
                 key={i}
-                className="relative rounded-[16px] border-2 border-[#e4c89c] bg-paper/95 p-1.5 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_3px_0_rgba(143,101,54,0.14)]"
+                className="relative rounded-[14px] border-2 border-[#e4c89c] bg-paper/95 p-1 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_3px_0_rgba(143,101,54,0.14)]"
               >
                 {item ? (
                   <>
                     <button
                       onClick={() => removePhoto(item.id)}
                       aria-label="移除"
-                      className="absolute -right-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-cream-soft text-ink-soft shadow-[0_0_0_2px_#fffdf8] active:translate-y-0.5"
+                      className="absolute -right-1.5 -top-1.5 z-10 grid h-[22px] w-[22px] place-items-center rounded-full bg-cream-soft text-ink-soft shadow-[0_0_0_2px_#fffdf8] active:translate-y-0.5"
                     >
                       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round">
                         <path d="M6 6l12 12M18 6 6 18" />
                       </svg>
                     </button>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.photo} alt={item.label} className="aspect-square w-full rounded-[11px] object-cover" />
-                    <p className="mt-1 flex items-center justify-center gap-1 text-[12px] font-medium text-ink">
+                    <img src={item.photo} alt={item.label} className="aspect-square w-full rounded-[10px] object-cover" />
+                    <p className="mt-0.5 flex items-center justify-center gap-1 text-[11px] font-medium text-ink">
                       {busy && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full" style={{ background: LEAF }} />}
                       <span className="truncate">{item.label}</span>
                     </p>
                   </>
                 ) : (
                   <>
-                    <div className="grid aspect-square w-full place-items-center rounded-[11px] border-2 border-dashed border-ink/15 bg-cream-soft/60">
-                      <Camera className="h-6 w-6 text-ink-soft/35" />
+                    <div className="grid aspect-square w-full place-items-center rounded-[10px] border-2 border-dashed border-ink/15 bg-cream-soft/60">
+                      <Camera className="h-5 w-5 text-ink-soft/35" />
                     </div>
-                    <p className="mt-1 text-center text-[12px] text-ink-soft/55">还空着</p>
+                    <p className="mt-0.5 text-center text-[11px] text-ink-soft/55">还空着</p>
                   </>
                 )}
               </div>
@@ -275,41 +276,41 @@ export default function PackScreen() {
         </div>
 
         {/* optional one-line message to the agent */}
-        <Panel sketch={false} className="px-3.5 py-3">
-          <span className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-ink-soft">
+        <Panel sketch={false} className="px-3.5 py-2.5">
+          <span className="mb-1 flex items-center gap-1 text-[11px] font-medium text-ink-soft">
             <Heart className="h-3 w-3 text-accent" /> 想对我说点什么吗（可选）
           </span>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, 50))}
             placeholder="今天有点累，我们慢一点也可以…"
-            rows={2}
-            className="w-full resize-none bg-transparent font-hand text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink-soft/45"
+            rows={1}
+            className="w-full resize-none bg-transparent font-hand text-[14px] leading-relaxed text-ink outline-none placeholder:text-ink-soft/45"
           />
         </Panel>
       </div>
 
       {/* ── capture + CTA ──────────────────────────────────────────────────── */}
-      <div className="game-bottom-panel relative z-20 shrink-0 px-5 pb-4 pt-3">
-        <div className="mb-3 flex justify-center">
+      <div className="game-bottom-panel relative z-20 shrink-0 px-5 pb-3 pt-2.5">
+        <div className="mb-2 flex justify-center">
           <button
             onClick={capture}
             disabled={camPhase !== "live" || full}
             aria-label="给我拍一样东西"
-            className="grid h-[72px] w-[72px] place-items-center rounded-full p-1.5 shadow-[0_5px_0_rgba(60,80,40,.5)] transition active:translate-y-1 active:shadow-[0_1px_0_rgba(60,80,40,.5)] disabled:opacity-45 disabled:active:translate-y-0"
+            className="grid h-[60px] w-[60px] place-items-center rounded-full p-1.5 shadow-[0_5px_0_rgba(60,80,40,.45)] transition active:translate-y-1 active:shadow-[0_1px_0_rgba(60,80,40,.45)] disabled:opacity-45 disabled:active:translate-y-0"
             style={{ background: LEAF_DEEP }}
           >
             <span
               className="grid h-full w-full place-items-center rounded-full ring-2 ring-paper/85"
               style={{ background: `linear-gradient(160deg, #a0c46c, ${LEAF_DK})` }}
             >
-              <Camera className="h-8 w-8 text-paper" />
+              <Camera className="h-7 w-7 text-paper" />
             </span>
           </button>
         </div>
 
-        <PrimaryButton onClick={() => prepareBag(photos, message)} disabled={!hasClue}>
-          <span className="pointer-events-none absolute inset-1.5 rounded-[16px] border-2 border-dashed border-paper/40" />
+        <PrimaryButton size="sm" onClick={() => prepareBag(photos, message)} disabled={!hasClue}>
+          <span className="pointer-events-none absolute inset-1.5 rounded-[14px] border-2 border-dashed border-paper/40" />
           <span className="relative block">放到门口 ✨</span>
           <span className="relative mt-0.5 block text-[11px] font-normal text-paper/85">{subtext}</span>
         </PrimaryButton>

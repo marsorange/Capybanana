@@ -17,7 +17,7 @@ function fmtDate(iso: string): string {
 }
 
 const CARD =
-  "absolute inset-0 overflow-hidden rounded-[24px] border-2 border-[#bd8a52]/55 bg-[#fffaf0] p-2 shadow-[0_8px_0_rgba(150,112,60,0.35),0_22px_36px_-18px_rgba(58,46,42,0.5)] [backface-visibility:hidden]";
+  "tex-grain absolute inset-0 overflow-hidden rounded-[24px] border-2 border-[#e4c89c] bg-paper/95 p-2 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_6px_0_rgba(143,101,54,0.16),0_22px_36px_-22px_rgba(58,46,42,0.5)] [backface-visibility:hidden]";
 
 function Front({ card }: { card: Postcard }) {
   const dest = getDestination(card.destinationTheme);
@@ -28,12 +28,12 @@ function Front({ card }: { card: Postcard }) {
         style={{ borderColor: RARITY_META[card.rarity].ring }}
       >
         <PostcardArt theme={card.destinationTheme} rounded={false} />
-        <div className="absolute left-3 top-3 rotate-[-8deg] rounded-full border-2 border-[#8a5a30]/55 bg-paper/80 px-2 py-0.5 text-[10px] text-ink/70">
+        <div className="ui-wood-surface absolute left-3 top-3 rotate-[-8deg] rounded-full px-2 py-0.5 text-[10px] text-ink/70">
           {fmtDate(card.sentAt)}
         </div>
         <RarityBadge rarity={card.rarity} className="absolute bottom-2 left-2 shadow-sm" />
       </div>
-      <div className="absolute right-5 top-5 flex h-16 w-14 flex-col items-center justify-center rounded-[6px] border-2 border-dashed border-[#8a5a30]/60 bg-paper/92 text-center shadow-[0_2px_0_rgba(150,112,60,0.25)]">
+      <div className="absolute right-5 top-5 flex h-16 w-14 flex-col items-center justify-center rounded-[8px] border-2 border-dashed border-[#d9b982] bg-paper/92 text-center shadow-[0_2px_0_rgba(150,112,60,0.18)]">
         <span className="text-lg leading-none">{dest.emoji}</span>
         <span className="mt-0.5 text-[9px] text-ink-soft">CAPYBANANA</span>
       </div>
@@ -61,7 +61,7 @@ function Back({ card, companionName }: { card: Postcard; companionName: string }
             <p className="text-[11px] text-accent">今天的一点小事</p>
             <h2 className="mt-0.5 font-hand text-xl leading-tight text-ink">{card.title}</h2>
           </div>
-          <span className="shrink-0 rounded-full border-2 border-[#bd8a52]/35 bg-cream-soft px-2 py-0.5 text-[11px] text-ink-soft">
+          <span className="ui-wood-surface shrink-0 rounded-full px-2 py-0.5 text-[11px] text-ink-soft">
             {fmtDate(card.sentAt)}
           </span>
         </div>
@@ -77,11 +77,11 @@ function Back({ card, companionName }: { card: Postcard; companionName: string }
         </div>
 
         <div className="grid grid-cols-[1fr_42%] gap-3 border-t-2 border-dashed border-[#bd8a52]/30 pt-3">
-          <div className="rounded-2xl border border-[#bd8a52]/25 bg-cream-soft px-3 py-2">
+          <div className="rounded-2xl border border-[#d9b982]/45 bg-cream-soft px-3 py-2">
             <p className="mb-0.5 text-[11px] font-medium text-accent">我为什么去了那儿</p>
             <p className="text-[12px] leading-snug text-ink-soft">{card.reason}</p>
           </div>
-          <div className="rounded-2xl border-2 border-[#bd8a52]/30 bg-paper px-3 py-2">
+          <div className="ui-wood-surface rounded-2xl px-3 py-2">
             <p className="text-[10px] text-ink-soft/70">TO</p>
             <p className="font-hand text-lg leading-tight text-ink">你</p>
             <p className="mt-2 text-[10px] text-ink-soft/70">FROM</p>
@@ -120,13 +120,15 @@ export default function PostcardScreen() {
   return (
     <div className="screen-bg relative flex h-full flex-col">
       {isFresh ? (
-        <div className="px-5 pt-6 text-center">
+        <div className="px-5 pt-5 text-center">
+          <div className="ui-wood-surface mx-auto w-fit max-w-full rounded-[28px] px-5 py-2.5">
           <h1 className="font-hand text-2xl text-ink">
             {rare ? `${RARITY_META[card.rarity].badge} ${RARITY_META[card.rarity].label}明信片！` : "我给你寄信啦"}
           </h1>
           <p className="mt-0.5 text-sm text-ink-soft">
             {rare ? "这张，我等了好久才遇上。" : "把远方的一小段，寄给你。"}
           </p>
+          </div>
         </div>
       ) : (
         <ScreenHeader onBack={() => goTo("album")} title="读一张明信片" />
@@ -170,15 +172,15 @@ export default function PostcardScreen() {
         </div>
       </div>
 
-      <p className="px-5 text-center text-xs text-ink-soft/80">
+      <p className="mx-auto mb-1 rounded-full bg-paper/65 px-3 py-1 text-center text-xs text-ink-soft/80">
         点一下，翻到{flipped ? "风景面" : "信件面"}
       </p>
 
-      <div className="shrink-0 px-5 pb-5 pt-3">
+      <div className="game-bottom-panel relative z-20 shrink-0 px-5 pb-4 pt-3">
         {isFresh ? (
-          <PrimaryButton onClick={collectPostcard}>收进相册 · 回小屋</PrimaryButton>
+          <PrimaryButton size="sm" onClick={collectPostcard}>收进相册 · 回小屋</PrimaryButton>
         ) : (
-          <SecondaryButton onClick={() => goTo("album")}>回到相册</SecondaryButton>
+          <SecondaryButton size="sm" onClick={() => goTo("album")}>回到相册</SecondaryButton>
         )}
       </div>
     </div>

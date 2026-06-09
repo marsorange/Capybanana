@@ -31,15 +31,20 @@ export function Panel({
 export function BackButton({
   onClick,
   label = "返回",
+  compact = false,
 }: {
   onClick: () => void;
   label?: string;
+  compact?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       aria-label={label}
-      className="ui-wood-surface ui-wood-press grid h-12 w-12 shrink-0 place-items-center rounded-full text-ink"
+      className={cn(
+        "ui-wood-surface ui-wood-press grid shrink-0 place-items-center rounded-full text-ink",
+        compact ? "h-10 w-10" : "h-12 w-12",
+      )}
     >
       <svg
         viewBox="0 0 24 24"
@@ -63,22 +68,51 @@ export function ScreenHeader({
   title,
   right,
   className,
+  compact = false,
 }: {
   onBack?: () => void;
   eyebrow?: string;
   title: string;
   right?: ReactNode;
   className?: string;
+  compact?: boolean;
 }) {
   return (
-    <header className={cn("relative z-20 flex items-center gap-2.5 px-3.5 pt-4", className)}>
-      {onBack && <BackButton onClick={onBack} />}
-      <div className="ui-wood-surface min-w-0 flex-1 rounded-[28px] px-4 py-2.5 text-left">
-        {eyebrow && <p className="truncate text-[12px] leading-none text-ink-soft">{eyebrow}</p>}
-        <h1 className="truncate font-hand text-[22px] leading-tight text-[#4f3828]">{title}</h1>
+    <header
+      className={cn(
+        "relative z-20 flex items-center",
+        compact ? "gap-2 px-3 pt-3" : "gap-2.5 px-3.5 pt-4",
+        className,
+      )}
+    >
+      {onBack && <BackButton onClick={onBack} compact={compact} />}
+      <div
+        className={cn(
+          "ui-wood-surface min-w-0 flex-1 text-left",
+          compact ? "rounded-[24px] px-3.5 py-1.5" : "rounded-[28px] px-4 py-2.5",
+        )}
+      >
+        {eyebrow && (
+          <p className={cn("truncate leading-none text-ink-soft", compact ? "text-[11px]" : "text-[12px]")}>
+            {eyebrow}
+          </p>
+        )}
+        <h1
+          className={cn(
+            "truncate font-hand leading-tight text-[#4f3828]",
+            compact ? "text-[19px]" : "text-[22px]",
+          )}
+        >
+          {title}
+        </h1>
       </div>
       {right && (
-        <div className="ui-wood-surface grid h-12 w-12 shrink-0 place-items-center rounded-full">
+        <div
+          className={cn(
+            "ui-wood-surface grid shrink-0 place-items-center rounded-full",
+            compact ? "h-10 w-10" : "h-12 w-12",
+          )}
+        >
           {right}
         </div>
       )}
@@ -90,13 +124,15 @@ export function ScreenHeader({
 export function PrimaryButton({
   className,
   children,
+  size = "md",
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { size?: "md" | "sm" }) {
   return (
     <button
       style={{ ["--sketch-color" as string]: "rgba(150,70,58,0.55)" }}
       className={cn(
-        "sketch relative w-full overflow-hidden rounded-[24px] border-2 border-[#b8504a] bg-gradient-to-b from-[#f28c70] to-[#df614f] px-6 py-4 text-center font-hand text-xl font-bold text-[#fffdf8] shadow-[inset_0_2px_0_rgba(255,255,255,0.38),0_6px_0_rgba(150,70,58,0.46),0_14px_24px_-18px_rgba(58,46,42,0.45)] transition active:translate-y-1 active:shadow-[inset_0_2px_0_rgba(255,255,255,0.38),0_2px_0_rgba(150,70,58,0.46)] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0",
+        "sketch relative w-full overflow-hidden border-2 border-[#b8504a] bg-gradient-to-b from-[#f28c70] to-[#df614f] text-center font-hand font-bold text-[#fffdf8] shadow-[inset_0_2px_0_rgba(255,255,255,0.38),0_6px_0_rgba(150,70,58,0.46),0_14px_24px_-18px_rgba(58,46,42,0.45)] transition active:translate-y-1 active:shadow-[inset_0_2px_0_rgba(255,255,255,0.38),0_2px_0_rgba(150,70,58,0.46)] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0",
+        size === "sm" ? "rounded-[20px] px-5 py-3 text-lg" : "rounded-[24px] px-6 py-4 text-xl",
         className,
       )}
       {...rest}
