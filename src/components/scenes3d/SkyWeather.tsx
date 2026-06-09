@@ -52,15 +52,16 @@ export default function SkyWeather({
   const s = sunAt(start);
   const clear = weather === "clear";
   const wDim = clear ? 1 : 0.8;
-  // Lower the flat fill (ambient + hemi + sky bounce) and let the directional
-  // SUN dominate, so low-poly facets pick up a real lit/shaded split — that
-  // light-vs-shade contrast is what reads as "sunshine". Overcast lifts the fill
-  // back up and dims the sun so it goes soft + even instead.
-  const ambientIntensity = (clear ? 0.22 : 0.42) + s.elev * 0.06;
-  const hemiIntensity = (clear ? 0.3 : 0.46 + s.elev * 0.12) * wDim;
-  // A clear-day sun runs hotter so the contrast (and, when on, the cast shadow)
-  // really lands; overcast keeps the gentle even wash.
-  const sunIntensity = s.intensity * wDim * (clear ? 1.5 : 1);
+  // Bright, high-key sunny fill: keep ambient + hemi generous so nothing (esp.
+  // the big ground) crushes to a murky dark, while the directional SUN still
+  // adds a warm highlight + a soft cast shadow on top. (Earlier this fill was
+  // dialed way down for max contrast and the scene read dim — a cozy cartoon
+  // wants bright + saturated, not dark + contrasty.)
+  const ambientIntensity = (clear ? 0.44 : 0.56) + s.elev * 0.05;
+  const hemiIntensity = (clear ? 0.52 : 0.6) * wDim;
+  // Sun stays the key light but eased back so it layers onto the brighter fill
+  // without blowing the cream walls / grass to white.
+  const sunIntensity = s.intensity * wDim * (clear ? 1.1 : 0.85);
 
   return (
     <>

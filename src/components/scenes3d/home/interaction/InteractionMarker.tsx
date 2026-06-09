@@ -56,7 +56,7 @@ export default function InteractionMarker({
       <Html position={[labelX, labelY, 0]} center zIndexRange={[25, 0]}>
         <button
           onClick={onClick}
-          className="ui-action-pill pointer-events-auto relative h-[40px] whitespace-nowrap rounded-full py-0 pl-[46px] pr-3.5 font-hand text-[16px] font-bold leading-[40px] text-[#6b4f2e] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+          className="ui-action-pill pointer-events-auto relative h-[40px] whitespace-nowrap rounded-full py-0 pl-[46px] pr-3.5 font-hand text-[13px] font-bold leading-[40px] text-[#6b4f2e] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
         >
           <span className="ui-action-badge absolute left-[-5px] top-1/2 grid h-[49px] w-[49px] -translate-y-1/2 place-items-center rounded-full">
             <Icon

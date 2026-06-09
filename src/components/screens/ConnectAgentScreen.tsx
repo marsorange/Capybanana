@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { useGameStore } from "@/state/gameStore";
-import { Panel, PrimaryButton, ScreenHeader } from "../ui/kit";
+import { Panel, PrimaryButton, ScreenHeader, SecondaryButton } from "../ui/kit";
 import ScreenArtwork from "../ui/ScreenArtwork";
 
 // The daily ritual in the pet's own voice — simple, few words (旅行青蛙 vibe):
@@ -147,13 +147,14 @@ export default function ConnectAgentScreen() {
           <code className="block break-all rounded-xl border border-[#bd8a52]/25 bg-cream-soft px-3 py-2.5 text-sm text-ink">
             {snippet || "口令还没准备好，等我回到小岛再试。"}
           </code>
-          <button
+          <SecondaryButton
             disabled={!snippet}
             onClick={copy}
-            className="sketch mt-3 w-full rounded-[16px] border-2 border-[#bd8a52]/55 bg-cream-soft px-5 py-2.5 font-hand text-[15px] text-ink shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_3px_0_rgba(111,84,55,0.16)] transition active:translate-y-0.5 disabled:opacity-45"
+            size="sm"
+            className="mt-3"
           >
             {copied ? "已复制，悄悄带走吧" : "复制口令"}
-          </button>
+          </SecondaryButton>
           <p className="mt-2 text-[11px] text-ink-soft/70">
             这句话能推开小岛的门，只给你信任的 Agent 看。
           </p>
@@ -181,16 +182,17 @@ export default function ConnectAgentScreen() {
                     <button
                       onClick={regenerate}
                       disabled={cloudBusy}
-                      className="sketch flex-1 rounded-[14px] border-2 border-accent/55 bg-accent px-4 py-2 font-hand text-[14px] text-cream-soft shadow-[0_3px_0_rgba(111,84,55,0.18)] transition active:translate-y-0.5 disabled:opacity-45"
+                      className="sketch flex-1 rounded-[16px] border-2 border-[#b8504a] bg-gradient-to-b from-[#f28c70] to-[#df614f] px-4 py-2.5 font-hand text-[14px] font-bold text-cream-soft shadow-[inset_0_1.5px_0_rgba(255,255,255,0.34),0_4px_0_rgba(150,70,58,0.42)] transition active:translate-y-0.5 active:shadow-[inset_0_1.5px_0_rgba(255,255,255,0.34),0_1px_0_rgba(150,70,58,0.42)] disabled:opacity-45"
                     >
                       {cloudBusy ? "生成中…" : "确定，换一个"}
                     </button>
-                    <button
+                    <SecondaryButton
                       onClick={() => setConfirmingReset(false)}
-                      className="sketch rounded-[14px] border-2 border-[#bd8a52]/45 bg-cream-soft px-4 py-2 font-hand text-[14px] text-ink transition active:translate-y-0.5"
+                      size="sm"
+                      className="w-auto px-4"
                     >
                       再想想
-                    </button>
+                    </SecondaryButton>
                   </div>
                 </div>
               ) : (

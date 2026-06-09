@@ -47,21 +47,42 @@ const wp = (v: Vec3, y: number) => new THREE.Vector3(v[0], y, v[2]);
 
 // A walk path to (x,z) on `destFloor`, routed up/down the stairs when the pet is
 // on a different floor (so it never cuts across the loft void). Each waypoint
-// carries the y of its floor; the bottom→step leg spans the stair rise.
+// carries the y of its floor; the bottom→step leg spans the stair rise. Used by
+// markers + wander, which know their floor up front.
 function buildPath(
   x: number,
   z: number,
   destFloor: 0 | 1,
   fromFloor: 0 | 1,
 ): THREE.Vector3[] {
+  const bottom = wp(STAIR_BOTTOM, 0);
+  const step = wp(LOFT_STEP, FLOOR_H);
+  const pivot = wp(LOFT_PIVOT, FLOOR_H);
   const dest = new THREE.Vector3(x, floorY(destFloor), z);
+  if (destFloor === fromFloor) return [dest];
+  return destFloor === 1
+    ? [bottom, step, pivot, dest] // climb
+    : [pivot, step, bottom, dest]; // descend
+}
+
+// A walk path to a tapped 3D point (floor taps carry their real height): the
+// destination floor / "on the ramp" is read from the point's y, so a tap on the
+// loft routes up the stairs and a tap on the staircase stops the pet mid-climb.
+const ON_RAMP_LO = 0.25;
+const ON_RAMP_HI = FLOOR_H - 0.25;
+function buildPathToPoint(dest: THREE.Vector3, fromFloor: 0 | 1): THREE.Vector3[] {
+  if (dest.y > ON_RAMP_LO && dest.y < ON_RAMP_HI) {
+    // on the staircase: reach it from the end matching the current floor
+    return fromFloor === 1 ? [wp(LOFT_STEP, FLOOR_H), dest] : [wp(STAIR_BOTTOM, 0), dest];
+  }
+  const destFloor: 0 | 1 = dest.y > LOFT_Y ? 1 : 0;
   if (destFloor === fromFloor) return [dest];
   const bottom = wp(STAIR_BOTTOM, 0);
   const step = wp(LOFT_STEP, FLOOR_H);
   const pivot = wp(LOFT_PIVOT, FLOOR_H);
   return destFloor === 1
-    ? [bottom, step, pivot, dest] // climb
-    : [pivot, step, bottom, dest]; // descend
+    ? [bottom, step, pivot, dest]
+    : [pivot, step, bottom, dest];
 }
 
 interface Props {
@@ -120,17 +141,20 @@ export default function RoamingCompanion({
       pendingSay.current = cmd.say ?? null;
       dwell.current = randRange(2.5, 4.5);
     } else if (navBus.version !== seenNav.current) {
-      // a floor tap (navBus): walk to that point (clamped onto the island).
+      // a floor tap (navBus): the hit point carries its height, so a tap on the
+      // ground / loft / staircase routes to the right floor. xz is clamped back
+      // onto the island; the tapped height is kept.
       seenNav.current = navBus.version;
       if (navBus.target) {
         let tx = navBus.target[0];
+        const ty = navBus.target[1];
         let tz = navBus.target[2];
         const r = Math.hypot(tx, tz);
         if (r > NAV_CLAMP_R) {
           tx = (tx / r) * NAV_CLAMP_R;
           tz = (tz / r) * NAV_CLAMP_R;
         }
-        const path = buildPath(tx, tz, 0, fromFloor);
+        const path = buildPathToPoint(new THREE.Vector3(tx, ty, tz), fromFloor);
         target.current.copy(path[0]);
         queue.current = path.slice(1);
         pendingArrive.current = null;

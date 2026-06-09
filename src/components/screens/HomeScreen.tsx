@@ -74,14 +74,14 @@ function EntryBar({ goTo }: { goTo: (s: "home" | "pack" | "album") => void }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-5 pb-4"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-3"
     >
-      <div className="ui-bottom-dock pointer-events-auto grid h-[96px] w-full max-w-[350px] grid-cols-3 gap-1 rounded-[30px] p-1.5">
+      <div className="ui-bottom-dock pointer-events-auto grid h-[96px] w-full max-w-[350px] grid-cols-3 gap-1 rounded-[30px] p-1">
         {items.map((it) => (
           <button
             key={it.key}
             onClick={it.onClick}
-            className={`ui-bottom-tab flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[24px] px-1 py-1.5 ${
+            className={`ui-bottom-tab m-1 flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-1 ${
               it.active ? "ui-bottom-tab-active" : ""
             }`}
           >
@@ -89,7 +89,7 @@ function EntryBar({ goTo }: { goTo: (s: "home" | "pack" | "album") => void }) {
               name={it.icon}
               className="h-[48px] w-[48px] drop-shadow-[0_3px_2px_rgba(120,84,40,0.22)]"
             />
-            <span className="font-hand text-[15px] font-bold leading-none">
+            <span className="font-hand text-[12px] font-bold leading-none">
               {it.label}
             </span>
           </button>
@@ -249,7 +249,7 @@ export default function HomeScreen() {
         >
           <CapyAvatar variant="sticker" className="h-[44px] w-[44px] shrink-0" />
           <span className="min-w-0">
-            <span className="block truncate font-hand text-[20px] leading-none text-[#4f3828]">
+            <span className="block truncate font-hand text-[18px] leading-none text-[#4f3828]">
               {companion.name}
             </span>
             <span className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] leading-none text-ink-soft">
@@ -285,7 +285,7 @@ export default function HomeScreen() {
         >
           <div className="sketch flex items-center gap-2 rounded-full border-2 border-[#e2c596] bg-paper/95 px-4 py-2 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.16)]">
             <span className="text-lg">🎒</span>
-            <p className="font-hand text-[14px] text-ink">它背着包裹出门啦，回来再看。</p>
+            <p className="font-hand text-[13px] text-ink">它背着包裹出门啦，回来再看。</p>
           </div>
         </motion.div>
       )}

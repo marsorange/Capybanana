@@ -2,15 +2,19 @@ import * as THREE from "three";
 
 export const INK = "#3a2e2a";
 
-// Shared 4-step ramp that gives MeshToonMaterial its crisp cel shading.
+// Shared 4-step ramp that gives MeshToonMaterial its crisp cel shading. The
+// darkest band is lifted off pure black (FLOOR) so back-lit facets and the
+// shadowed ground stay readable + keep their color/质感 instead of crushing to
+// a murky blob — a sunny cartoon look is high-key, not high-contrast.
 let gradient: THREE.DataTexture | null = null;
 
 export function getToonGradient(): THREE.DataTexture {
   if (!gradient) {
     const steps = 4;
+    const FLOOR = 92; // 0..255; the brightness floor of the darkest cel band
     const data = new Uint8Array(steps);
     for (let i = 0; i < steps; i++) {
-      data[i] = Math.round((i / (steps - 1)) * 255);
+      data[i] = Math.round(FLOOR + (i / (steps - 1)) * (255 - FLOOR));
     }
     const tex = new THREE.DataTexture(data, steps, 1, THREE.RedFormat);
     tex.minFilter = THREE.NearestFilter;

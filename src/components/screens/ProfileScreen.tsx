@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useMemo } from "react";
 
 import {
@@ -13,7 +12,7 @@ import { companionStats } from "@/game/companionLevel";
 import { useGameStore } from "@/state/gameStore";
 import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
-import { BackButton, Panel, PrimaryButton } from "../ui/kit";
+import { Chip, Panel, PrimaryButton, ProgressBar, ScreenHeader } from "../ui/kit";
 
 function Pedestal() {
   return (
@@ -26,7 +25,7 @@ function Pedestal() {
 
 function RecordTile({ value, label }: { value: number | string; label: string }) {
   return (
-    <div className="rounded-2xl border border-[#bd8a52]/30 bg-cream-soft px-2 py-2.5 text-center">
+    <div className="ui-wood-surface rounded-[18px] px-2 py-2.5 text-center">
       <p className="font-hand text-xl leading-none text-ink">{value}</p>
       <p className="mt-1 text-[11px] text-ink-soft">{label}</p>
     </div>
@@ -63,10 +62,12 @@ export default function ProfileScreen() {
   return (
     <div className="screen-bg relative flex h-full flex-col">
       {/* fixed top bar — always visible */}
-      <div className="relative z-20 flex shrink-0 items-center gap-3 px-5 pb-1 pt-5">
-        <BackButton onClick={() => goTo("home")} />
-        <p className="font-hand text-lg text-ink-soft">我和你的手账</p>
-      </div>
+      <ScreenHeader
+        onBack={() => goTo("home")}
+        eyebrow="慢慢长大的样子"
+        title="我和你的手账"
+        className="z-20 shrink-0 pb-1"
+      />
 
       {/* portrait + every card scroll together so nothing is hard-cut at the
           fold; the footer below stays pinned. */}
@@ -108,14 +109,7 @@ export default function ProfileScreen() {
               <span>陪伴 {stats.days} 天</span>
               <span>距下一级还有 {stats.daysToNext} 天</span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full border border-[#bd8a52]/30 bg-cream-deep">
-              <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-[#f0c25c] to-[#e0973f]"
-                initial={{ width: 0 }}
-                animate={{ width: `${stats.progress * 100}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              />
-            </div>
+            <ProgressBar value={stats.progress} animateIn />
           </div>
         </Panel>
 
@@ -160,24 +154,15 @@ export default function ProfileScreen() {
           <div className="flex items-center justify-center gap-2 pt-0.5 text-[11px] text-ink-soft/70">
             {email && <span className="truncate">{email}</span>}
             {email && <span aria-hidden>·</span>}
-            <button onClick={() => logout()} className="shrink-0 underline underline-offset-4 transition hover:text-accent">
+            <button
+              onClick={() => logout()}
+              className="ui-wood-press shrink-0 rounded-full border border-[#d9b982]/65 bg-paper/70 px-2.5 py-1 transition hover:text-accent"
+            >
               退出登录
             </button>
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function Chip({ children, tone = "warm" }: { children: React.ReactNode; tone?: "warm" | "leaf" }) {
-  return (
-    <span
-      className={`rounded-full border-2 px-3 py-1 text-[13px] text-ink ${
-        tone === "leaf" ? "border-leaf/35 bg-leaf/12" : "border-[#bd8a52]/35 bg-cream-soft"
-      }`}
-    >
-      {children}
-    </span>
   );
 }

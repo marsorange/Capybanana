@@ -8,7 +8,7 @@ import type { Postcard } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import PostcardArt from "../ui/PostcardArt";
 import { isRareRarity, RARITY_META, RarityBadge } from "../ui/rarity";
-import { BackButton, PrimaryButton } from "../ui/kit";
+import { PrimaryButton, ScreenHeader, SecondaryButton } from "../ui/kit";
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -129,10 +129,7 @@ export default function PostcardScreen() {
           </p>
         </div>
       ) : (
-        <div className="flex items-center gap-3 px-5 pt-5">
-          <BackButton onClick={() => goTo("album")} />
-          <h1 className="font-hand text-2xl text-ink">读一张明信片</h1>
-        </div>
+        <ScreenHeader onBack={() => goTo("album")} title="读一张明信片" />
       )}
 
       {/* flipping card */}
@@ -181,12 +178,7 @@ export default function PostcardScreen() {
         {isFresh ? (
           <PrimaryButton onClick={collectPostcard}>收进相册 · 回小屋</PrimaryButton>
         ) : (
-          <button
-            onClick={() => goTo("album")}
-            className="sketch w-full rounded-[20px] border-2 border-[#bd8a52]/55 bg-cream-soft px-6 py-3.5 font-hand text-lg text-ink shadow-[inset_0_1.5px_0_rgba(255,255,255,0.7),0_4px_0_rgba(111,84,55,0.16)] transition active:translate-y-0.5"
-          >
-            回到相册
-          </button>
+          <SecondaryButton onClick={() => goTo("album")}>回到相册</SecondaryButton>
         )}
       </div>
     </div>

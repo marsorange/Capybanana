@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useGameStore } from "@/state/gameStore";
 import { isSupabaseConfigured, signInWithGoogle } from "@/lib/supabaseClient";
 import ScreenArtwork from "../ui/ScreenArtwork";
+import { SecondaryButton } from "../ui/kit";
 
 export default function LoginScreen() {
   const cloudBusy = useGameStore((s) => s.cloudBusy);
@@ -63,7 +64,7 @@ export default function LoginScreen() {
           >
             Capybanana
           </h1>
-          <div className="storybook-ribbon mx-auto mt-3 px-4 py-1.5 text-sm font-semibold">
+          <div className="ui-wood-surface mx-auto mt-3 w-fit rounded-full px-4 py-1.5 font-hand text-sm font-semibold text-[#5f442d]">
             我在小岛上等你
           </div>
         </motion.div>
@@ -80,7 +81,7 @@ export default function LoginScreen() {
           <button
             onClick={onGoogle}
             disabled={!isSupabaseConfigured || busy}
-            className="flex w-full items-center justify-center gap-3 rounded-[22px] border border-[#bd8a52]/25 bg-paper/95 px-4 py-4 font-hand text-base text-ink shadow-[0_10px_28px_-10px_rgba(40,28,18,0.5),inset_0_1.5px_0_rgba(255,255,255,0.8)] backdrop-blur-sm transition active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+            className="ui-wood-surface ui-wood-press flex w-full items-center justify-center gap-3 rounded-[24px] px-4 py-4 font-hand text-base font-bold text-[#5f442d] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:translate-y-0"
           >
             <GoogleMark className="h-5 w-5" />
             {busy ? "正在推开小岛的门…" : "用 Google 找到我"}
@@ -94,13 +95,13 @@ export default function LoginScreen() {
                 placeholder="local-dev"
                 className="w-full rounded-xl border-2 border-[#bd8a52]/35 bg-paper px-3 py-2 text-sm text-ink outline-none ring-accent/40 transition focus:ring-2"
               />
-              <button
+              <SecondaryButton
                 onClick={onDev}
                 disabled={busy}
-                className="w-full rounded-[14px] border-2 border-[#bd8a52]/45 bg-cream-soft px-4 py-2.5 text-sm text-ink transition active:translate-y-0.5 disabled:opacity-60"
+                size="sm"
               >
                 {busy ? "进岛中…" : "本地进岛"}
-              </button>
+              </SecondaryButton>
             </div>
           )}
 

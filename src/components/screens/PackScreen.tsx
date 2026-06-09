@@ -7,16 +7,16 @@ import type { PackedItem } from "@/game/types";
 import { uid } from "@/game/util";
 import { useGameStore } from "@/state/gameStore";
 import { extractElement } from "../ui/photoExtract";
-import { BackButton } from "../ui/kit";
+import { Panel, PrimaryButton, ScreenHeader } from "../ui/kit";
 
 const MAX = 3;
 
-// warm storybook palette (local — the reference's grassy greens + cozy wood)
-const GREEN = "#86a94e";
-const GREEN_DK = "#6d9040";
-const GREEN_DEEP = "#54752f";
-const WOOD = "#e8cf98";
-const WOOD_DK = "#bd8a52";
+// The camera shutter uses the theme's leaf green — the only non-coral accent in
+// the home palette — so it reads as a distinct "capture" action without
+// inventing a new colour for this screen.
+const LEAF = "#8aa978";
+const LEAF_DK = "#6d9040";
+const LEAF_DEEP = "#54752f";
 
 // ── inline SVG icons (rounded, hand-drawn feel — no emoji) ───────────────────
 type IP = { className?: string };
@@ -184,29 +184,18 @@ export default function PackScreen() {
 
   return (
     <div className="screen-bg relative flex h-full flex-col overflow-hidden">
-      {/* ── header ─────────────────────────────────────────────────────────── */}
-      <header className="relative z-10 flex items-center justify-between px-4 pt-4">
-        <BackButton onClick={() => goTo("home")} />
-        <div
-          className="flex items-center gap-2 rounded-[16px] px-4 py-1.5 shadow-[0_4px_0_rgba(90,57,29,.4)]"
-          style={{ background: `linear-gradient(165deg, #cd9f63, ${WOOD})`, border: `3px solid ${WOOD_DK}` }}
-        >
-          <span className="font-hand text-[22px] font-bold leading-none text-[#46301c]" style={{ textShadow: "0 1px 0 rgba(255,255,255,.28)" }}>
-            今日包裹
-          </span>
-          <Banana className="-mr-1 h-5 w-5 rotate-[14deg]" />
-        </div>
-        <span className="w-11" aria-hidden />
-      </header>
-      <p className="relative z-10 px-6 pt-2 text-center text-[12px] leading-snug text-ink-soft">
-        今天，我可以带上点什么？
-      </p>
+      <ScreenHeader
+        onBack={() => goTo("home")}
+        eyebrow="今天，我可以带上点什么"
+        title="今日包裹"
+        right={<Banana className="h-7 w-7 rotate-[14deg]" />}
+      />
 
       {/* ── scrollable content ─────────────────────────────────────────────── */}
       <div className="no-scrollbar relative z-10 flex-1 space-y-4 overflow-y-auto px-4 pb-3 pt-4">
         {/* viewfinder */}
         <div
-          className="relative overflow-hidden rounded-[24px] border-[4px] border-cream-soft shadow-[0_6px_0_rgba(111,84,55,.18)]"
+          className="sketch tex-grain relative overflow-hidden rounded-[26px] border-[4px] border-cream-soft bg-paper/80 shadow-[0_6px_0_rgba(111,84,55,.18),0_18px_32px_-24px_rgba(58,46,42,.56)]"
           style={{ aspectRatio: "4 / 3", background: "#2b2620" }}
         >
           <video
@@ -229,8 +218,7 @@ export default function PackScreen() {
           {camPhase === "live" && (
             <button
               onClick={switchCamera}
-              className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full text-paper backdrop-blur-sm"
-              style={{ background: "rgba(20,16,12,.34)" }}
+              className="ui-wood-surface ui-wood-press absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full text-ink"
               aria-label="切换镜头"
             >
               <Switch className="h-4 w-4" />
@@ -238,7 +226,7 @@ export default function PackScreen() {
           )}
           {camPhase === "live" && (
             <div className="absolute inset-x-0 bottom-3 flex justify-center">
-              <span className="rounded-full px-3.5 py-1 text-[11px] text-paper backdrop-blur-sm" style={{ background: `${GREEN_DK}e6` }}>
+              <span className="rounded-full px-3.5 py-1 text-[11px] text-paper backdrop-blur-sm" style={{ background: `${LEAF_DK}e6` }}>
                 {full ? "都收下啦！" : "放在中间，让我看看"}
               </span>
             </div>
@@ -253,7 +241,7 @@ export default function PackScreen() {
             return (
               <div
                 key={i}
-                className="relative rounded-[16px] border-2 border-ink/10 bg-paper p-1.5 shadow-[0_3px_0_rgba(111,84,55,.1)]"
+                className="relative rounded-[16px] border-2 border-[#e4c89c] bg-paper/95 p-1.5 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_3px_0_rgba(143,101,54,0.14)]"
               >
                 {item ? (
                   <>
@@ -269,7 +257,7 @@ export default function PackScreen() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.photo} alt={item.label} className="aspect-square w-full rounded-[11px] object-cover" />
                     <p className="mt-1 flex items-center justify-center gap-1 text-[12px] font-medium text-ink">
-                      {busy && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full" style={{ background: GREEN }} />}
+                      {busy && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full" style={{ background: LEAF }} />}
                       <span className="truncate">{item.label}</span>
                     </p>
                   </>
@@ -287,7 +275,7 @@ export default function PackScreen() {
         </div>
 
         {/* optional one-line message to the agent */}
-        <div className="rounded-[16px] border-2 border-ink/8 bg-[#fffdf5] px-3.5 py-3 shadow-[0_3px_0_rgba(111,84,55,.1)]">
+        <Panel sketch={false} className="px-3.5 py-3">
           <span className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-ink-soft">
             <Heart className="h-3 w-3 text-accent" /> 想对我说点什么吗（可选）
           </span>
@@ -298,7 +286,7 @@ export default function PackScreen() {
             rows={2}
             className="w-full resize-none bg-transparent font-hand text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink-soft/45"
           />
-        </div>
+        </Panel>
       </div>
 
       {/* ── capture + CTA ──────────────────────────────────────────────────── */}
@@ -309,27 +297,22 @@ export default function PackScreen() {
             disabled={camPhase !== "live" || full}
             aria-label="给我拍一样东西"
             className="grid h-[72px] w-[72px] place-items-center rounded-full p-1.5 shadow-[0_5px_0_rgba(60,80,40,.5)] transition active:translate-y-1 active:shadow-[0_1px_0_rgba(60,80,40,.5)] disabled:opacity-45 disabled:active:translate-y-0"
-            style={{ background: GREEN_DEEP }}
+            style={{ background: LEAF_DEEP }}
           >
             <span
               className="grid h-full w-full place-items-center rounded-full ring-2 ring-paper/85"
-              style={{ background: `linear-gradient(160deg, #a0c46c, ${GREEN_DK})` }}
+              style={{ background: `linear-gradient(160deg, #a0c46c, ${LEAF_DK})` }}
             >
               <Camera className="h-8 w-8 text-paper" />
             </span>
           </button>
         </div>
 
-        <button
-          onClick={() => prepareBag(photos, message)}
-          disabled={!hasClue}
-          className="relative w-full overflow-hidden rounded-[20px] border-2 border-[#b8504a] py-3 text-center transition active:translate-y-0.5 disabled:opacity-45"
-          style={{ background: "linear-gradient(180deg, #ef7e74, #d9554f)", boxShadow: "0 5px 0 rgba(150,70,58,0.5)" }}
-        >
-          <span className="pointer-events-none absolute inset-1.5 rounded-[14px] border-2 border-dashed border-paper/40" />
-          <span className="relative font-hand text-xl font-bold text-paper">放到门口 ✨</span>
-          <span className="relative mt-0.5 block text-[11px] text-paper/85">{subtext}</span>
-        </button>
+        <PrimaryButton onClick={() => prepareBag(photos, message)} disabled={!hasClue}>
+          <span className="pointer-events-none absolute inset-1.5 rounded-[16px] border-2 border-dashed border-paper/40" />
+          <span className="relative block">放到门口 ✨</span>
+          <span className="relative mt-0.5 block text-[11px] font-normal text-paper/85">{subtext}</span>
+        </PrimaryButton>
       </div>
     </div>
   );

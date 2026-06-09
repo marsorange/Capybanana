@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { tripProgress } from "@/game/clock";
 import { useGameStore } from "@/state/gameStore";
 import JournalMap from "../ui/JournalMap";
-import { Panel } from "../ui/kit";
+import { Panel, ProgressBar } from "../ui/kit";
 import ScreenArtwork from "../ui/ScreenArtwork";
 
 const WEATHERS = [
@@ -69,12 +69,7 @@ export default function TravelingScreen() {
             <span className="font-hand text-base text-accent">{pct}%</span>
           </div>
           <JournalMap progress={progress} />
-          <div className="mt-2 h-2.5 overflow-hidden rounded-full border border-[#bd8a52]/25 bg-cream-deep">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#f0c25c] to-[#e0973f] transition-[width] duration-300"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          <ProgressBar value={progress} className="mt-2" />
           <p className="mt-3 text-center text-sm text-ink-soft">{statusLine(progress)}</p>
         </Panel>
 

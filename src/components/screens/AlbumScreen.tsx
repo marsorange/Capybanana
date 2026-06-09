@@ -6,7 +6,7 @@ import { useGameStore } from "@/state/gameStore";
 import { cn } from "../ui/cn";
 import PostcardArt from "../ui/PostcardArt";
 import { RARITY_META } from "../ui/rarity";
-import { Panel, PrimaryButton, ScreenHeader } from "../ui/kit";
+import { Panel, PrimaryButton, ScreenHeader, TabBar } from "../ui/kit";
 
 type Tab = "cards" | "battles";
 
@@ -57,22 +57,7 @@ export default function AlbumScreen() {
       />
 
       {/* tabs */}
-      <div className="relative z-10 mt-3 flex gap-2 px-5">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "rounded-full border-2 px-4 py-1.5 font-hand text-[15px] transition",
-              tab === t.id
-                ? "border-[#b8504a] bg-accent text-paper shadow-[0_2px_0_rgba(150,70,58,0.4)]"
-                : "border-[#bd8a52]/35 bg-cream-soft text-ink-soft",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={TABS} active={tab} onChange={setTab} className="relative z-10 mx-5 mt-3" />
 
       <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-5 py-4">
         {tab === "cards" &&
@@ -90,10 +75,10 @@ export default function AlbumScreen() {
                     <button
                       key={pc.id}
                       onClick={() => openPostcard(pc.id)}
-                      className="block text-left active:translate-y-0.5"
+                      className="ui-wood-surface ui-wood-press block rounded-[18px] p-1.5 text-left"
                     >
                       <div
-                        className="overflow-hidden rounded-[12px] border-2"
+                        className="overflow-hidden rounded-[13px] border-2 bg-paper"
                         style={{ borderColor: meta.ring }}
                       >
                         <div className="relative aspect-[4/3] w-full">
