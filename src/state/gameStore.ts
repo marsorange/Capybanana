@@ -17,7 +17,7 @@ import type {
 import { coerceRarity } from "@/game/gacha";
 import { cloud } from "@/lib/cloudClient";
 import { supabaseSignOut } from "@/lib/supabaseClient";
-import type { CloudSave } from "@/server/types";
+import type { AgentEvent, CloudSave } from "@/server/types";
 
 // A prepared "今日包裹" goes stale after ~a day. The web checks this itself on
 // home entry (the server never auto-expires); a NEXT_PUBLIC_ override keeps it
@@ -77,6 +77,10 @@ interface GameState {
   companionDays: number;
   cardDex: string[];
   lastResult: DayOutcome | null;
+  // Mirrored from the cloud save so the web can DERIVE "when did the Agent last
+  // come by" (no extra column): the activity log + the last main-action day.
+  events: AgentEvent[];
+  lastActionDay: string | null;
   screen: Screen;
   // Whether the owner has passed the one-time "connect an Agent" step. New
   // accounts land on the connect screen once; returning owners go straight home.
@@ -130,6 +134,8 @@ function emptyLocalState() {
     companionDays: 0,
     cardDex: [],
     lastResult: null,
+    events: [] as AgentEvent[],
+    lastActionDay: null as string | null,
     selectedPostcardId: null,
     pendingPostcardId: null,
     notice: null,
@@ -340,18 +346,17 @@ export const useGameStore = create<GameState>()(
         try {
           const { save } = await cloud.state(s.cloud.bindToken);
           if (save.rev === s.cloud.rev) return;
-          const prevPending = s.pendingPostcardId;
           const prevResult = s.lastResult;
           get().adoptSave(save);
           set((cur) => {
             const patch: Partial<GameState> = {};
             let screen = cur.screen;
-            const arrivedPostcard =
-              !!save.pendingPostcardId && save.pendingPostcardId !== prevPending;
-            if (arrivedPostcard && (screen === "home" || screen === "traveling")) {
-              patch.selectedPostcardId = save.pendingPostcardId;
-              screen = "postcard";
-            } else if (
+            // A fresh postcard no longer yanks the screen away — HomeScreen
+            // surfaces a persistent "门口有封信" note (derived from
+            // pendingPostcardId) and the owner opens it themselves, so the
+            // 拆信 ceremony is a choice, not an interruption. Cardless results
+            // (stay / battle / a quiet return) still flow to the result screen.
+            if (
               save.lastResult &&
               save.lastResult !== prevResult &&
               !save.pendingPostcardId &&
@@ -380,6 +385,8 @@ export const useGameStore = create<GameState>()(
           companionDays: save.companionDays,
           cardDex: save.cardDex,
           lastResult: save.lastResult,
+          events: save.events,
+          lastActionDay: save.lastActionDay,
           pendingPostcardId: save.pendingPostcardId,
           cloud: s.cloud ? { ...s.cloud, rev: save.rev } : s.cloud,
         })),
@@ -408,6 +415,8 @@ export const useGameStore = create<GameState>()(
         companionDays: s.companionDays,
         cardDex: s.cardDex,
         lastResult: s.lastResult,
+        events: s.events,
+        lastActionDay: s.lastActionDay,
         screen: s.screen,
         hasOnboarded: s.hasOnboarded,
         selectedPostcardId: s.selectedPostcardId,

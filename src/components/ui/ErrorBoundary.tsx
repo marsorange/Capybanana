@@ -2,6 +2,8 @@
 
 import { Component, type ReactNode } from "react";
 
+import { PrimaryButton } from "./kit";
+
 interface Props {
   children: ReactNode;
 }
@@ -29,15 +31,17 @@ export default class ErrorBoundary extends Component<Props, State> {
           <div className="text-5xl">🫧</div>
           <p className="font-hand text-xl text-ink">小屋打了个盹</p>
           <p className="text-sm text-ink-soft">画面出了点小状况，点一下让它醒过来。</p>
-          <button
-            onClick={() => {
-              this.reset();
-              location.reload();
-            }}
-            className="sticker rounded-sticker bg-accent px-6 py-3 text-paper"
-          >
-            重新唤醒
-          </button>
+          <div className="w-44">
+            <PrimaryButton
+              size="sm"
+              onClick={() => {
+                this.reset();
+                location.reload();
+              }}
+            >
+              重新唤醒
+            </PrimaryButton>
+          </div>
         </div>
       );
     }

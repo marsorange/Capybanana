@@ -221,12 +221,59 @@ function Scene({ theme }: { theme: string }) {
   }
 }
 
+// PLACEHOLDER rarity dressing — the whole postcard art (scenes included) gets
+// replaced by real produced card images later; until then this cheap overlay at
+// least makes an R/SR pull LOOK different from an N at reveal time. Safe to
+// delete wholesale when the real art lands.
+function RarityOverlay({ rarity }: { rarity?: string }) {
+  if (rarity === "R")
+    return (
+      <g pointerEvents="none">
+        <rect width={320} height={200} fill="#7fb0d8" opacity={0.1} />
+        {[[42, 38], [120, 24], [212, 46], [282, 30], [70, 92], [254, 104]].map(
+          ([x, y], i) => (
+            <path
+              key={i}
+              d={`M${x} ${y - 5} l1.6 3.4 3.4 1.6 -3.4 1.6 -1.6 3.4 -1.6 -3.4 -3.4 -1.6 3.4 -1.6 Z`}
+              fill="#ffffff"
+              opacity={0.85}
+            />
+          ),
+        )}
+      </g>
+    );
+  if (rarity === "SR")
+    return (
+      <g pointerEvents="none">
+        {/* golden-hour wash + light shafts + gold sparkles */}
+        <rect width={320} height={200} fill="#e6b34d" opacity={0.16} />
+        <g opacity={0.2} fill="#fff3c4">
+          <polygon points="60,-20 110,-20 10,220 -40,220" />
+          <polygon points="210,-20 240,-20 140,220 110,220" />
+        </g>
+        {[[36, 36], [104, 20], [170, 44], [238, 26], [292, 52], [60, 110], [216, 118], [140, 84]].map(
+          ([x, y], i) => (
+            <path
+              key={i}
+              d={`M${x} ${y - 6} l1.9 4 4 1.9 -4 1.9 -1.9 4 -1.9 -4 -4 -1.9 4 -1.9 Z`}
+              fill={i % 3 === 0 ? "#ffe9ad" : "#f6c97a"}
+              opacity={0.95}
+            />
+          ),
+        )}
+      </g>
+    );
+  return null;
+}
+
 export default function PostcardArt({
   theme,
+  rarity,
   className,
   rounded = true,
 }: {
   theme: string;
+  rarity?: string; // N renders plain; R/SR get the placeholder dressing above
   className?: string;
   rounded?: boolean;
 }) {
@@ -239,6 +286,7 @@ export default function PostcardArt({
       aria-label={getDestination(theme).label}
     >
       <Scene theme={theme} />
+      <RarityOverlay rarity={rarity} />
     </svg>
   );
 }

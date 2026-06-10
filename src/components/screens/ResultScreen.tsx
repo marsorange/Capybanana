@@ -107,6 +107,30 @@ export default function ResultScreen() {
             </Panel>
           </motion.div>
 
+          {result.souvenir && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.28 }}
+            >
+              <Panel className="px-5 py-3.5">
+                <div className="flex items-center gap-3">
+                  <span className="ui-icon-well grid h-11 w-11 shrink-0 place-items-center rounded-full">
+                    <Icon name="package" className="h-7 w-7 drop-shadow-[0_2px_2px_rgba(126,83,38,0.16)]" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium" style={{ color: theme.accent }}>
+                      我带回来一样小东西
+                    </p>
+                    <p className="mt-0.5 font-hand text-[17px] leading-snug text-ink">
+                      {result.souvenir}
+                    </p>
+                  </div>
+                </div>
+              </Panel>
+            </motion.div>
+          )}
+
         </div>
 
         <div

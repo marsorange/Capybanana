@@ -127,6 +127,7 @@ export default function ProfileScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const capy = useGameStore((s) => s.capyState);
   const postcards = useGameStore((s) => s.postcards);
+  const souvenirs = useGameStore((s) => s.souvenirs);
   const battles = useGameStore((s) => s.battleRecords);
   const companionDays = useGameStore((s) => s.companionDays);
   const cardDex = useGameStore((s) => s.cardDex);
@@ -243,8 +244,10 @@ export default function ProfileScreen() {
           <SectionTitle>成长记录</SectionTitle>
           <div className="mt-2.5 grid grid-cols-3 divide-x divide-[#e4c89c]/80">
             {[
-              { value: postcards.length, label: "明信片" },
-              { value: cardDex.length, label: "图鉴" },
+              // 明信片 counts the COLLECTION (unique cards) — the album dedupes
+              // the same way, so the two numbers always agree.
+              { value: cardDex.length, label: "明信片" },
+              { value: souvenirs.length, label: "小东西" },
               { value: battles.length, label: "切磋" },
             ].map((it) => (
               <div key={it.label} className="py-1 text-center">
@@ -254,6 +257,39 @@ export default function ProfileScreen() {
             ))}
           </div>
         </Panel>
+
+        {/* 带回来的小东西 — souvenirs carried home from cardless trips */}
+        {souvenirs.length > 0 && (
+          <Panel className="px-4 py-3.5" sketch={false}>
+            <div className="flex items-baseline justify-between">
+              <SectionTitle>带回来的小东西</SectionTitle>
+              <span className="text-[10px] tabular-nums text-ink-soft/60">
+                {souvenirs.length} 件
+              </span>
+            </div>
+            <ul className="mt-2.5 space-y-1.5">
+              {souvenirs.slice(0, 6).map((sv, i) => (
+                <li
+                  key={`${sv}-${i}`}
+                  className="flex items-center gap-2 rounded-2xl border border-[#d9b982]/45 bg-cream-soft px-3 py-2"
+                >
+                  <Icon name="package" className="h-5 w-5 shrink-0 drop-shadow-[0_2px_2px_rgba(126,83,38,0.14)]" />
+                  <span className="min-w-0 truncate font-hand text-[14px] text-ink">{sv}</span>
+                  {i === 0 && (
+                    <span className="ml-auto shrink-0 rounded-full bg-accent/12 px-2 py-0.5 text-[10px] leading-none text-accent">
+                      最新
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {souvenirs.length > 6 && (
+              <p className="mt-2 text-[11px] leading-none text-ink-soft/65">
+                还有 {souvenirs.length - 6} 件，都收在我的小盒子里。
+              </p>
+            )}
+          </Panel>
+        )}
 
         {/* 成长印记 — personality / accessory / earned traits */}
         <Panel className="px-4 py-3.5" sketch={false}>

@@ -36,7 +36,10 @@ import {
 // back onto the island (NAV_CLAMP_R), and ground-level positions/targets are
 // pushed out of the OBSTACLES footprints (walls + yard props + pond) via
 // resolveObstacles — per-frame push-out reads as sliding around the prop.
-const SPEED = 1.6;
+// Capybara pacing: a slow amble, long unhurried pauses, gentle turns — the
+// pet should read as 沉稳憨懒, mostly standing around, occasionally mooching
+// to the next spot. SPEED + the dwell ranges below set that temperament.
+const SPEED = 0.85;
 const ARRIVE = 0.12;
 const LOFT_Y = 1.1; // y above which the pet counts as "on the loft"
 const NAV_CLAMP_R = 5.0; // floor taps beyond this snap back onto the island grass
@@ -152,7 +155,7 @@ export default function RoamingCompanion({
       queue.current = path.slice(1);
       pendingArrive.current = cmd.onArrive ?? null;
       pendingSay.current = cmd.say ?? null;
-      dwell.current = randRange(2.5, 4.5);
+      dwell.current = randRange(5, 9);
       detours.current = 0;
     } else if (navBus.version !== seenNav.current) {
       // a floor tap (navBus): the hit point carries its height, so a tap on the
@@ -179,7 +182,7 @@ export default function RoamingCompanion({
         queue.current = path.slice(1);
         pendingArrive.current = null;
         pendingSay.current = null;
-        dwell.current = randRange(2.5, 4.5);
+        dwell.current = randRange(5, 9);
         detours.current = 0;
       }
     }
@@ -206,11 +209,19 @@ export default function RoamingCompanion({
         detours.current = 0;
         dwell.current -= dt;
         if (dwell.current <= 0) {
-          const next = pick(SPOTS);
-          const path = buildPath(next.pos[0], next.pos[2], next.floor, p.y);
-          target.current.copy(path[0]);
-          queue.current = path.slice(1);
-          dwell.current = randRange(2.5, 4.5);
+          // capybara energy: often can't be bothered — just linger a while
+          // longer instead of mooching off to a new spot
+          if (Math.random() < 0.4) {
+            dwell.current = randRange(5, 10);
+          } else {
+            const next = pick(SPOTS);
+            const path = buildPath(next.pos[0], next.pos[2], next.floor, p.y);
+            target.current.copy(path[0]);
+            queue.current = path.slice(1);
+            // linger at the spot for its OWN dwell range (the lazy spots —
+            // bed, kitchen — hold it noticeably longer)
+            dwell.current = randRange(next.dwell[0], next.dwell[1]);
+          }
         }
       }
     } else {
@@ -274,11 +285,11 @@ export default function RoamingCompanion({
       setGait(moving ? "walk" : "idle");
     }
 
-    // turn smoothly to face the direction of travel
+    // turn smoothly (and unhurriedly) to face the direction of travel
     if (inner.current) {
       const cur = inner.current.rotation.y;
       inner.current.rotation.y =
-        cur + shortestAngle(cur, face.current) * Math.min(1, dt * 8);
+        cur + shortestAngle(cur, face.current) * Math.min(1, dt * 4.5);
     }
   });
 

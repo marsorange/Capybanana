@@ -130,8 +130,11 @@ export const BED: Vec3 = [-3.6, FLOOR_H, -3.7];
 // the visuals and the obstacle footprints below can never drift apart.
 export const VEG_BED = { x: -0.7, z: 3.0, hx: 1.3, hz: 0.95 }; // log-fenced 苗圃
 export const YARD_BENCH: Vec3 = [3.95, 0, 1.8];
+export const YARD_TABLE: Vec3 = [3.25, 0, 2.4]; // log side-table by the bench
 export const YARD_LANTERN: Vec3 = [2.35, 0, 2.5];
-export const YARD_MAILBOX: Vec3 = [3.7, 0, -0.45];
+// the mailbox stands right off the postcard board's right post (one ensemble,
+// both rotated -0.6): board right post ≈ [3.24,-0.46], box just beyond it
+export const YARD_MAILBOX: Vec3 = [3.55, 0, -0.25];
 export const YARD_LOG_PILE: Vec3 = [-2.8, 0, 2.6];
 export const YARD_WATER_CAN: Vec3 = [-2.3, 0, 1.75];
 export const ISLAND_POND: [number, number] = [-4.1, 3.9];
@@ -168,6 +171,7 @@ export const OBSTACLES: Obstacle[] = [
   rect(-3.6, -2.6, -0.27, 0.27), // pack bench + backpack (art at PACK_BENCH)
   circle(POSTCARD_BOARD[0], POSTCARD_BOARD[2], 0.55),
   circle(YARD_BENCH[0], YARD_BENCH[2], 0.62),
+  circle(YARD_TABLE[0], YARD_TABLE[2], 0.26),
   circle(YARD_LANTERN[0], YARD_LANTERN[2], 0.24),
   circle(YARD_MAILBOX[0], YARD_MAILBOX[2], 0.32),
   circle(YARD_LOG_PILE[0], YARD_LOG_PILE[2], 0.5),

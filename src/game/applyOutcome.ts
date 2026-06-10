@@ -48,8 +48,9 @@ export function applyOutcome(
 
   return {
     capy,
+    // Newest first, capped — the shelf keeps the recent finds, not a hoard.
     souvenirs: outcome.souvenir
-      ? [outcome.souvenir, ...prev.souvenirs]
+      ? [outcome.souvenir, ...prev.souvenirs].slice(0, 30)
       : prev.souvenirs,
   };
 }

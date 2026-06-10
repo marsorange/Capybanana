@@ -183,6 +183,7 @@ export interface BattleSnapshot {
   species: CompanionType;
   personality: Personality;
   accessory: Accessory;
+  color?: string; // primary fur color — lets the opponent LOOK like itself
   stats: Pick<CapyState, "energy" | "mood" | "courage" | "curiosity" | "injury">;
   traits: string[];
   rating: number;
@@ -194,6 +195,12 @@ export interface BattleRecord {
   day: string; // YYYY-MM-DD (UTC+8) the battle happened
   opponentName: string;
   opponentSpecies: CompanionType;
+  // How the other pet LOOKED — another owner raised it to be different from
+  // yours, and the record should show that (社交感). Optional: older records
+  // and sparse snapshots simply omit them.
+  opponentPersonality?: string;
+  opponentAccessory?: string;
+  opponentColor?: string;
   isNpc: boolean;
   result: BattleResult;
   title: string;

@@ -922,35 +922,89 @@ export default function House({
             loft is kept simple; only the small roof chimney remains) */}
       </group>
 
-      {/* outdoor notice board by the entrance (diegetic -> album). Self-contained
-          here (frame + posts + little roof + the pinned cards) so the postcard
-          interaction lives with the house's other interactive props. */}
+      {/* ===== 信件角: the roofed postcard board (diegetic -> album). A rustic
+            roadside notice board: round posts on stone footings + a low cross
+            rail, a thick warm frame around a cork pin-panel, postcards pinned
+            under a real two-slope shingle roof, and a bottom ledge with a tiny
+            potted bloom. The red mailbox (Yard.tsx, YARD_MAILBOX) stands just
+            off its right post at the same -0.6 angle — one ensemble. ===== */}
       <group position={POSTCARD_BOARD} rotation={[0, -0.6, 0]} onClick={goAlbum}>
-        {[-0.62, 0.62].map((x, i) => (
-          <mesh key={i} position={[x, 0.55, 0]}>
-            <cylinderGeometry args={[0.06, 0.07, 1.1, 7]} />
-            {m(WOOD_DK)}
-          </mesh>
+        {/* stone footings + round posts */}
+        {[-0.72, 0.72].map((x, i) => (
+          <group key={i} position={[x, 0, 0]}>
+            <mesh position={[0, 0.05, 0]}>
+              <cylinderGeometry args={[0.11, 0.13, 0.1, 7]} />
+              {m("#b9b09a")}
+            </mesh>
+            <mesh position={[0, 0.66, 0]}>
+              <cylinderGeometry args={[0.06, 0.072, 1.22, 7]} />
+              {m(WOOD_DK)}
+            </mesh>
+          </group>
         ))}
-        <mesh position={[0, 1.0, 0]}>
-          <boxGeometry args={[1.5, 0.84, 0.08]} />
+        {/* low cross rail tying the posts */}
+        <mesh position={[0, 0.34, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.032, 0.032, 1.44, 6]} />
+          {m(WOOD_DK)}
+        </mesh>
+        {/* thick warm frame + cork pin-panel */}
+        <mesh position={[0, 1.08, 0]}>
+          <boxGeometry args={[1.66, 0.94, 0.1]} />
           {m(WOOD)}
         </mesh>
-        <mesh position={[0, 1.0, 0.05]}>
-          <boxGeometry args={[1.32, 0.66, 0.02]} />
-          {m("#caa274")}
+        <mesh position={[0, 1.08, 0.055]}>
+          <boxGeometry args={[1.44, 0.72, 0.02]} />
+          {m("#d9b88a")}
         </mesh>
-        {/* little leafy gable roof over the board */}
-        {([-1, 1] as const).map((side) => (
-          <mesh key={side} position={[side * 0.4, 1.52, 0]} rotation={[0, 0, side * -0.5]}>
-            <boxGeometry args={[0.9, 0.07, 0.5]} />
-            {m(GREEN)}
+        {/* bottom ledge + a tiny potted bloom sitting on it */}
+        <mesh position={[0, 0.64, 0.1]}>
+          <boxGeometry args={[1.52, 0.06, 0.16]} />
+          {m(WOOD_LT)}
+        </mesh>
+        <group position={[0.58, 0.67, 0.1]}>
+          <mesh position={[0, 0.05, 0]}>
+            <cylinderGeometry args={[0.055, 0.042, 0.1, 8]} />
+            {m("#c98a52")}
           </mesh>
+          <mesh position={[0, 0.13, 0]}>
+            <icosahedronGeometry args={[0.05, 0]} />
+            {m(GREEN_DK)}
+          </mesh>
+          <mesh position={[0, 0.18, 0]}>
+            <sphereGeometry args={[0.035, 7, 6]} />
+            {m(PINK)}
+          </mesh>
+        </group>
+        {/* two-slope shingle roof + faceted ridge beam, overhanging the frame */}
+        {([-1, 1] as const).map((side) => (
+          <group key={side} position={[0, 1.68, side * 0.17]} rotation={[side * 0.62, 0, 0]}>
+            <mesh>
+              <boxGeometry args={[1.84, 0.06, 0.44]} />
+              {m(WOOD_DK)}
+            </mesh>
+            {/* a raised lighter shingle course on each slope */}
+            <mesh position={[0, 0.05, side * 0.05]}>
+              <boxGeometry args={[1.88, 0.05, 0.24]} />
+              {m(WOOD)}
+            </mesh>
+          </group>
         ))}
-        <group position={[0, 1.0, 0.07]}>
+        <mesh position={[0, 1.85, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.055, 0.055, 1.92, 6]} />
+          {m(WOOD_LT)}
+        </mesh>
+        {/* the pinned postcards */}
+        <group position={[0, 1.08, 0.075]}>
           {(postcardThemes.length ? postcardThemes.slice(0, 3) : (["seaside"] as DestinationTheme[])).map(
             (theme, i, arr) => (
-              <PinnedCard key={i} x={(i - (arr.length - 1) / 2) * 0.46} tilt={i % 2 === 0 ? 0.05 : -0.05} theme={theme} faded={!postcardThemes.length} />
+              <PinnedCard
+                key={i}
+                x={(i - (arr.length - 1) / 2) * 0.46}
+                tilt={i % 2 === 0 ? 0.06 : -0.06}
+                theme={theme}
+                faded={!postcardThemes.length}
+                pin={["#e0594e", "#f4d35e", "#7fae9b"][i % 3]}
+              />
             ),
           )}
         </group>
@@ -1004,22 +1058,29 @@ function PinnedCard({
   tilt,
   theme,
   faded,
+  pin = "#e0594e",
 }: {
   x: number;
   tilt: number;
   theme: DestinationTheme;
   faded?: boolean;
+  pin?: string;
 }) {
   const { mid } = getDestination(theme).palette;
   return (
     <group position={[x, 0, 0]} rotation={[0, 0, tilt]}>
       <mesh>
         <planeGeometry args={[0.52, 0.4]} />
-        <meshStandardMaterial color="#3a2e2a" roughness={1} metalness={0} />
+        <meshStandardMaterial color="#fff6e8" roughness={1} metalness={0} />
       </mesh>
-      <mesh position={[0, 0, 0.01]}>
-        <planeGeometry args={[0.46, 0.34]} />
+      <mesh position={[0, 0.015, 0.01]}>
+        <planeGeometry args={[0.46, 0.31]} />
         <meshStandardMaterial color={faded ? "#e7d9c2" : mid} roughness={1} metalness={0} transparent opacity={faded ? 0.6 : 1} />
+      </mesh>
+      {/* a round push-pin head at the card's top edge */}
+      <mesh position={[0, 0.17, 0.02]}>
+        <sphereGeometry args={[0.026, 8, 6]} />
+        <meshStandardMaterial color={pin} roughness={0.7} metalness={0} />
       </mesh>
     </group>
   );

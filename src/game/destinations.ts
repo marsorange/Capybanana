@@ -185,6 +185,61 @@ export const LANDMARKS: Record<DestinationTheme, string[]> = {
   desert: ["敦煌鸣沙山月牙泉", "迪拜沙漠绿洲", "撒哈拉沙漠"],
 };
 
+// Little trinkets the pet may carry home from a trip that didn't mail a
+// postcard — the "空手而归" consolation. Named like collectibles (the owner sees
+// them quoted in the day's story and on the profile shelf), so keep them
+// concrete and a bit odd. Each list is one destination's flavor.
+export const SOUVENIRS: Record<DestinationTheme, string[]> = {
+  seaside: [
+    "一枚还带着潮味的小贝壳",
+    "一颗被浪磨圆的玻璃珠",
+    "半截晒白的小船绳",
+    "一小包细细的白沙",
+  ],
+  forest: [
+    "一颗裹着泥土香的橡果",
+    "一片比我脸还大的蕨叶",
+    "一小块软软的青苔",
+    "一颗被松鼠啃过一口的松果",
+  ],
+  flowerfield: [
+    "一朵压得扁扁的小黄花",
+    "三粒不知名的花种子",
+    "一颗沾着花粉的小石子",
+    "一段还香着的干花枝",
+  ],
+  town: [
+    "一张面包店的旧价签",
+    "一枚被路人踩得发亮的铜扣",
+    "一颗杂货铺门口捡的玻璃弹珠",
+    "半张巷口的旧电影票根",
+  ],
+  snow: [
+    "一小罐化成了水的雪",
+    "一根挂过冰棱的小树枝",
+    "一颗冻得硬邦邦的红浆果",
+    "一张呵着白气画下来的冰裂纹",
+  ],
+  mountain: [
+    "一块带云纹的小石头",
+    "一片从半山亭飘下来的叶子",
+    "一截被山风吹弯的草茎",
+    "一张画着山顶云的小纸片",
+  ],
+  starfield: [
+    "一颗据说被星星照过的小石子",
+    "一片夜里凉凉的草叶",
+    "一张画着流星方向的小纸条",
+    "一小截观测台旁捡的旧绳结",
+  ],
+  desert: [
+    "一小瓶月牙泉边的细沙",
+    "一颗晒得暖暖的圆石子",
+    "一片绿洲棕榈的叶尖",
+    "一块风干成奇怪形状的小泥块",
+  ],
+};
+
 // Keyword rules: message text -> boosted themes + how to phrase it back.
 export interface KeywordRule {
   test: string[];
@@ -261,22 +316,27 @@ export const PERSONALITY_LINES: Record<Personality, string[]> = {
   gentle: [
     "我走得很慢，怕错过你会喜欢的小角落。",
     "我替你深呼吸了一下，把这里的安稳也装了一点回来。",
+    "路上有人冲我笑，我也轻轻点了点头，像你教我的那样。",
   ],
   curious: [
     "我东看看西看看，差点忘了时间。",
     "这里好多没见过的东西，我都想指给你看。",
+    "我数了路上的台阶、石头和猫，数字都记不清了，开心是真的。",
   ],
   lazy: [
     "我找了个舒服的地方发了好久的呆，太舒服了。",
     "走累了就坐下来晒太阳，一坐就是一下午。",
+    "其实我一半的路都是慢慢蹭过去的，但风景没少看。",
   ],
   brave: [
     "我一个人也不怕，走到了挺远的地方呢。",
     "遇到岔路我挑了没走过的那条，结果超棒。",
+    "有段路黑黑的，我把胸口挺起来走过去了，没回头。",
   ],
   dreamy: [
     "我盯着远处发呆，想象你也站在我旁边。",
     "这里好像梦里见过，软软的，不太真实。",
+    "我把看到的颜色都记下来了，准备拿回去做梦用。",
   ],
 };
 
@@ -284,11 +344,14 @@ export const GENERIC_OPENINGS: string[] = [
   "你没说想去哪，那我就顺着心情挑啦——",
   "我也说不清为什么，脚就把我带到了这儿。",
   "风往哪吹我就往哪走，最后停在了这里。",
+  "出门的时候我闭上眼转了三圈，朝着鼻尖的方向走。",
+  "今天的路自己会拐弯，我就跟着它走到了这里。",
 ];
 
 export const GIFT_LINES: string[] = [
   "对了，我给你带了一个小东西，回去给你。",
   "路上看到一样东西就想到你，悄悄收进了包里。",
+  "我挑了好久，最后选了最不起眼但最像你的那个。",
 ];
 
 export const ITEM_NOUNS: Record<LuggageItem, string> = {

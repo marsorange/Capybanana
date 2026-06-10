@@ -134,14 +134,19 @@ export default function GameRoot() {
   useAmbientMusicStartup();
 
   // Pull the cloud save on load and whenever the tab is reopened/refocused — the
-  // server is authoritative, but the user only sees changes (a trip that
-  // resolved, a new postcard) on their NEXT visit, never live. The one exception
-  // is the connect gate: while there's no pet yet, poll on a timer so it advances
-  // on its own once the Agent registers one.
+  // server is authoritative. Two timed exceptions where waiting for the next
+  // focus would lose a moment: (1) the connect gate polls fast until the Agent
+  // registers a pet; (2) while the pet is OUT TRAVELING, poll slowly so its
+  // return (and the letter by the door) appears live if the owner is watching —
+  // the homecoming is the payoff of the whole wait.
   useEffect(() => {
     if (!hasHydrated || !bound) return;
     cloudPull();
-    const id = companion ? undefined : setInterval(() => cloudPull(), 5000);
+    const id = !companion
+      ? setInterval(() => cloudPull(), 5000)
+      : companionState === "traveling"
+        ? setInterval(() => cloudPull(), 60_000)
+        : undefined;
     const onWake = () => cloudPull();
     window.addEventListener("focus", onWake);
     document.addEventListener("visibilitychange", onWake);
@@ -150,7 +155,7 @@ export default function GameRoot() {
       window.removeEventListener("focus", onWake);
       document.removeEventListener("visibilitychange", onWake);
     };
-  }, [hasHydrated, bound, companion, cloudPull]);
+  }, [hasHydrated, bound, companion, companionState, cloudPull]);
 
   if (!hasHydrated) {
     return (

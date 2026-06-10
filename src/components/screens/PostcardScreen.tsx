@@ -82,7 +82,7 @@ function Front({ card }: { card: Postcard }) {
         className="relative h-[64%] overflow-hidden rounded-[18px] border-2"
         style={{ borderColor: rarityMeta(card.rarity).ring }}
       >
-        <PostcardArt theme={card.destinationTheme} rounded={false} />
+        <PostcardArt theme={card.destinationTheme} rarity={card.rarity} rounded={false} />
       </div>
       <div className="flex h-[36%] flex-col justify-between px-2 pb-1.5 pt-2.5">
         <div className="flex items-start justify-between gap-2">
@@ -195,14 +195,12 @@ export default function PostcardScreen() {
 
       {isFresh ? (
         <div className="relative z-10 px-5 pt-5 text-center">
-          <div className="ui-wood-surface mx-auto w-fit max-w-full rounded-[28px] px-5 py-2.5">
-            <h1 className="font-hand text-2xl text-ink">
-              {rare ? `${rarityMeta(card.rarity).label}明信片！` : "我给你寄信啦"}
-            </h1>
-            <p className="mt-0.5 text-sm text-ink-soft">
-              {rare ? "这张，我等了好久才遇上。" : "把远方的一小段，寄给你。"}
-            </p>
-          </div>
+          <h1 className="font-hand text-2xl text-ink">
+            {rare ? `${rarityMeta(card.rarity).label}明信片！` : "我给你寄信啦"}
+          </h1>
+          <p className="mt-0.5 text-sm text-ink-soft">
+            {rare ? "这张，我等了好久才遇上。" : "把远方的一小段，寄给你。"}
+          </p>
         </div>
       ) : (
         <ScreenHeader

@@ -46,19 +46,6 @@ body {
   scrollbar-width: none;
 }
 
-/* Sticker button press feel */
-.sticker {
-  border: 2px solid var(--color-ink);
-  box-shadow: 0 3px 0 rgba(58, 46, 42, 0.18);
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease;
-}
-.sticker:active {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 rgba(58, 46, 42, 0.18);
-}
-
 .game-bg {
   background:
     radial-gradient(80% 48% at 78% 6%, rgba(255, 232, 157, 0.55), transparent 72%),

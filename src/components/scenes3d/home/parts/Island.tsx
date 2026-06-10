@@ -554,11 +554,10 @@ export default function Island() {
           cutaway interior). */}
       <BlobTree pos={HERO_TREE} scale={1.25} />
       <BlobTree pos={[5.8, 0, 1.5]} scale={0.8} />
-      {/* back-left blob tree: kept small + pulled out so its canopy clears the
-          -x wall plane (canopy +x reach ≈ -4.78 < XL -4.6 → no 穿模) */}
-      <BlobTree pos={[-5.85, 0, -2.6]} scale={0.85} />
+      {/* (no tree directly behind the house — anything big enough to read there
+          either pierces the -x wall or overhangs the rim) */}
       {/* conifers along the left + back rim (behind the solid walls) */}
-      <Pine pos={[-6.2, 0, -0.6]} scale={1.05} />
+      <Pine pos={[-5.9, 0, -0.9]} scale={1.05} />
       <Pine pos={[-5.3, 0, 2.0]} scale={0.84} />
       <Pine pos={[1.7, 0, -5.5]} scale={0.9} />
       <Pine pos={[4.0, 0, -4.7]} scale={0.7} />

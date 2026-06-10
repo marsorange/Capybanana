@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ReactNode } from "react";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { PrimaryButton } from "../ui/kit";
 import { sceneBend } from "./materials";
 import PostFX from "./PostFX";
 import SkyWeather, { type Weather } from "./SkyWeather";
@@ -259,15 +260,17 @@ export default function SceneCanvas({
         <div className="text-5xl">🪫</div>
         <p className="font-hand text-xl text-ink">小岛歇了一会儿</p>
         <p className="text-sm text-ink-soft">画面有点忙不过来，点一下让它重新载入。</p>
-        <button
-          onClick={() => {
-            setDead(false);
-            setInstanceKey((k) => k + 1);
-          }}
-          className="sticker rounded-sticker bg-accent px-6 py-3 text-paper"
-        >
-          重新载入
-        </button>
+        <div className="w-44">
+          <PrimaryButton
+            size="sm"
+            onClick={() => {
+              setDead(false);
+              setInstanceKey((k) => k + 1);
+            }}
+          >
+            重新载入
+          </PrimaryButton>
+        </div>
       </div>
     );
   }

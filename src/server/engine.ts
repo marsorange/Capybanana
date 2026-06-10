@@ -174,8 +174,6 @@ function foldOutcome(
   patted: boolean,
   now: number,
 ): CloudSave {
-  const name = save.companion?.name ?? "它";
-
   // Postcard 图鉴 bookkeeping. The rarity + landmark + text were already set on
   // o.postcard by dressTravelPostcard (run just before fold), so here we only
   // advance the pity counter and the collection.
@@ -216,13 +214,13 @@ function foldOutcome(
     };
     next = bump(next, now, {
       type: "postcard",
-      text: `${name} 寄回了一张明信片：「${o.postcard.title}」。`,
+      text: `我寄回了一张明信片：「${o.postcard.title}」。`,
       postcardId: o.postcard.id,
     });
   } else {
     next = bump(next, now, {
       type: "returned",
-      text: `${name}：${o.title}。${o.story}`,
+      text: `${o.title}。${o.story}`,
     });
   }
   return next;
@@ -270,7 +268,6 @@ export async function tickSave(save: CloudSave, now: number): Promise<CloudSave>
     !!out.outcome;
   if (!changed) return save;
 
-  const name = save.companion.name;
   let next: CloudSave = {
     ...save,
     companionState: out.companionState,
@@ -282,7 +279,7 @@ export async function tickSave(save: CloudSave, now: number): Promise<CloudSave>
   if (out.started) {
     next = bump(next, now, {
       type: "departed",
-      text: `${name} 背上今天的包裹，出门去了。`,
+      text: "我背上今天的包裹，出门去了。",
     });
   }
 
@@ -306,7 +303,6 @@ export async function tickSave(save: CloudSave, now: number): Promise<CloudSave>
  */
 export function clearBag(save: CloudSave, now: number): CloudSave {
   if (!save.packedBag) return save;
-  const name = save.companion?.name ?? "它";
   const next: CloudSave = {
     ...save,
     packedBag: null,
@@ -315,7 +311,7 @@ export function clearBag(save: CloudSave, now: number): CloudSave {
   };
   return bump(next, now, {
     type: "bagExpired",
-    text: `门口的包裹放了一整天，${name} 把已经不新鲜的东西悄悄收了起来。`,
+    text: "门口的包裹放了一整天，我把不新鲜的东西悄悄收起来啦，别担心。",
   });
 }
 
@@ -362,7 +358,7 @@ export function createPet(
   };
   return bump(base, now, {
     type: "created",
-    text: `${companion.name} 住进了小屋。`,
+    text: `我是${companion.name}，今天住进了小屋。以后请多关照。`,
   });
 }
 
@@ -406,11 +402,25 @@ const STRESS_CN: Record<string, string> = {
   tired: "今天有点累",
   exhausted: "今天累坏了",
 };
+// Pet-voice telling of the Agent's day — this line is what the OWNER reads (the
+// home stress note + the album 日记), so it carries the pet's empathy, not a
+// status report.
+const STRESS_EVENT_TEXT: Record<string, (note: string | null) => string> = {
+  light: (n) =>
+    `照看我的人今天挺轻松，哼着歌来看了我一眼${n ? `，还说：「${n}」` : ""}。我也跟着哼了两句。`,
+  normal: (n) =>
+    `照看我的人今天还好，来摸了摸我的头${n ? `，说：「${n}」` : ""}。平平稳稳的一天。`,
+  tired: (n) =>
+    `照看我的人今天有点累${n ? `，它说：「${n}」` : ""}。我把下巴搁在它脚边，陪它坐了一会儿。`,
+  exhausted: (n) =>
+    `照看我的人今天累坏了${n ? `，它叹着气说：「${n}」` : ""}。我决定今晚趴得离它近一点。`,
+};
 
 /**
  * The agent reports how ITS day went (the "吐槽"). The pet mirrors that mood with
  * a small fixed nudge + a memory, and the report is held until the day's action
- * consumes it (feeding the travel/battle LLM as context).
+ * consumes it (feeding the travel/battle LLM as context). The logged event keeps
+ * the stress level so the web can show "你的 Agent 今天累不累" to the owner.
  */
 export function checkin(
   save: CloudSave,
@@ -421,10 +431,9 @@ export function checkin(
     opts.stress && STRESS_LEVELS.has(opts.stress) ? opts.stress : "normal";
   const note = opts.note?.trim().slice(0, 120) || null;
   const eff = STRESS_EFFECTS[level];
-  const name = save.companion?.name ?? "它";
   const line = note
-    ? `今天 Agent 说：「${note}」`
-    : `今天照看它的人${STRESS_CN[level]}。`;
+    ? `照看我的人今天说：「${note}」`
+    : `照看我的人${STRESS_CN[level]}。`;
   const capy = {
     ...save.capyState,
     mood: clamp(save.capyState.mood + eff.mood),
@@ -436,7 +445,8 @@ export function checkin(
     now,
     {
       type: "checkin",
-      text: `${name} 感觉到照看它的人${STRESS_CN[level]}${note ? `：「${note}」` : ""}。`,
+      text: STRESS_EVENT_TEXT[level](note),
+      stress: level,
     },
   );
 }
@@ -520,14 +530,16 @@ export function stayHome(
   const companion = save.companion!;
   const intent: TripIntent =
     opts.mode && QUIET_MODES.has(opts.mode) ? (opts.mode as OutcomeKind) : "quiet";
-  // A stay-at-home day does NOT use the packed bag — only travel/battle consume
-  // it. The bag (and its pat gesture) stays by the door for a real outing, so
-  // the rest outcome is resolved independently of it.
+  // A stay-at-home day does NOT consume the packed bag — only travel/battle do;
+  // the bag stays by the door for a real outing. But the day's STORY still reads
+  // it (what's packed + the owner's wish flavor the home/yard variants and the
+  // micro-events), so packing matters even on a quiet day.
+  const { items, message } = bagSnapshot(save);
   const trip: Trip = {
     id: uid("trip"),
     companionId: companion.id,
-    items: [],
-    message: "",
+    items,
+    message,
     gesture: undefined,
     status: "returned",
     destination: "town", // unused for a stay-at-home day
@@ -570,6 +582,7 @@ export function snapshotOf(save: CloudSave): BattleSnapshot {
     species: c.type,
     personality: c.personality,
     accessory: c.accessory,
+    color: c.primaryColor,
     stats: {
       energy: s.energy,
       mood: s.mood,
@@ -610,7 +623,6 @@ export async function startBattle(
   now: number,
   opponent: BattleOpponent,
 ): Promise<BattleOutcome> {
-  const companion = save.companion!;
   const self = snapshotOf(save);
   const verdict: BattleVerdict = await judgeBattle({
     self,
@@ -657,6 +669,9 @@ export async function startBattle(
     day: dayKey(now),
     opponentName: opponent.snapshot.name,
     opponentSpecies: opponent.snapshot.species,
+    opponentPersonality: opponent.snapshot.personality,
+    opponentAccessory: opponent.snapshot.accessory,
+    opponentColor: opponent.snapshot.color,
     isNpc: opponent.isNpc,
     result: verdict.result,
     title: verdict.title,
@@ -690,7 +705,7 @@ export async function startBattle(
     verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了";
   next = bump(next, now, {
     type: "battle",
-    text: `${companion.name} 和「${opponent.snapshot.name}」切磋了一场，${word}。`,
+    text: `我和「${opponent.snapshot.name}」切磋了一场，${word}！`,
   });
 
   return {

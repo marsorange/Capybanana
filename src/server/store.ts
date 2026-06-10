@@ -133,6 +133,7 @@ interface ActivityRow {
     event_type?: AgentEventType;
     text?: string;
     postcardId?: string;
+    stress?: string;
   } | null;
   created_at: Date | string;
 }
@@ -451,6 +452,9 @@ function battleFromRow(row: BattleRow): BattleRecord {
     day: day(row.day) ?? iso(row.created_at).slice(0, 10),
     opponentName: snap?.name ?? "神秘对手",
     opponentSpecies: snap?.species ?? "capybara",
+    opponentPersonality: snap?.personality,
+    opponentAccessory: snap?.accessory,
+    opponentColor: snap?.color,
     isNpc: row.is_npc,
     result: row.result,
     title: row.title,
@@ -516,6 +520,7 @@ function eventFromRow(row: ActivityRow): AgentEvent | null {
     type,
     text: row.payload?.text ?? row.title,
     postcardId: row.payload?.postcardId,
+    stress: row.payload?.stress,
   };
 }
 
@@ -674,6 +679,7 @@ async function syncEvents(
           event_type: event.type,
           text: event.text,
           postcardId: event.postcardId,
+          stress: event.stress,
         } as never)},
         null,
         ${new Date(event.at)}

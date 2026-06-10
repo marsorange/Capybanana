@@ -33,13 +33,16 @@ export type AgentEventType =
   | "bagExpired";
 
 // One entry in the pet's activity log. `seq` (== the rev at which it was
-// appended) is the cursor the agent's `feed?since=` polls against.
+// appended) is the cursor the agent's `feed?since=` polls against. The log is
+// ALSO player-facing now (the album's 日记 tab + the home stress note), so the
+// texts are written in the pet's first-person voice.
 export interface AgentEvent {
   seq: number;
   at: string; // ISO
   type: AgentEventType;
   text: string;
   postcardId?: string;
+  stress?: string; // checkin events: the Agent's self-reported level that day
 }
 
 // The authoritative cloud save. Mirrors the client's persisted game state

@@ -7,6 +7,7 @@ import {
   YARD_LANTERN,
   YARD_LOG_PILE,
   YARD_MAILBOX,
+  YARD_TABLE,
   YARD_WATER_CAN,
 } from "../layout";
 
@@ -431,6 +432,36 @@ function Mailbox({ pos, rot = 0 }: { pos: [number, number, number]; rot?: number
   );
 }
 
+// A log-slice side table: a stout sawn log with a teacup resting on top —
+// keeps the bench corner company.
+function LogTable({ pos }: { pos: [number, number, number] }) {
+  return (
+    <group position={pos}>
+      <mesh position={[0, 0.17, 0]}>
+        <cylinderGeometry args={[0.22, 0.25, 0.34, 7]} />
+        {m(LOG_DK)}
+      </mesh>
+      <mesh position={[0, 0.345, 0]}>
+        <cylinderGeometry args={[0.2, 0.2, 0.02, 7]} />
+        {m(LOG_CUT)}
+      </mesh>
+      {/* teacup + a saucer */}
+      <mesh position={[0.02, 0.37, 0.03]}>
+        <cylinderGeometry args={[0.06, 0.07, 0.02, 9]} />
+        {m("#e8d9c0")}
+      </mesh>
+      <mesh position={[0.02, 0.41, 0.03]}>
+        <cylinderGeometry args={[0.045, 0.038, 0.07, 9]} />
+        {m(CREAM)}
+      </mesh>
+      <mesh position={[0.085, 0.41, 0.03]} rotation={[PI / 2, 0, 0]}>
+        <torusGeometry args={[0.025, 0.009, 5, 8]} />
+        {m(CREAM)}
+      </mesh>
+    </group>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // A squat 原木 garden lantern: stone footing, square wood post, a warm glowing
 // head framed by four corner sticks under a pyramid cap (the reference's lamp).
@@ -551,12 +582,37 @@ export default function Yard() {
       <WateringCan pos={YARD_WATER_CAN} rot={0.9} />
       <LogPile pos={YARD_LOG_PILE} rot={0.35} />
 
-      {/* ===== 信件 corner (right-back, beside the postcard board) ===== */}
-      <Mailbox pos={YARD_MAILBOX} rot={-0.45} />
+      {/* ===== 信件 corner (right-back): the red mailbox lines up with the
+            postcard board (House.tsx renders the board at the same -0.6),
+            with a doormat stone + a little shrub dressing the ensemble ===== */}
+      <Mailbox pos={YARD_MAILBOX} rot={-0.6} />
+      {/* a flat doormat stone where you'd stand to read the board */}
+      <group position={[2.15, 0, -0.05]} rotation={[0, 0.4, 0]}>
+        <mesh position={[0, 0.04, 0]} scale={[1.25, 1, 0.95]}>
+          <cylinderGeometry args={[0.3, 0.34, 0.08, 7]} />
+          {m(STONE)}
+        </mesh>
+        <mesh position={[0, 0.085, 0]} scale={[1.25, 1, 0.95]}>
+          <cylinderGeometry args={[0.21, 0.23, 0.03, 7]} />
+          {m(STONE_LT)}
+        </mesh>
+      </group>
+      {/* a soft leafy shrub tucked at the board's left post */}
+      <group position={[1.85, 0, -1.45]}>
+        <mesh position={[0, 0.18, 0]} scale={[1.2, 0.85, 1.1]}>
+          <icosahedronGeometry args={[0.24, 0]} />
+          {m(LEAF_DK)}
+        </mesh>
+        <mesh position={[0.14, 0.3, 0.06]}>
+          <icosahedronGeometry args={[0.15, 0]} />
+          {m(LEAF)}
+        </mesh>
+      </group>
 
       {/* ===== 休息 corner (front-right) ===== */}
       <WoodLantern pos={YARD_LANTERN} />
       <GardenBench pos={YARD_BENCH} rot={-0.55} />
+      <LogTable pos={YARD_TABLE} />
 
       {/* daisies gathered where they tell the story: flanking the path, around
           the bench, by the mailbox and at the veg-patch corners (the wild
@@ -566,10 +622,11 @@ export default function Yard() {
         [0.75, 1.6, "#f4d35e", 0.9],
         [2.5, 3.4, "#f0a6bd", 1.0],
         [1.3, 4.5, "#fff6ee", 0.85],
-        [3.1, 2.6, "#f4d35e", 1.0],
+        [3.75, 2.9, "#f4d35e", 1.0],
         [4.4, 2.5, "#e8607a", 0.9],
         [3.3, 0.6, "#fff6ee", 0.95],
-        [4.35, -1.15, "#f0a6bd", 0.9],
+        [4.2, -0.85, "#f0a6bd", 0.9],
+        [2.55, 0.45, "#f4d35e", 0.85],
         [-2.7, 1.3, "#fff6ee", 0.9],
         [0.95, 3.2, "#bfa3df", 0.85],
       ] as const).map(([x, z, c, s], i) => (

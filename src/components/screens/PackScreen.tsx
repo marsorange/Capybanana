@@ -24,7 +24,6 @@ const LEAF_DEEP = "#54752f";
 // Polaroid jitter — each slot leans a touch differently so the row reads as
 // photos taped to paper, not a UI grid.
 const SLOT_TILT = ["rotate-[-1.6deg]", "rotate-[1.2deg]", "rotate-[-0.8deg]"];
-const TAPE_TILT = ["rotate-[-6deg]", "rotate-[4deg]", "rotate-[-3deg]"];
 
 // ── inline SVG icons (rounded, hand-drawn feel — no emoji) ───────────────────
 type IP = { className?: string };
@@ -217,39 +216,26 @@ export default function PackScreen() {
 
       <ScreenHeader
         onBack={() => goTo("home")}
-        eyebrow="今天，我可以带上点什么"
+        eyebrow="拍下想让我带走的小东西，或留一句话"
         title="今日包裹"
         compact
         right={<Icon name="package" className="h-7 w-7 drop-shadow-[0_3px_2px_rgba(126,83,38,0.18)]" />}
       />
 
-      {/* ── scrollable content ─────────────────────────────────────────────── */}
-      <div className="no-scrollbar relative z-10 flex-1 space-y-3.5 overflow-y-auto px-4 pb-4 pt-3">
-        <Panel className="px-4 py-3" sketch={false}>
-          <div className="flex items-start gap-3">
-            <span className="ui-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-full">
-              <Icon name="package" className="h-6 w-6 drop-shadow-[0_2px_2px_rgba(126,83,38,0.14)]" />
-            </span>
-            <div className="min-w-0">
-              <p className="font-hand text-[17px] leading-tight text-ink">拍下今天想让我带走的小东西。</p>
-              <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-                最多三样，也可以只留一句话。放到门口后，我会等 Agent 来决定今天去哪儿。
-              </p>
-            </div>
-          </div>
-        </Panel>
-
-        {/* viewfinder — a wooden-framed camera window with focus brackets */}
-        <div
-          className="sketch relative mx-auto w-full max-w-[350px] overflow-hidden rounded-[22px] border-[3px] border-[#d9b982] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.4),0_5px_0_rgba(111,84,55,0.16),0_16px_28px_-24px_rgba(58,46,42,0.52)]"
-          style={{ aspectRatio: "4 / 3", background: "#2b2620" }}
-        >
+      {/* ── single adaptive column: the viewfinder FLEXES to absorb whatever
+          height the screen has, everything else stays compact — so the page
+          always fits without scrolling, and the keyboard just squeezes the
+          camera instead of covering the inputs (overflow-y-auto is only the
+          extreme-squeeze fallback) ──────────────────────────────────────── */}
+      <div className="no-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 pb-2.5 pt-2">
+        {/* viewfinder — wooden-framed camera window, elastic height */}
+        <div className="sketch relative min-h-[150px] w-full flex-1 overflow-hidden rounded-[22px] border-[3px] border-[#d9b982] bg-[#2b2620] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.4),0_5px_0_rgba(111,84,55,0.16),0_16px_28px_-24px_rgba(58,46,42,0.52)]">
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
             style={{ display: camPhase === "live" ? "block" : "none" }}
           />
           {camPhase !== "live" && (
@@ -264,9 +250,6 @@ export default function PackScreen() {
           {camPhase === "live" && (
             <>
               <Brackets className="pointer-events-none absolute inset-0 h-full w-full opacity-65" />
-              <span className="ui-wood-surface absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 font-hand text-[12px] font-bold leading-none text-[#6b4f39]">
-                {photos.length} / {MAX}
-              </span>
               <button
                 onClick={switchCamera}
                 className="ui-wood-surface ui-wood-press absolute right-2.5 top-2.5 grid h-9 w-9 place-items-center rounded-full text-ink"
@@ -274,7 +257,7 @@ export default function PackScreen() {
               >
                 <Switch className="h-4 w-4" />
               </button>
-              <div className="absolute inset-x-0 bottom-3 flex justify-center">
+              <div className="absolute inset-x-0 bottom-2.5 flex justify-center">
                 <span className="rounded-full px-3 py-1 font-hand text-[12px] text-paper backdrop-blur-sm" style={{ background: `${LEAF_DK}e6` }}>
                   {full ? "都收下啦" : "放在中间，让我看看"}
                 </span>
@@ -283,66 +266,63 @@ export default function PackScreen() {
           )}
         </div>
 
-        {/* three taped-polaroid slots */}
-        <Panel className="px-3 py-3" sketch={false}>
-          <div className="mb-2 flex items-center justify-between px-1">
-            <span className="font-hand text-[16px] leading-none text-ink">包裹里</span>
-            <span className="text-[11px] tabular-nums text-ink-soft">{photos.length} / {MAX}</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2.5 px-1 pt-1">
-            {[0, 1, 2].map((i) => {
-              const item = photos[i];
-              const busy = item ? busyIds.includes(item.id) : false;
-              return (
-                <div
-                  key={i}
-                  className={cn(
-                    "tex-grain relative rounded-[13px] border-2 border-[#e4c89c] bg-paper/95 p-1.5 pb-1 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_3px_0_rgba(143,101,54,0.14)]",
-                    SLOT_TILT[i],
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "absolute -top-2 left-1/2 z-10 h-4 w-11 -translate-x-1/2 rounded-[3px] border border-[#e2c596]/70 bg-[#f9ecc8]/90 shadow-[0_1px_2px_rgba(126,83,38,0.18)]",
-                      TAPE_TILT[i],
+        {/* 包裹里 — one compact strip: three small slots + the counter */}
+        <Panel className="shrink-0 px-3 py-2" sketch={false}>
+          <div className="flex items-center gap-2.5">
+            <span className="shrink-0 font-hand text-[14px] font-bold leading-none text-ink">
+              包裹里
+            </span>
+            <div className="flex min-w-0 flex-1 items-start justify-center gap-2.5">
+              {[0, 1, 2].map((i) => {
+                const item = photos[i];
+                const busy = item ? busyIds.includes(item.id) : false;
+                return (
+                  <div key={i} className={cn("relative w-[60px] shrink-0", SLOT_TILT[i])}>
+                    {item ? (
+                      <>
+                        <button
+                          onClick={() => removePhoto(item.id)}
+                          aria-label="移除"
+                          className="absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full bg-ink/60 text-paper transition active:translate-y-0.5"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
+                            <path d="M6 6l12 12M18 6 6 18" />
+                          </svg>
+                        </button>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.photo}
+                          alt={item.label}
+                          className="aspect-square w-full rounded-[10px] border-2 border-[#e4c89c] object-cover shadow-[0_2px_0_rgba(143,101,54,0.14)]"
+                        />
+                        <p className="mt-0.5 flex items-center justify-center gap-1 font-hand text-[10px] leading-none text-ink">
+                          {busy && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full" style={{ background: LEAF }} />}
+                          <span className="truncate">{item.label}</span>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="grid aspect-square w-full place-items-center rounded-[10px] border-2 border-dashed border-ink/12 bg-cream-soft/60">
+                          <Camera className="h-4 w-4 text-ink-soft/30" />
+                        </div>
+                        <p className="mt-0.5 text-center font-hand text-[10px] leading-none text-ink-soft/45">
+                          空着
+                        </p>
+                      </>
                     )}
-                  />
-                  {item ? (
-                    <>
-                      <button
-                        onClick={() => removePhoto(item.id)}
-                        aria-label="移除"
-                        className="absolute right-2.5 top-2.5 z-20 grid h-[22px] w-[22px] place-items-center rounded-full bg-ink/55 text-paper backdrop-blur-sm transition active:translate-y-0.5"
-                      >
-                        <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round">
-                          <path d="M6 6l12 12M18 6 6 18" />
-                        </svg>
-                      </button>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.photo} alt={item.label} className="aspect-square w-full rounded-[9px] object-cover" />
-                      <p className="mt-1 flex items-center justify-center gap-1 font-hand text-[12px] leading-none text-ink">
-                        {busy && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full" style={{ background: LEAF }} />}
-                        <span className="truncate">{item.label}</span>
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="grid aspect-square w-full place-items-center rounded-[9px] border-2 border-dashed border-ink/12 bg-cream-soft/60">
-                        <Camera className="h-5 w-5 text-ink-soft/30" />
-                      </div>
-                      <p className="mt-1 text-center font-hand text-[12px] leading-none text-ink-soft/50">空着</p>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                );
+              })}
+            </div>
+            <span className="shrink-0 text-[11px] tabular-nums leading-none text-ink-soft">
+              {photos.length} / {MAX}
+            </span>
           </div>
         </Panel>
 
         {/* optional one-line message — a ruled scrap of letter paper */}
-        <Panel sketch={false} className="px-4 py-3">
-          <div className="mb-1 flex items-center justify-between">
+        <Panel sketch={false} className="shrink-0 px-3.5 py-2">
+          <div className="mb-0.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-medium text-ink-soft">
               <Heart className="h-3 w-3 text-accent" /> 想对我说点什么吗（可选）
             </span>
@@ -354,10 +334,10 @@ export default function PackScreen() {
             maxLength={50}
             placeholder="今天有点累，我们慢一点也可以…"
             rows={2}
-            className="w-full resize-none bg-transparent font-hand text-[15px] leading-[26px] text-ink outline-none placeholder:text-ink-soft/45"
+            className="w-full resize-none bg-transparent font-hand text-[14px] leading-[24px] text-ink outline-none placeholder:text-ink-soft/45"
             style={{
               backgroundImage:
-                "repeating-linear-gradient(transparent 0 25px, rgba(189,138,82,0.28) 25px 26px)",
+                "repeating-linear-gradient(transparent 0 23px, rgba(189,138,82,0.28) 23px 24px)",
             }}
           />
         </Panel>
@@ -365,21 +345,21 @@ export default function PackScreen() {
 
       {/* ── shutter + CTA, one row so the dock stays short on small phones ──── */}
       <div
-        className="game-bottom-panel relative z-20 flex shrink-0 items-center gap-3 px-4 pt-3"
-        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+        className="game-bottom-panel relative z-20 flex shrink-0 items-center gap-3 px-4 pt-2.5"
+        style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
       >
         <button
           onClick={capture}
           disabled={camPhase !== "live" || full}
           aria-label="给我拍一样东西"
-          className="grid h-[60px] w-[60px] shrink-0 place-items-center rounded-full p-1.5 shadow-[0_5px_0_rgba(60,80,40,.45)] transition active:translate-y-1 active:shadow-[0_1px_0_rgba(60,80,40,.45)] disabled:opacity-45 disabled:active:translate-y-0"
+          className="grid h-[56px] w-[56px] shrink-0 place-items-center rounded-full p-1.5 shadow-[0_5px_0_rgba(60,80,40,.45)] transition active:translate-y-1 active:shadow-[0_1px_0_rgba(60,80,40,.45)] disabled:opacity-45 disabled:active:translate-y-0"
           style={{ background: LEAF_DEEP }}
         >
           <span
             className="grid h-full w-full place-items-center rounded-full ring-2 ring-paper/85"
             style={{ background: `linear-gradient(160deg, #a0c46c, ${LEAF_DK})` }}
           >
-            <Camera className="h-7 w-7 text-paper" />
+            <Camera className="h-6 w-6 text-paper" />
           </span>
         </button>
 

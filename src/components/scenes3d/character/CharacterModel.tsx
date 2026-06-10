@@ -135,6 +135,8 @@ export default function CharacterModel(props: CharacterModelProps) {
       <GltfCharacter
         url={url}
         color={props.color}
+        accessory={props.accessory}
+        seed={props.seed}
         motion={props.motion}
         onPointerDown={props.onPointerDown}
       />
@@ -152,6 +154,20 @@ if (GLB_PIPELINE_ENABLED) {
   }
 }
 
+// Every pet shares the one authored GLB — these per-pet touches keep each one
+// recognizably ITSELF (相似但不同): the fur drifts toward the owner-chosen color,
+// the authored neckwear recolors to encode the accessory pick, and the seed sets
+// a stable body size + animation pace. Material names follow the asset
+// convention (capy_body / capy_brown / capy_green / capy_eye).
+const BODY_TINT = 0.55; // 0 = authored fur, 1 = pure pet color
+const SCARF_BY_ACCESSORY: Partial<Record<Accessory, string>> = {
+  hat: "#5b6b8a",
+  glasses: "#3a2e2a",
+  flower: "#f1a6ad",
+  bell: "#f4d35e",
+  // none / scarf keep the authored avocado green
+};
+
 // Loads a species GLB and renders it the toon way: each authored material is
 // converted to a toon material that KEEPS its own baseColor (so an 11-material
 // rigged model stays multi-colored), the skeleton is cloned properly so skinning
@@ -164,16 +180,27 @@ if (GLB_PIPELINE_ENABLED) {
 function GltfCharacter({
   url,
   color,
+  accessory,
+  seed,
   motion = "idle",
   onPointerDown,
 }: {
   url: string;
   color: string;
+  accessory?: Accessory;
+  seed?: string;
   motion?: CharacterMotion;
   onPointerDown?: (e: { stopPropagation: () => void }) => void;
 }) {
   const gltf = useGLTF(url, COMPANION_DRACO_PATH);
   const entrance = useRef<THREE.Group>(null);
+
+  // Stable per-pet physique: a touch of chonk and an own walking/breathing
+  // tempo. Same seed → same pet, every device, every visit.
+  const look = useMemo(() => {
+    const rnd = mulberry32(hashStr(seed ?? url));
+    return { chonk: 0.95 + rnd() * 0.1, pace: 0.9 + rnd() * 0.2 };
+  }, [seed, url]);
 
   // SkeletonUtils.clone (not scene.clone) so SkinnedMesh bones rebind to the
   // CLONED skeleton — a plain clone leaves them pointing at the shared original
@@ -186,10 +213,17 @@ function GltfCharacter({
       if (!toon) {
         const std = src as THREE.MeshStandardMaterial;
         toon = toonFromStandard(std);
-        // An export with no texture and no authored baseColor (loader default =
-        // pure white) carries no look of its own — give it the pet's color.
-        if (!std.map && std.color?.getHex() === 0xffffff) {
-          (toon as THREE.MeshStandardMaterial).color.set(color);
+        const out = toon as THREE.MeshStandardMaterial;
+        if (std.name === "capy_body") {
+          // the owner's color, blended over the authored fur
+          out.color.lerp(new THREE.Color(color), BODY_TINT);
+        } else if (std.name === "capy_green") {
+          const scarf = SCARF_BY_ACCESSORY[accessory ?? "none"];
+          if (scarf) out.color.set(scarf);
+        } else if (!std.map && std.color?.getHex() === 0xffffff) {
+          // An export with no texture and no authored baseColor (loader default
+          // = pure white) carries no look of its own — give it the pet's color.
+          out.color.set(color);
         }
         toonCache.set(src, toon);
       }
@@ -213,14 +247,14 @@ function GltfCharacter({
     // walker's forward). The current capybara GLB is authored that way, so no
     // corrective yaw — if a future export faces elsewhere, fix the asset.
     return c;
-  }, [gltf.scene, color]);
+  }, [gltf.scene, color, accessory]);
 
   // Normalize scale + seat feet at y=0, centered — works for any unit-ish export.
   const fit = useMemo(() => {
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const scale = COMPANION_TARGET_HEIGHT / (size.y || 1);
+    const scale = (COMPANION_TARGET_HEIGHT / (size.y || 1)) * look.chonk;
     return {
       scale,
       position: [
@@ -229,7 +263,7 @@ function GltfCharacter({
         -center.z * scale,
       ] as [number, number, number],
     };
-  }, [model]);
+  }, [model, look.chonk]);
 
   // Play the model's OWN clips (idle by default, walk when asked). The clip
   // animates the body, so we don't add a manual bob on top. Lookup is
@@ -251,11 +285,16 @@ function GltfCharacter({
       (motion === "wave" && pick("wave", "jump")) ||
       pick("idle") ||
       Object.values(actions)[0];
-    action?.reset().fadeIn(0.25).play();
+    // capybara pacing: play the clips lazily — slow breathing at rest, an
+    // unhurried amble matched to the walker's low SPEED — scaled by this pet's
+    // own tempo so no two pets move in lockstep.
+    const pace =
+      (motion === "walk" ? 0.75 : motion === "wave" ? 0.9 : 0.65) * look.pace;
+    action?.reset().setEffectiveTimeScale(pace).fadeIn(0.3).play();
     return () => {
-      action?.fadeOut(0.25);
+      action?.fadeOut(0.3);
     };
-  }, [actions, motion]);
+  }, [actions, motion, look.pace]);
 
   // A static export (no clips) would freeze mid-walk — give it the procedural
   // body's life instead: a breathing bob at rest, a quicker waddle when walking.

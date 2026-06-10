@@ -85,13 +85,14 @@ export function ScreenHeader({
         className,
       )}
     >
-      {onBack && <BackButton onClick={onBack} compact={compact} />}
-      <div
-        className={cn(
-          "ui-wood-surface min-w-0 flex-1 text-left",
-          compact ? "rounded-[24px] px-3.5 py-1.5" : "rounded-[28px] px-4 py-2.5",
-        )}
-      >
+      {onBack ? (
+        <BackButton onClick={onBack} compact={compact} />
+      ) : (
+        <div className={cn("shrink-0", compact ? "h-10 w-10" : "h-12 w-12")} aria-hidden />
+      )}
+      {/* Plain centered text — no surface behind the title; side slots are
+          mirrored so the title stays optically centered. */}
+      <div className="min-w-0 flex-1 py-1 text-center">
         {eyebrow && (
           <p className={cn("truncate leading-none text-ink-soft", compact ? "text-[11px]" : "text-[12px]")}>
             {eyebrow}
@@ -101,12 +102,13 @@ export function ScreenHeader({
           className={cn(
             "truncate font-hand leading-tight text-[#4f3828]",
             compact ? "text-[19px]" : "text-[22px]",
+            eyebrow && "mt-0.5",
           )}
         >
           {title}
         </h1>
       </div>
-      {right && (
+      {right ? (
         <div
           className={cn(
             "ui-wood-surface grid shrink-0 place-items-center rounded-full",
@@ -115,6 +117,8 @@ export function ScreenHeader({
         >
           {right}
         </div>
+      ) : (
+        <div className={cn("shrink-0", compact ? "h-10 w-10" : "h-12 w-12")} aria-hidden />
       )}
     </header>
   );
