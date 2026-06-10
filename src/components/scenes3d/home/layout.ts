@@ -126,6 +126,111 @@ export const PACK_BENCH: Vec3 = [-3.1, 0, -0.02]; // front threshold, nudged out
 export const POSTCARD_BOARD: Vec3 = [2.6, 0, -0.9];
 export const BED: Vec3 = [-3.6, FLOOR_H, -3.7];
 
+// Yard / island prop anchors — shared with parts/Yard.tsx + parts/Island.tsx so
+// the visuals and the obstacle footprints below can never drift apart.
+export const VEG_BED = { x: -0.7, z: 3.0, hx: 1.3, hz: 0.95 }; // log-fenced 苗圃
+export const YARD_BENCH: Vec3 = [3.95, 0, 1.8];
+export const YARD_LANTERN: Vec3 = [2.35, 0, 2.5];
+export const YARD_MAILBOX: Vec3 = [3.7, 0, -0.45];
+export const YARD_LOG_PILE: Vec3 = [-2.8, 0, 2.6];
+export const YARD_WATER_CAN: Vec3 = [-2.3, 0, 1.75];
+export const ISLAND_POND: [number, number] = [-4.1, 3.9];
+export const ISLAND_BOULDERS: Vec3 = [-4.5, 0, 1.0];
+export const HERO_TREE: Vec3 = [4.9, 0, -2.4];
+export const MUSHROOM_PATCH: [number, number] = [4.2, -1.5];
+
+// ---------------------------------------------------------------------------
+// Ground-floor obstacle footprints — the home's whole "collision" system. The
+// kinematic walker has no physics engine: each frame it pushes its xz out of
+// these 2D footprints (inflated by PET_R), which reads as sliding around the
+// furniture, and floor-tap targets are pushed out the same way so a tap ON a
+// prop walks the pet to its edge. Footprints only apply on the ground floor
+// (the loft/stairs route over them at y>0); keep every standing anchor + SPOT
+// at least PET_R outside its nearest footprint or the walker jams against it.
+export type Obstacle =
+  | { kind: "circle"; x: number; z: number; r: number }
+  | { kind: "rect"; x0: number; x1: number; z0: number; z1: number };
+
+export const PET_R = 0.32; // the walker's plan-view radius (visual scale 1.28)
+
+const circle = (x: number, z: number, r: number): Obstacle => ({ kind: "circle", x, z, r });
+const rect = (x0: number, x1: number, z0: number, z1: number): Obstacle => ({
+  kind: "rect", x0, x1, z0, z1,
+});
+
+export const OBSTACLES: Obstacle[] = [
+  // the two solid walls + the open-corner post (the cutaway sides stay open)
+  rect(XL - 0.15, XL + 0.15, ZB, ZF),
+  rect(XL, XR, ZB - 0.15, ZB + 0.15),
+  circle(XR, ZF, 0.18),
+  // yard props (anchors above; sizes mirror the art in parts/Yard.tsx)
+  rect(VEG_BED.x - VEG_BED.hx, VEG_BED.x + VEG_BED.hx, VEG_BED.z - VEG_BED.hz, VEG_BED.z + VEG_BED.hz),
+  rect(-3.6, -2.6, -0.27, 0.27), // pack bench + backpack (art at PACK_BENCH)
+  circle(POSTCARD_BOARD[0], POSTCARD_BOARD[2], 0.55),
+  circle(YARD_BENCH[0], YARD_BENCH[2], 0.62),
+  circle(YARD_LANTERN[0], YARD_LANTERN[2], 0.24),
+  circle(YARD_MAILBOX[0], YARD_MAILBOX[2], 0.32),
+  circle(YARD_LOG_PILE[0], YARD_LOG_PILE[2], 0.5),
+  circle(YARD_WATER_CAN[0], YARD_WATER_CAN[2], 0.22),
+  // island features inside the pet's reach (NAV_CLAMP_R ≈ 5)
+  circle(ISLAND_POND[0], ISLAND_POND[1], 1.5),
+  circle(ISLAND_BOULDERS[0], ISLAND_BOULDERS[2], 0.72),
+  circle(HERO_TREE[0], HERO_TREE[2], 0.42),
+  circle(MUSHROOM_PATCH[0], MUSHROOM_PATCH[1], 0.28),
+];
+
+// Push a ground point out of every obstacle footprint (inflated by `pad`).
+// A few passes settle overlapping footprints; applied per-frame this reads as
+// sliding along the obstacle instead of phasing through it.
+export function resolveObstacles(x: number, z: number, pad = PET_R): [number, number] {
+  for (let pass = 0; pass < 3; pass++) {
+    let pushed = false;
+    for (const o of OBSTACLES) {
+      if (o.kind === "circle") {
+        const dx = x - o.x;
+        const dz = z - o.z;
+        const min = o.r + pad;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < min * min) {
+          const d = Math.sqrt(d2);
+          if (d > 1e-4) {
+            x = o.x + (dx / d) * min;
+            z = o.z + (dz / d) * min;
+          } else {
+            x = o.x + min;
+          }
+          pushed = true;
+        }
+      } else {
+        const cx = Math.min(Math.max(x, o.x0), o.x1);
+        const cz = Math.min(Math.max(z, o.z0), o.z1);
+        const dx = x - cx;
+        const dz = z - cz;
+        const d2 = dx * dx + dz * dz;
+        if (dx === 0 && dz === 0) {
+          // inside the rect: exit through the nearest face
+          const left = x - o.x0;
+          const right = o.x1 - x;
+          const front = z - o.z0;
+          const back = o.z1 - z;
+          const lx = Math.min(left, right);
+          const lz = Math.min(front, back);
+          if (lx < lz) x = left < right ? o.x0 - pad : o.x1 + pad;
+          else z = front < back ? o.z0 - pad : o.z1 + pad;
+          pushed = true;
+        } else if (d2 < pad * pad) {
+          const d = Math.sqrt(d2);
+          x = cx + (dx / d) * pad;
+          z = cz + (dz / d) * pad;
+          pushed = true;
+        }
+      }
+    }
+    if (!pushed) break;
+  }
+  return [x, z];
+}
+
 // ---------------------------------------------------------------------------
 export type Activity = "read" | "sleep" | "clean" | "look" | "idle";
 
@@ -147,11 +252,11 @@ export const SPOTS: Spot[] = [
   { id: "center", pos: [-2.7, 0, -1.3], face: 0.4, activity: "idle", emote: "🎵", dwell: [3, 6], floor: 0 },
   { id: "kitchen", pos: [-3.9, 0, -2.6], face: -Math.PI / 2, activity: "clean", emote: "🍳", dwell: [5, 8], floor: 0 },
   { id: "dining", pos: [-2.9, 0, -2.3], face: Math.PI, activity: "read", emote: "🍵", dwell: [4, 7], floor: 0 },
-  // ground floor — yard
-  { id: "doorstep", pos: [0.6, 0, -0.4], face: 0.7, activity: "look", emote: "🌤️", dwell: [3, 5], floor: 0 },
+  // ground floor — yard (doorstep kept clear of the open-corner post footprint)
+  { id: "doorstep", pos: [0.95, 0, -0.3], face: 0.7, activity: "look", emote: "🌤️", dwell: [3, 5], floor: 0 },
   { id: "garden", pos: [1.6, 0, 1.0], face: 0.4, activity: "look", emote: "🌼", dwell: [4, 7], floor: 0 },
-  // stands in FRONT of the (front-left) fenced veg bed
-  { id: "farm", pos: [-0.6, 0, 1.25], face: 0.4, activity: "clean", emote: "🌱", dwell: [5, 9], floor: 0 },
+  // stands in FRONT of the fenced veg bed (just outside its footprint)
+  { id: "farm", pos: [-0.7, 0, 1.65], face: 0.4, activity: "clean", emote: "🌱", dwell: [5, 9], floor: 0 },
   // loft (left bay; keep x ≤ -1.7 to stay clear of the right-edge curb at STAIR_LEFT)
   { id: "bed", pos: [-3.4, FLOOR_H, -3.5], face: 0.4, activity: "sleep", emote: "💤", dwell: [7, 11], floor: 1 },
   { id: "loftwin", pos: [-3.3, FLOOR_H, -2.6], face: 0.3, activity: "idle", emote: "🌙", dwell: [5, 8], floor: 1 },

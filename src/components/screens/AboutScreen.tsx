@@ -6,6 +6,7 @@ import { useGameStore } from "@/state/gameStore";
 import CapyLogo from "./CapyLogo";
 import CapyAvatar from "../ui/CapyAvatar";
 import { Panel, PrimaryButton, ScreenHeader } from "../ui/kit";
+import ScreenArtwork from "../ui/ScreenArtwork";
 
 const THANKS = [
   "谢谢每天愿意花一分钟回到小岛的你。",
@@ -19,7 +20,14 @@ export default function AboutScreen() {
   const name = companion?.name ?? "Capybanana";
 
   return (
-    <div className="screen-bg relative flex h-full flex-col">
+    <div className="screen-bg relative flex h-full flex-col overflow-hidden">
+      <ScreenArtwork
+        src="/art/lowpoly-login-ref.png"
+        overlay="panel"
+        imageClassName="object-[50%_44%]"
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-28 bg-gradient-to-b from-cream-soft/88 via-cream-soft/45 to-transparent" />
+
       <ScreenHeader onBack={() => goTo("home")} eyebrow="慢岛群的一点来历" title="关于 Capybanana" />
 
       <div className="no-scrollbar relative z-10 min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-4 pt-5">

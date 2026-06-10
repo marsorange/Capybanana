@@ -1,6 +1,14 @@
 "use client";
 
 import { toonMaterial } from "../../materials";
+import {
+  VEG_BED,
+  YARD_BENCH,
+  YARD_LANTERN,
+  YARD_LOG_PILE,
+  YARD_MAILBOX,
+  YARD_WATER_CAN,
+} from "../layout";
 
 const m = (c: string) => (
   <primitive object={toonMaterial(c)} attach="material" />
@@ -138,9 +146,11 @@ function Rail({
 // 苗圃 — the kitchen garden. A log-rail fence (round posts with sawn caps + two
 // slim rails per side) wraps a mounded chocolate bed with three sunlit ridge
 // rows; greens sprout in tidy lines with one cabbage, a carrot top and a single
-// proud orange tulip. A sprout sign leans by the front corner.
-const HX = 1.3; // half-width (x)
-const HZ = 0.95; // half-depth (z)
+// proud orange tulip. A sprout sign leans by the front corner. The footprint
+// (position + half-extents) lives in layout.ts so the walker's obstacle and the
+// `farm` SPOT stay in lockstep with the art.
+const HX = VEG_BED.hx; // half-width (x)
+const HZ = VEG_BED.hz; // half-depth (z)
 function VegPatch() {
   const posts: [number, number][] = [
     [-HX, -HZ], [0, -HZ], [HX, -HZ],
@@ -535,18 +545,18 @@ export default function Yard() {
       ))}
 
       {/* ===== 苗圃 corner (front-left) ===== */}
-      <group position={[-0.6, 0, 2.5]}>
+      <group position={[VEG_BED.x, 0, VEG_BED.z]}>
         <VegPatch />
       </group>
-      <WateringCan pos={[-2.3, 0, 1.75]} rot={0.9} />
-      <LogPile pos={[-2.55, 0, 3.4]} rot={0.35} />
+      <WateringCan pos={YARD_WATER_CAN} rot={0.9} />
+      <LogPile pos={YARD_LOG_PILE} rot={0.35} />
 
       {/* ===== 信件 corner (right-back, beside the postcard board) ===== */}
-      <Mailbox pos={[3.7, 0, -0.45]} rot={-0.45} />
+      <Mailbox pos={YARD_MAILBOX} rot={-0.45} />
 
       {/* ===== 休息 corner (front-right) ===== */}
-      <WoodLantern pos={[2.35, 0, 2.5]} />
-      <GardenBench pos={[3.95, 0, 1.8]} rot={-0.55} />
+      <WoodLantern pos={YARD_LANTERN} />
+      <GardenBench pos={YARD_BENCH} rot={-0.55} />
 
       {/* daisies gathered where they tell the story: flanking the path, around
           the bench, by the mailbox and at the veg-patch corners (the wild
@@ -560,8 +570,8 @@ export default function Yard() {
         [4.4, 2.5, "#e8607a", 0.9],
         [3.3, 0.6, "#fff6ee", 0.95],
         [4.35, -1.15, "#f0a6bd", 0.9],
-        [-2.1, 2.6, "#fff6ee", 0.9],
-        [0.85, 3.3, "#bfa3df", 0.85],
+        [-2.7, 1.3, "#fff6ee", 0.9],
+        [0.95, 3.2, "#bfa3df", 0.85],
       ] as const).map(([x, z, c, s], i) => (
         <Daisy key={i} pos={[x, 0, z]} petal={c} scale={s} />
       ))}

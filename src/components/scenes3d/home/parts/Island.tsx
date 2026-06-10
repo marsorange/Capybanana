@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { toonMaterial } from "../../materials";
+import { HERO_TREE, ISLAND_BOULDERS, ISLAND_POND, MUSHROOM_PATCH } from "../layout";
 
 const m = (c: string) => (
   <primitive object={toonMaterial(c)} attach="material" />
@@ -410,10 +411,11 @@ const GRASS_PATCHES: [number, number, number, string][] = [
   [0.5, -3.2, 2.0, GRASS_SOFT],
 ];
 
-// grey rocks dotted on the lawn (x, z, radius) — near the rim, off every lane
+// grey rocks dotted on the lawn (x, z, radius) — all OUTSIDE the pet's reach
+// (NAV_CLAMP_R≈5) so they need no obstacle footprint in layout.ts
 const ROCKS: [number, number, number][] = [
-  [-1.2, 4.3, 0.3], [5.4, -0.7, 0.4], [-5.4, 1.9, 0.36],
-  [0.3, 5.9, 0.32], [-4.9, -0.9, 0.3], [5.2, 2.9, 0.26],
+  [-0.6, 5.4, 0.3], [5.4, -0.7, 0.4], [-5.4, 1.9, 0.36],
+  [0.3, 5.9, 0.32], [-5.3, -1.4, 0.3], [5.2, 2.9, 0.26],
 ];
 
 // a sparse scatter of grass tufts near the rim — just enough to soften the edge
@@ -430,7 +432,7 @@ const PEBBLES: [number, number][] = [
 // the wild meadow blooms (x, z, color) — small cheerful flowers near the rim,
 // thickest along the front-right meadow like the reference, never a carpet
 const FLOWERS: [number, number, string][] = [
-  [-3.5, 2.2, "#f0a6bd"], [4.4, -1.6, "#fff6ee"], [-2.9, 3.8, "#f6d35e"],
+  [-3.5, 2.2, "#f0a6bd"], [4.7, -1.9, "#fff6ee"], [-2.5, 4.6, "#f6d35e"],
   [4.9, 1.0, "#bfa3df"], [5.0, 3.6, "#fff6ee"], [2.9, 5.0, "#f6d35e"],
   [5.7, -1.4, "#fff6ee"], [-0.4, 5.7, "#f0a6bd"], [-4.6, 2.9, "#f6d35e"],
   [-2.4, 5.3, "#bfa3df"], [1.1, 5.3, "#fff6ee"], [-4.4, 4.2, "#f0a6bd"],
@@ -550,11 +552,13 @@ export default function Island() {
           smaller pair anchor the right meadow and the back-left, and a few
           conifers fill the back rim for skyline depth (never blocking the
           cutaway interior). */}
-      <BlobTree pos={[4.9, 0, -2.4]} scale={1.25} />
+      <BlobTree pos={HERO_TREE} scale={1.25} />
       <BlobTree pos={[5.8, 0, 1.5]} scale={0.8} />
-      <BlobTree pos={[-5.5, 0, -3.4]} scale={1.0} />
+      {/* back-left blob tree: kept small + pulled out so its canopy clears the
+          -x wall plane (canopy +x reach ≈ -4.78 < XL -4.6 → no 穿模) */}
+      <BlobTree pos={[-5.85, 0, -2.6]} scale={0.85} />
       {/* conifers along the left + back rim (behind the solid walls) */}
-      <Pine pos={[-6.0, 0, -1.1]} scale={1.12} />
+      <Pine pos={[-6.2, 0, -0.6]} scale={1.05} />
       <Pine pos={[-5.3, 0, 2.0]} scale={0.84} />
       <Pine pos={[1.7, 0, -5.5]} scale={0.9} />
       <Pine pos={[4.0, 0, -4.7]} scale={0.7} />
@@ -571,20 +575,20 @@ export default function Island() {
 
       {/* mossy boulders: a huddle by the pack corner (the reference's rocks
           beside the table), plus rim accents */}
-      <Boulders pos={[-4.5, 0, 1.0]} scale={0.8} />
-      <Boulders pos={[-5.6, 0, -2.5]} scale={1.0} />
+      <Boulders pos={ISLAND_BOULDERS} scale={0.8} />
+      <Boulders pos={[5.5, 0, -3.5]} scale={0.9} />
       <Boulders pos={[0.4, 0, 5.8]} scale={0.85} />
 
       {/* mushrooms + ferns nestled at the tree bases (sparse — the open lawn
           stays clean) */}
       <MushroomCluster pos={[-5.0, 2.9]} />
-      <MushroomCluster pos={[4.2, -1.5]} />
+      <MushroomCluster pos={MUSHROOM_PATCH} />
       <Fern pos={[-5.5, -1.8]} scale={1.0} />
       <Fern pos={[5.3, -1.9]} scale={0.95} />
       <Fern pos={[-3.3, 4.9]} scale={0.85} />
 
       {/* a small woodland pond out in the front-left meadow */}
-      <Pond pos={[-4.1, 3.9]} />
+      <Pond pos={ISLAND_POND} />
     </group>
   );
 }

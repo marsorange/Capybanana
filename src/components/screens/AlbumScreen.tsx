@@ -4,9 +4,11 @@ import { useState } from "react";
 
 import { useGameStore } from "@/state/gameStore";
 import { cn } from "../ui/cn";
+import Icon, { type IconName } from "../ui/Icon";
 import PostcardArt from "../ui/PostcardArt";
 import { rarityMeta } from "../ui/rarity";
 import { Panel, PrimaryButton, ScreenHeader, TabBar } from "../ui/kit";
+import ScreenArtwork from "../ui/ScreenArtwork";
 
 type Tab = "cards" | "battles";
 
@@ -15,10 +17,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "battles", label: "切磋" },
 ];
 
-const RESULT_META: Record<string, { label: string; emoji: string; tone: string }> = {
-  win: { label: "胜", emoji: "🏆", tone: "border-leaf/45 bg-leaf/12" },
-  lose: { label: "负", emoji: "🩹", tone: "border-accent/45 bg-accent/10" },
-  draw: { label: "平", emoji: "🤝", tone: "border-[#bd8a52]/35 bg-cream-soft" },
+const RESULT_META: Record<string, { label: string; tone: string }> = {
+  win: { label: "胜", tone: "border-leaf/45 bg-leaf/12" },
+  lose: { label: "负", tone: "border-accent/45 bg-accent/10" },
+  draw: { label: "平", tone: "border-[#bd8a52]/35 bg-cream-soft" },
 };
 
 function fmtDate(iso: string): string {
@@ -27,14 +29,14 @@ function fmtDate(iso: string): string {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 }
 
-function Empty({ emoji, text }: { emoji: string; text: string }) {
+function Empty({ icon, text }: { icon: IconName; text: string }) {
   return (
-    <div className="flex flex-col items-center gap-3.5 py-16 text-center">
-      <span className="grid h-16 w-16 place-items-center rounded-full border-2 border-dashed border-[#bd8a52]/40 bg-cream-soft text-3xl">
-        {emoji}
+    <Panel className="flex flex-col items-center gap-3.5 px-5 py-12 text-center" sketch={false}>
+      <span className="ui-icon-well grid h-16 w-16 place-items-center rounded-full">
+        <Icon name={icon} className="h-10 w-10 drop-shadow-[0_3px_2px_rgba(126,83,38,0.16)]" />
       </span>
       <p className="max-w-[230px] text-sm leading-relaxed text-ink-soft/80">{text}</p>
-    </div>
+    </Panel>
   );
 }
 
@@ -49,11 +51,19 @@ export default function AlbumScreen() {
   const [tab, setTab] = useState<Tab>("cards");
 
   return (
-    <div className="screen-bg relative flex h-full flex-col">
+    <div className="screen-bg relative flex h-full flex-col overflow-hidden">
+      <ScreenArtwork
+        src="/art/lowpoly-travel-ref.png"
+        overlay="soft"
+        imageClassName="object-[50%_38%]"
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-28 bg-gradient-to-b from-cream-soft/88 via-cream-soft/45 to-transparent" />
+
       <ScreenHeader
         onBack={() => goTo("home")}
         eyebrow="慢慢攒下的远方"
         title={`${companion.name} 寄回来的`}
+        right={<Icon name="postmail" className="h-7 w-7 drop-shadow-[0_3px_2px_rgba(126,83,38,0.18)]" />}
       />
 
       {/* tabs */}
@@ -62,12 +72,17 @@ export default function AlbumScreen() {
       <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-5 py-4">
         {tab === "cards" &&
           (postcards.length === 0 ? (
-            <Empty emoji="💌" text="我还没往家寄明信片呢。等我出趟远门，把远方寄回来给你。" />
+            <Empty icon="postmail" text="我还没往家寄明信片呢。等我出趟远门，把远方寄回来给你。" />
           ) : (
             <div className="space-y-3">
-              <p className="px-1 text-[12px] leading-relaxed text-ink-soft/85">
-                我寄回来的明信片，都在这儿了。
-              </p>
+              <Panel className="px-4 py-3" sketch={false}>
+                <p className="font-hand text-[16px] leading-tight text-ink">
+                  我寄回来的明信片，都在这儿了。
+                </p>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
+                  新信会先停在门口，收进相册后也能随时翻出来读。
+                </p>
+              </Panel>
               <div className="grid grid-cols-2 gap-3">
                 {postcards.map((pc) => {
                   const meta = rarityMeta(pc.rarity);
@@ -108,7 +123,7 @@ export default function AlbumScreen() {
 
         {tab === "battles" &&
           (battles.length === 0 ? (
-            <Empty emoji="🤝" text="还没跟谁切磋过。等我有精神的日子，去会会岛上的小伙伴。" />
+            <Empty icon="map" text="还没跟谁切磋过。等我有精神的日子，去会会岛上的小伙伴。" />
           ) : (
             <ul className="space-y-2.5">
               {battles.map((b) => {
@@ -130,14 +145,14 @@ export default function AlbumScreen() {
                             meta.tone,
                           )}
                         >
-                          {meta.emoji} {meta.label}
+                          {meta.label}
                         </span>
                       </div>
                       <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{b.story}</p>
                       <p className="mt-1.5 flex justify-between text-[11px] text-ink-soft/80">
                         <span>
-                          {b.injury > 0 ? `🩹 擦破了一点 ${b.injury}` : "我没事"}
-                          {b.spoils ? ` · 🎁 ${b.spoils}` : ""}
+                          {b.injury > 0 ? `擦破了一点 ${b.injury}` : "我没事"}
+                          {b.spoils ? ` · ${b.spoils}` : ""}
                         </span>
                         <span>{fmtDate(b.createdAt)}</span>
                       </p>

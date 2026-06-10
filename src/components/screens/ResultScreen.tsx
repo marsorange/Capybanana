@@ -5,19 +5,26 @@ import { motion } from "framer-motion";
 import { useGameStore } from "@/state/gameStore";
 import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
+import Icon, { type IconName } from "../ui/Icon";
 import { Panel, PrimaryButton } from "../ui/kit";
 
-type KindTheme = { emoji: string; caption: string; glow: string; pedestal: string; accent: string };
+type KindTheme = {
+  icon: IconName;
+  caption: string;
+  glow: string;
+  pedestal: string;
+  accent: string;
+};
 
 // Per-outcome palette — a soft glow behind the pet + a matching accent. Kept
 // pale so the page stays light. Loosely keyed (with a fallback below) so it
 // survives any OutcomeKind tweak.
 const KIND_THEME: Record<string, KindTheme> = {
-  home: { emoji: "🏡", caption: "今天没出门，窝了一天", glow: "#ffe6b8", pedestal: "#f1e2c0", accent: "#e9a23b" },
-  yard: { emoji: "🌿", caption: "在岛上四处晃了晃", glow: "#d8eebb", pedestal: "#dce8c6", accent: "#8aa978" },
-  travel: { emoji: "✈️", caption: "我回来啦", glow: "#c5e7e3", pedestal: "#d3e7e2", accent: "#6fa8c9" },
-  rest: { emoji: "😴", caption: "好好睡了一天", glow: "#e7d8f1", pedestal: "#e7dcef", accent: "#b59ed0" },
-  battle: { emoji: "⚔️", caption: "切磋了一场", glow: "#f4d9d8", pedestal: "#eed7d6", accent: "#d95f59" },
+  home: { icon: "home", caption: "今天没出门，窝了一天", glow: "#ffe6b8", pedestal: "#f1e2c0", accent: "#e9a23b" },
+  yard: { icon: "garden", caption: "在岛上四处晃了晃", glow: "#d8eebb", pedestal: "#dce8c6", accent: "#8aa978" },
+  travel: { icon: "postmail", caption: "我回来啦", glow: "#c5e7e3", pedestal: "#d3e7e2", accent: "#6fa8c9" },
+  rest: { icon: "sleep", caption: "好好睡了一天", glow: "#e7d8f1", pedestal: "#e7dcef", accent: "#b59ed0" },
+  battle: { icon: "map", caption: "切磋了一场", glow: "#f4d9d8", pedestal: "#eed7d6", accent: "#d95f59" },
 };
 
 function Pedestal({ color }: { color: string }) {
@@ -47,7 +54,7 @@ export default function ResultScreen() {
   const theme = KIND_THEME[result.kind] ?? KIND_THEME.home;
 
   return (
-    <div className="screen-bg relative flex h-full flex-col">
+    <div className="screen-bg relative flex h-full flex-col overflow-hidden">
       {/* hero: the real pet, in 3D, slowly spinning on a little pedestal */}
       <div className="relative h-[40%] shrink-0 overflow-hidden">
         <div
@@ -80,14 +87,14 @@ export default function ResultScreen() {
       </div>
 
       <div className="relative flex flex-1 flex-col">
-        {/* emoji medallion straddling the seam */}
+        {/* icon medallion straddling the seam */}
         <motion.div
           initial={{ scale: 0, y: 8 }}
           animate={{ scale: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 16, delay: 0.1 }}
-          className="sketch z-10 mx-auto -mt-7 grid h-14 w-14 place-items-center rounded-full border-2 border-[#bd8a52]/55 bg-paper text-3xl shadow-[0_3px_0_rgba(111,84,55,0.18)]"
+          className="sketch z-10 mx-auto -mt-7 grid h-14 w-14 place-items-center rounded-full border-2 border-[#bd8a52]/55 bg-paper shadow-[0_3px_0_rgba(111,84,55,0.18)]"
         >
-          {theme.emoji}
+          <Icon name={theme.icon} className="h-9 w-9 drop-shadow-[0_3px_2px_rgba(126,83,38,0.16)]" />
         </motion.div>
 
         <div className="no-scrollbar flex-1 space-y-3.5 overflow-y-auto px-6 pb-4 pt-3">
@@ -102,8 +109,11 @@ export default function ResultScreen() {
 
         </div>
 
-        <div className="shrink-0 px-5 pb-6 pt-3">
-          <PrimaryButton onClick={() => goTo("home")}>收好，回小屋</PrimaryButton>
+        <div
+          className="game-bottom-panel shrink-0 px-5 pt-3"
+          style={{ paddingBottom: "max(18px, env(safe-area-inset-bottom))" }}
+        >
+          <PrimaryButton size="sm" onClick={() => goTo("home")}>收好，回小屋</PrimaryButton>
         </div>
       </div>
     </div>
