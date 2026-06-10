@@ -15,8 +15,8 @@ const mi = (c: string) => (
 // ---------------------------------------------------------------------------
 // 治愈系森林 palette — soft, harmonious greens that read fresh without going
 // neon, warm forest-floor browns, mossy stone, and a small set of cheerful
-// (but not candy) accent colors. Kept high-key so the cel ramp stays sunny.
-const GRASS = "#84c64e"; // fresh, vibrant meadow base (a touch cooler/cleaner)
+// (but not candy) accent colors. Kept high-key so the soft shading stays sunny.
+const GRASS = "#84c64e"; // fresh, vibrant meadow base
 const GRASS_LT = "#a4d76e"; // sunlit highlight tufts
 const GRASS_SOFT = "#8fcc5a"; // barely-there sun dapple (blends into the base)
 const GRASS_DK = "#6daa44"; // shaded green
@@ -120,6 +120,46 @@ function bandGeometry(top: THREE.Vector3[], bot: THREE.Vector3[]): THREE.BufferG
 // The cultivated yard (path / mailbox / bench / veg bed) lives in Yard.tsx.
 // ===========================================================================
 
+// The reference's hero tree: a stout tapered trunk with a little branch stub,
+// crowned by ONE generous faceted canopy mass built from overlapping lobes —
+// rounded and chunky, the canopy reads as a single soft blob, not separate balls.
+function BlobTree({ pos, scale = 1 }: { pos: [number, number, number]; scale?: number }) {
+  return (
+    <group position={pos} scale={scale}>
+      <mesh position={[0, 0.55, 0]}>
+        <cylinderGeometry args={[0.18, 0.28, 1.1, 7]} />
+        {m(TRUNK)}
+      </mesh>
+      {/* a stubby side branch reaching into the canopy */}
+      <mesh position={[0.32, 1.0, 0.08]} rotation={[0, 0, -0.85]}>
+        <cylinderGeometry args={[0.07, 0.1, 0.5, 6]} />
+        {m(TRUNK_DK)}
+      </mesh>
+      {/* canopy: one big heart + tight overlapping lobes (single soft mass) */}
+      <mesh position={[0, 1.95, 0]}>
+        <icosahedronGeometry args={[1.05, 0]} />
+        {m(LEAF_A)}
+      </mesh>
+      <mesh position={[0.62, 1.78, 0.28]}>
+        <icosahedronGeometry args={[0.64, 0]} />
+        {m(LEAF_B)}
+      </mesh>
+      <mesh position={[-0.6, 1.72, -0.18]}>
+        <icosahedronGeometry args={[0.58, 0]} />
+        {m(LEAF_C)}
+      </mesh>
+      <mesh position={[-0.18, 2.2, 0.58]}>
+        <icosahedronGeometry args={[0.52, 0]} />
+        {m(LEAF_B)}
+      </mesh>
+      <mesh position={[0.12, 2.62, -0.08]}>
+        <icosahedronGeometry args={[0.62, 0]} />
+        {m(LEAF_B)}
+      </mesh>
+    </group>
+  );
+}
+
 // A chunky low-poly conifer: stacked cones on a stubby trunk, 3 lit tiers.
 function Pine({ pos, scale = 1 }: { pos: [number, number, number]; scale?: number }) {
   return (
@@ -129,43 +169,32 @@ function Pine({ pos, scale = 1 }: { pos: [number, number, number]; scale?: numbe
         {m(TRUNK)}
       </mesh>
       <mesh position={[0, 0.78, 0]}>
-        <coneGeometry args={[0.62, 0.95, 8]} />
+        <coneGeometry args={[0.62, 0.95, 7]} />
         {m(PINE_1)}
       </mesh>
       <mesh position={[0, 1.3, 0]}>
-        <coneGeometry args={[0.48, 0.82, 8]} />
+        <coneGeometry args={[0.48, 0.82, 7]} />
         {m(PINE_2)}
       </mesh>
       <mesh position={[0, 1.78, 0]}>
-        <coneGeometry args={[0.33, 0.7, 8]} />
+        <coneGeometry args={[0.33, 0.7, 7]} />
         {m(PINE_3)}
       </mesh>
     </group>
   );
 }
 
-// A round, fluffy faceted broadleaf tree — the cozy "shade tree" in the corner.
-function ShadeTree({ pos, scale = 1 }: { pos: [number, number, number]; scale?: number }) {
+// A trimmed round hedge-bush: a soft faceted dome with a lighter crown lobe
+// (the smooth clipped shrub dotting the reference's lawn).
+function RoundBush({ pos, scale = 1 }: { pos: [number, number]; scale?: number }) {
   return (
-    <group position={pos} scale={scale}>
-      <mesh position={[0, 0.6, 0]}>
-        <cylinderGeometry args={[0.2, 0.3, 1.2, 7]} />
-        {m(TRUNK)}
-      </mesh>
-      <mesh position={[0, 1.85, 0]}>
-        <icosahedronGeometry args={[1.15, 0]} />
-        {m(LEAF_A)}
-      </mesh>
-      <mesh position={[0.55, 2.05, 0.2]}>
-        <icosahedronGeometry args={[0.7, 0]} />
-        {m(LEAF_B)}
-      </mesh>
-      <mesh position={[-0.5, 1.95, -0.18]}>
-        <icosahedronGeometry args={[0.6, 0]} />
+    <group position={[pos[0], 0, pos[1]]} scale={scale}>
+      <mesh position={[0, 0.32, 0]} scale={[1.15, 0.85, 1.1]}>
+        <icosahedronGeometry args={[0.42, 1]} />
         {m(LEAF_C)}
       </mesh>
-      <mesh position={[0.05, 2.6, -0.05]}>
-        <icosahedronGeometry args={[0.55, 0]} />
+      <mesh position={[0.1, 0.52, 0.06]} scale={[0.8, 0.6, 0.78]}>
+        <icosahedronGeometry args={[0.34, 1]} />
         {m(LEAF_B)}
       </mesh>
     </group>
@@ -254,26 +283,6 @@ function Fern({ pos, scale = 1 }: { pos: [number, number]; scale?: number }) {
           {m(i % 2 ? GRASS_DK : MOSS)}
         </mesh>
       ))}
-    </group>
-  );
-}
-
-// A round low bush — soft rounded foliage to fill the forest floor.
-function Bush({ pos, scale = 1 }: { pos: [number, number]; scale?: number }) {
-  return (
-    <group position={[pos[0], 0.1, pos[1]]} scale={scale}>
-      <mesh>
-        <icosahedronGeometry args={[0.34, 0]} />
-        {m(LEAF_C)}
-      </mesh>
-      <mesh position={[0.24, 0.12, 0.04]}>
-        <icosahedronGeometry args={[0.22, 0]} />
-        {m(LEAF_A)}
-      </mesh>
-      <mesh position={[-0.2, 0.08, 0.1]}>
-        <icosahedronGeometry args={[0.18, 0]} />
-        {m(LEAF_B)}
-      </mesh>
     </group>
   );
 }
@@ -388,8 +397,8 @@ function Pond({ pos }: { pos: [number, number] }) {
 
 // ---------------------------------------------------------------------------
 // Scatter / placement. Everything below stays off the house footprint
-// (x[-4.6,0.4], z[-4.6,-0.2]), the veg bed (≈x[-1.85,0.65], z[1.45,3.55]) and
-// the stepping-stone lane down the front-right.
+// (x[-4.6,0.4], z[-4.6,-0.2]), the veg patch (≈x[-1.9,0.7], z[1.55,3.45]), the
+// yard's three prop corners and the stepping-stone lane down the front-right.
 
 // soft sunlit patches very gently dappling the lawn — kept close to the base
 // green + LIGHTER-only (no dark moss blobs) so the meadow reads as one clean,
@@ -401,30 +410,30 @@ const GRASS_PATCHES: [number, number, number, string][] = [
   [0.5, -3.2, 2.0, GRASS_SOFT],
 ];
 
-// grey rocks dotted on the lawn (x, z, radius)
+// grey rocks dotted on the lawn (x, z, radius) — near the rim, off every lane
 const ROCKS: [number, number, number][] = [
-  [-1.1, 4.1, 0.32], [3.9, 2.2, 0.3], [5.4, -0.6, 0.4],
-  [-5.4, 1.9, 0.36], [0.3, 5.9, 0.32], [-4.9, -0.9, 0.3],
+  [-1.2, 4.3, 0.3], [5.4, -0.7, 0.4], [-5.4, 1.9, 0.36],
+  [0.3, 5.9, 0.32], [-4.9, -0.9, 0.3], [5.2, 2.9, 0.26],
 ];
 
 // a sparse scatter of grass tufts near the rim — just enough to soften the edge
 // (quality over quantity: a clean lawn reads better than a carpet of spikes).
 const TUFTS: [number, number][] = [
-  [-3.5, 2.9], [4.0, 1.7], [-4.2, -0.7], [5.2, 1.9], [-2.3, 5.0],
-  [3.3, 4.6], [5.8, 0.6], [-5.0, -1.7], [1.6, -5.1],
+  [-3.5, 2.9], [4.4, 0.6], [-4.2, -0.7], [5.4, 1.4], [-2.3, 5.0],
+  [3.3, 4.6], [5.8, 0.2], [-5.0, -1.7], [1.6, -5.1], [2.8, -3.4],
 ];
 
 const PEBBLES: [number, number][] = [
-  [2.8, -2.7], [-1.7, 4.8], [-5.1, 1.0],
+  [2.9, -3.0], [-1.8, 4.9], [-5.3, 0.6],
 ];
 
-// a modest wildflower scatter (x, z, color) — small cheerful daisy clumps near
-// the rim, refined and not a candy carpet
+// the wild meadow blooms (x, z, color) — small cheerful flowers near the rim,
+// thickest along the front-right meadow like the reference, never a carpet
 const FLOWERS: [number, number, string][] = [
-  [-3.7, 2.3, "#f0a6bd"], [4.2, -1.0, "#fff6ee"], [-3.0, 3.2, "#f6d35e"],
-  [3.4, 2.8, "#e8607a"], [4.0, 1.1, "#bfa3df"], [4.4, 3.5, "#fff6ee"],
-  [5.7, -1.2, "#fff6ee"], [-0.4, 5.8, "#f0a6bd"], [-4.6, 2.9, "#f6d35e"],
-  [-2.4, 5.2, "#bfa3df"],
+  [-3.5, 2.2, "#f0a6bd"], [4.4, -1.6, "#fff6ee"], [-2.9, 3.8, "#f6d35e"],
+  [4.9, 1.0, "#bfa3df"], [5.0, 3.6, "#fff6ee"], [2.9, 5.0, "#f6d35e"],
+  [5.7, -1.4, "#fff6ee"], [-0.4, 5.7, "#f0a6bd"], [-4.6, 2.9, "#f6d35e"],
+  [-2.4, 5.3, "#bfa3df"], [1.1, 5.3, "#fff6ee"], [-4.4, 4.2, "#f0a6bd"],
 ];
 
 // Lumps + half-buried rocks dappling the island flank (azimuth, t, scale, tone).
@@ -490,7 +499,7 @@ export default function Island() {
     <group>
       {/* rounded faceted grass top */}
       <mesh geometry={island.grass}>{mi(GRASS)}</mesh>
-      {/* soft moss patches dappling the lawn so it isn't one flat green */}
+      {/* soft sun patches dappling the lawn so it isn't one flat green */}
       {GRASS_PATCHES.map(([x, z, r, c], i) => (
         <mesh key={`gp${i}`} position={[x, 0.06, z]} scale={[1, 0.022, 1]}>
           <icosahedronGeometry args={[r * 0.85, 1]} />
@@ -536,39 +545,46 @@ export default function Island() {
         <Bloom key={`f${i}`} pos={[x, z]} color={c} />
       ))}
 
-      {/* ===== the forest ===== a cozy ring of conifers + broadleaf trees set
-          back at the rim (away from the cutaway interior), with mushrooms,
-          ferns, bushes and a small pond nestled among them. */}
-      {/* hero broadleaf behind-right of the house (matches reference) */}
-      <ShadeTree pos={[5.2, 0, -2.5]} scale={1.18} />
-      <ShadeTree pos={[5.9, 0, 1.5]} scale={0.85} />
-      <ShadeTree pos={[-5.0, 0, -3.6]} scale={0.9} />
-      {/* conifer cluster along the left + back rim (behind the solid wall) */}
-      <Pine pos={[-5.9, 0, -1.2]} scale={1.12} />
-      <Pine pos={[-5.5, 0, 1.7]} scale={0.86} />
-      <Pine pos={[-4.9, 0, 3.6]} scale={0.7} />
-      <Pine pos={[1.8, 0, -5.4]} scale={0.82} />
-      {/* short conifers tucked at the front corners (don't block the view) */}
-      <Pine pos={[3.5, 0, 4.9]} scale={0.6} />
-      <Pine pos={[-3.4, 0, 4.8]} scale={0.58} />
+      {/* ===== the forest ring ===== set back at the rim, composed per the
+          reference: the HERO blob tree rises right behind the mail corner, a
+          smaller pair anchor the right meadow and the back-left, and a few
+          conifers fill the back rim for skyline depth (never blocking the
+          cutaway interior). */}
+      <BlobTree pos={[4.9, 0, -2.4]} scale={1.25} />
+      <BlobTree pos={[5.8, 0, 1.5]} scale={0.8} />
+      <BlobTree pos={[-5.5, 0, -3.4]} scale={1.0} />
+      {/* conifers along the left + back rim (behind the solid walls) */}
+      <Pine pos={[-6.0, 0, -1.1]} scale={1.12} />
+      <Pine pos={[-5.3, 0, 2.0]} scale={0.84} />
+      <Pine pos={[1.7, 0, -5.5]} scale={0.9} />
+      <Pine pos={[4.0, 0, -4.7]} scale={0.7} />
+      {/* a short one at the front-left corner (doesn't block the view) */}
+      <Pine pos={[-4.5, 0, 4.6]} scale={0.56} />
 
-      {/* mossy boulders */}
-      <Boulders pos={[-5.7, 0, -2.9]} scale={1.05} />
-      <Boulders pos={[5.7, 0, -0.3]} scale={0.9} />
-      <Boulders pos={[0.4, 0, 5.7]} scale={0.85} />
+      {/* trimmed round bushes — the smooth clipped shrubs from the reference,
+          one anchoring the front-right meadow like the picture */}
+      <RoundBush pos={[4.6, 3.5]} scale={1.15} />
+      <RoundBush pos={[5.9, -0.5]} scale={0.9} />
+      <RoundBush pos={[-5.9, 0.4]} scale={1.0} />
+      <RoundBush pos={[-2.7, 5.4]} scale={0.8} />
+      <RoundBush pos={[2.3, 5.3]} scale={0.7} />
 
-      {/* a couple of mushroom clusters + ferns + bushes nestled at the tree bases
-          near the rim (kept sparse — the open lawn stays clean) */}
-      <MushroomCluster pos={[-5.0, 2.7]} />
-      <MushroomCluster pos={[4.4, -1.6]} />
-      <Fern pos={[-5.4, -1.9]} scale={1.0} />
-      <Fern pos={[5.0, -1.4]} scale={0.95} />
-      <Bush pos={[-5.6, 0.4]} scale={1.0} />
-      <Bush pos={[5.4, 2.6]} scale={0.9} />
-      <Bush pos={[-2.8, -4.7]} scale={0.85} />
+      {/* mossy boulders: a huddle by the pack corner (the reference's rocks
+          beside the table), plus rim accents */}
+      <Boulders pos={[-4.5, 0, 1.0]} scale={0.8} />
+      <Boulders pos={[-5.6, 0, -2.5]} scale={1.0} />
+      <Boulders pos={[0.4, 0, 5.8]} scale={0.85} />
+
+      {/* mushrooms + ferns nestled at the tree bases (sparse — the open lawn
+          stays clean) */}
+      <MushroomCluster pos={[-5.0, 2.9]} />
+      <MushroomCluster pos={[4.2, -1.5]} />
+      <Fern pos={[-5.5, -1.8]} scale={1.0} />
+      <Fern pos={[5.3, -1.9]} scale={0.95} />
+      <Fern pos={[-3.3, 4.9]} scale={0.85} />
 
       {/* a small woodland pond out in the front-left meadow */}
-      <Pond pos={[-3.9, 4.0]} />
+      <Pond pos={[-4.1, 3.9]} />
     </group>
   );
 }

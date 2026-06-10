@@ -134,6 +134,7 @@ export default function CharacterModel(props: CharacterModelProps) {
     return (
       <GltfCharacter
         url={url}
+        color={props.color}
         motion={props.motion}
         onPointerDown={props.onPointerDown}
       />
@@ -155,13 +156,19 @@ if (GLB_PIPELINE_ENABLED) {
 // converted to a toon material that KEEPS its own baseColor (so an 11-material
 // rigged model stays multi-colored), the skeleton is cloned properly so skinning
 // survives, the model's own idle/walk clips play, and the whole thing is
-// normalized to a consistent height with feet on the ground.
+// normalized to a consistent height with feet on the ground. Two compensations
+// stay in place for bare static exports (no rig / no authored color): an
+// untextured material left at the default white gets tinted with the pet
+// color, and a model with no clips gets a procedural idle/walk bob. The
+// current rigged capybara needs neither — its clips and colors are authored.
 function GltfCharacter({
   url,
+  color,
   motion = "idle",
   onPointerDown,
 }: {
   url: string;
+  color: string;
   motion?: CharacterMotion;
   onPointerDown?: (e: { stopPropagation: () => void }) => void;
 }) {
@@ -177,7 +184,13 @@ function GltfCharacter({
     const convert = (src: THREE.Material) => {
       let toon = toonCache.get(src);
       if (!toon) {
-        toon = toonFromStandard(src as THREE.MeshStandardMaterial);
+        const std = src as THREE.MeshStandardMaterial;
+        toon = toonFromStandard(std);
+        // An export with no texture and no authored baseColor (loader default =
+        // pure white) carries no look of its own — give it the pet's color.
+        if (!std.map && std.color?.getHex() === 0xffffff) {
+          (toon as THREE.MeshStandardMaterial).color.set(color);
+        }
         toonCache.set(src, toon);
       }
       return toon;
@@ -187,12 +200,20 @@ function GltfCharacter({
       if (!mesh.isMesh) return;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
+      // A skinned mesh is culled by its static bind-pose bounds, which the
+      // animated pose can leave — disable culling so it never blinks out.
+      if ((mesh as unknown as THREE.SkinnedMesh).isSkinnedMesh) {
+        mesh.frustumCulled = false;
+      }
       mesh.material = Array.isArray(mesh.material)
         ? mesh.material.map(convert)
         : convert(mesh.material);
     });
+    // Asset convention: exports must face +z (the procedural body's and the
+    // walker's forward). The current capybara GLB is authored that way, so no
+    // corrective yaw — if a future export faces elsewhere, fix the asset.
     return c;
-  }, [gltf.scene]);
+  }, [gltf.scene, color]);
 
   // Normalize scale + seat feet at y=0, centered — works for any unit-ish export.
   const fit = useMemo(() => {
@@ -211,18 +232,47 @@ function GltfCharacter({
   }, [model]);
 
   // Play the model's OWN clips (idle by default, walk when asked). The clip
-  // animates the body, so we don't add a manual bob on top.
+  // animates the body, so we don't add a manual bob on top. Lookup is
+  // case-insensitive — exporters disagree on casing ("Walk" vs "walk").
+  const hasClips = gltf.animations.length > 0;
   const { actions } = useAnimations(gltf.animations, model);
   useEffect(() => {
+    const pick = (...names: string[]) => {
+      for (const want of names) {
+        const key = Object.keys(actions).find(
+          (k) => k.toLowerCase() === want,
+        );
+        if (key && actions[key]) return actions[key];
+      }
+      return null;
+    };
     const action =
-      (motion === "walk" && actions.walk) ||
-      actions.idle ||
+      (motion === "walk" && pick("walk")) ||
+      (motion === "wave" && pick("wave", "jump")) ||
+      pick("idle") ||
       Object.values(actions)[0];
     action?.reset().fadeIn(0.25).play();
     return () => {
       action?.fadeOut(0.25);
     };
   }, [actions, motion]);
+
+  // A static export (no clips) would freeze mid-walk — give it the procedural
+  // body's life instead: a breathing bob at rest, a quicker waddle when walking.
+  const bob = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (hasClips || !bob.current) return;
+    const t = state.clock.elapsedTime;
+    if (motion === "walk") {
+      bob.current.position.y = Math.abs(Math.sin(t * 7)) * 0.05;
+      bob.current.rotation.z = Math.sin(t * 7) * 0.05;
+      bob.current.rotation.x = 0.05;
+    } else {
+      bob.current.position.y = Math.sin(t * 1.6) * 0.025;
+      bob.current.rotation.z = Math.sin(t * 0.8) * 0.025;
+      bob.current.rotation.x = 0;
+    }
+  });
 
   useEffect(() => {
     if (entrance.current) {
@@ -246,8 +296,10 @@ function GltfCharacter({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "auto")}
       >
-        <group scale={fit.scale} position={fit.position}>
-          <primitive object={model} />
+        <group ref={bob}>
+          <group scale={fit.scale} position={fit.position}>
+            <primitive object={model} />
+          </group>
         </group>
       </group>
     </group>

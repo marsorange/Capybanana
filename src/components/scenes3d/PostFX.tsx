@@ -46,14 +46,16 @@ export default function PostFX({ tiltShift = true }: { tiltShift?: boolean }) {
       depthAwareUpsampling
       color="#2a2018"
     />,
-    // gentle glow on the brightest bits only (emissive lamps / lit windows)
+    // gentle glow on the brightest bits only (emissive lamps / lit windows).
+    // Threshold must clear the SUNLIT near-white cottage walls/roofline — at
+    // 0.85 the whole wall-top bloomed into a white halo around the house.
     <Bloom
       key="bloom"
       mipmapBlur
-      intensity={0.4}
-      luminanceThreshold={0.85}
-      luminanceSmoothing={0.22}
-      radius={0.7}
+      intensity={0.25}
+      luminanceThreshold={1.0}
+      luminanceSmoothing={0.15}
+      radius={0.6}
     />,
     // warm filmic grade + a small saturation lift for cozy, richer color
     <ToneMapping key="tone" mode={ToneMappingMode.ACES_FILMIC} />,
@@ -61,8 +63,9 @@ export default function PostFX({ tiltShift = true }: { tiltShift?: boolean }) {
     // tilt-shift "miniature toy" blur — a wide sharp band across the middle
     // (house + pet + veg bed stay crisp), blur only creeps onto the far island
     // rim and the very front edge. Screen-space + low samples = phone-cheap.
+    // Kept LIGHT (0.07): at 0.16 the top/bottom of the diorama read as smeared.
     tiltShift && (
-      <TiltShift2 key="tilt" blur={0.16} taper={0.7} samples={6} start={[0.0, 0.56]} end={[1.0, 0.56]} />
+      <TiltShift2 key="tilt" blur={0.07} taper={0.7} samples={6} start={[0.0, 0.56]} end={[1.0, 0.56]} />
     ),
     // cheap edge AA, last
     <SMAA key="smaa" />,
