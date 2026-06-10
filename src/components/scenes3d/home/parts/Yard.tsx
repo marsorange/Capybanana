@@ -9,14 +9,23 @@ const glow = (c: string, e: string, i = 0.85) => (
   <primitive object={toonMaterial(c, { emissive: e, emissiveIntensity: i })} attach="material" />
 );
 
-const WOOD = "#b9844f";
-const WOOD_DK = "#8c5f35";
-const LEAF = "#7fae5c";
-const LEAF_LT = "#93c06c";
-const PICKET = "#f7ecd6";
-const RAIL = "#ead9ba";
-const MAIL = "#e8625a";
+// warm, refined cottage-yard palette to sit beside the forest
+const WOOD = "#c08a52"; // raised-bed boards (warm, a touch richer than the house)
+const WOOD_DK = "#8c5f35"; // posts + lower board / shadow tone
+const WOOD_LT = "#d8ac6f"; // top cap rail + post caps (sunlit edge)
+const LEAF = "#74b052";
+const LEAF_LT = "#9bcd6a";
+const SOIL = "#6b4830"; // dark, freshly-tilled chocolate soil (reference)
+const SOIL_LT = "#825939"; // sunlit soil mound
+const SOIL_DK = "#553a26"; // furrow shadow lines
+const BANANA = "#f4c84a"; // the little Capybanana sign
+const MAIL = "#e3645b";
 const MAIL_DK = "#8f3b35";
+const STONE = "#bdb39d";
+const STONE_LT = "#cdc4af";
+const LANTERN = "#6a564a";
+
+const PI = Math.PI;
 
 // A daisy-style flower: stem + ring of petals + center.
 function Flower({
@@ -35,7 +44,7 @@ function Flower({
         {m("#6f9352")}
       </mesh>
       {[0, 1, 2, 3, 4].map((i) => {
-        const a = (i / 5) * Math.PI * 2;
+        const a = (i / 5) * PI * 2;
         return (
           <mesh key={i} position={[Math.cos(a) * 0.07, 0.26, Math.sin(a) * 0.07]}>
             <sphereGeometry args={[0.05, 8, 6]} />
@@ -51,42 +60,212 @@ function Flower({
   );
 }
 
-// A simple white picket fence side (a row of pickets + two rails).
-function FenceSide({
+// A leafy garden seedling: a tidy rosette of a few upright tapered blades around
+// a small heart — the fresh "just-sprouted greens" the reference plants in rows.
+function Seedling({
   pos,
-  rot,
+  scale = 1,
+  leaf = LEAF,
+}: {
+  pos: [number, number, number];
+  scale?: number;
+  leaf?: string;
+}) {
+  return (
+    <group position={pos} scale={scale}>
+      {[0, 1, 2, 3, 4].map((i) => {
+        const a = (i / 5) * PI * 2 + 0.3;
+        return (
+          <mesh
+            key={i}
+            position={[Math.cos(a) * 0.06, 0.1, Math.sin(a) * 0.06]}
+            rotation={[Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5]}
+          >
+            <coneGeometry args={[0.045, 0.22, 4]} />
+            {m(i % 2 ? leaf : LEAF_LT)}
+          </mesh>
+        );
+      })}
+      <mesh position={[0, 0.05, 0]}>
+        <icosahedronGeometry args={[0.05, 0]} />
+        {m(LEAF_LT)}
+      </mesh>
+    </group>
+  );
+}
+
+// One side of the raised bed: two stacked horizontal boards (darker base + lit
+// top course) with a slim cap rail. `axis` is the direction the boards run.
+function PlankWall({
+  pos,
+  axis,
   len,
 }: {
   pos: [number, number, number];
-  rot: number;
+  axis: "x" | "z";
   len: number;
 }) {
-  const n = Math.max(3, Math.round(len / 0.34));
+  // one 0.08-thick board running along `axis`
+  const board: [number, number, number] = axis === "x" ? [len, 0.2, 0.08] : [0.08, 0.2, len];
   return (
-    <group position={pos} rotation={[0, rot, 0]}>
-      {Array.from({ length: n }).map((_, j) => {
-        const off = (j - (n - 1) / 2) * (len / n);
-        return (
-          <group key={j} position={[off, 0, 0]}>
-            <mesh position={[0, 0.3, 0]}>
-              <boxGeometry args={[0.1, 0.5, 0.05]} />
-              {m(PICKET)}
-            </mesh>
-            <mesh position={[0, 0.5, 0]}>
-              <coneGeometry args={[0.07, 0.1, 4]} />
-              {m(PICKET)}
-            </mesh>
-          </group>
-        );
-      })}
-      <mesh position={[0, 0.38, 0]}>
-        <boxGeometry args={[len, 0.06, 0.03]} />
-        {m(RAIL)}
+    <group position={pos}>
+      <mesh position={[0, 0.15, 0]}>
+        <boxGeometry args={board} />
+        {m(WOOD_DK)}
       </mesh>
-      <mesh position={[0, 0.2, 0]}>
-        <boxGeometry args={[len, 0.06, 0.03]} />
-        {m(RAIL)}
+      <mesh position={[0, 0.35, 0]}>
+        <boxGeometry args={board} />
+        {m(WOOD)}
       </mesh>
+      {/* slim cap rail, slightly overhanging the boards */}
+      <mesh position={[0, 0.475, 0]}>
+        <boxGeometry args={axis === "x" ? [len + 0.04, 0.05, 0.14] : [0.14, 0.05, len + 0.04]} />
+        {m(WOOD_LT)}
+      </mesh>
+    </group>
+  );
+}
+
+// The little Capybanana sign tacked to the camera-facing board.
+function BananaSign({ pos }: { pos: [number, number, number] }) {
+  return (
+    <group position={pos}>
+      {/* wooden plaque */}
+      <mesh position={[0, 0.3, 0]}>
+        <boxGeometry args={[0.3, 0.22, 0.04]} />
+        {m(WOOD_LT)}
+      </mesh>
+      <mesh position={[0, 0.3, 0.021]}>
+        <boxGeometry args={[0.25, 0.17, 0.01]} />
+        {m("#e8c489")}
+      </mesh>
+      {/* a cheery banana crescent */}
+      <mesh position={[0, 0.3, 0.04]} rotation={[0, 0, 0.7]}>
+        <torusGeometry args={[0.07, 0.025, 6, 10, PI * 0.95]} />
+        {m(BANANA)}
+      </mesh>
+      {/* two little tack heads */}
+      {[-0.11, 0.11].map((x, i) => (
+        <mesh key={i} position={[x, 0.39, 0.025]}>
+          <sphereGeometry args={[0.018, 6, 6]} />
+          {m(WOOD_DK)}
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// A wooden raised planter bed: 4 corner posts + stacked plank walls wrapping a
+// recessed soil bed. The soil top sits BELOW the wall cap, so the leafy rows
+// peek over the rim without poking through the timber (no 穿模). Replaces the
+// old white picket fence the reference doesn't have.
+const HX = 1.25; // half-width (x)
+const HZ = 1.0; //  half-depth (z)
+const POST = 0.16;
+function RaisedBed() {
+  // tidy 2×4 grid of greens inside the rim (well clear of the boards)
+  const cols = [-0.78, -0.26, 0.26, 0.78];
+  const rows = [-0.42, 0.42];
+  return (
+    <group>
+      {/* corner posts (with a little sunlit cap), proud above the boards */}
+      {([[HX, HZ], [-HX, HZ], [HX, -HZ], [-HX, -HZ]] as const).map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <mesh position={[0, 0.28, 0]}>
+            <boxGeometry args={[POST, 0.56, POST]} />
+            {m(WOOD_DK)}
+          </mesh>
+          <mesh position={[0, 0.585, 0]}>
+            <boxGeometry args={[0.2, 0.06, 0.2]} />
+            {m(WOOD_LT)}
+          </mesh>
+        </group>
+      ))}
+      {/* four plank walls, ending flush against the posts */}
+      <PlankWall pos={[0, 0, HZ]} axis="x" len={2 * HX - POST} />
+      <PlankWall pos={[0, 0, -HZ]} axis="x" len={2 * HX - POST} />
+      <PlankWall pos={[HX, 0, 0]} axis="z" len={2 * HZ - POST} />
+      <PlankWall pos={[-HX, 0, 0]} axis="z" len={2 * HZ - POST} />
+
+      {/* recessed soil bed (top at y=0.33, below the wall cap) + a sunlit mound.
+          Sized a hair inside the inner board faces so the soil never pokes out. */}
+      <mesh position={[0, 0.18, 0]}>
+        <boxGeometry args={[2 * HX - 0.16, 0.3, 2 * HZ - 0.16]} />
+        {m(SOIL)}
+      </mesh>
+      <mesh position={[0, 0.335, 0]}>
+        <boxGeometry args={[2 * HX - 0.32, 0.03, 2 * HZ - 0.32]} />
+        {m(SOIL_LT)}
+      </mesh>
+      {/* furrow shadow lines under each planted row */}
+      {rows.map((z, i) => (
+        <mesh key={`fr${i}`} position={[0, 0.35, z]}>
+          <boxGeometry args={[2 * HX - 0.5, 0.02, 0.12]} />
+          {m(SOIL_DK)}
+        </mesh>
+      ))}
+
+      {/* the planted rows: mostly leafy greens, one round cabbage, one carrot,
+          one bright tulip — kept inside |x|≤0.9 / |z|≤0.6 so nothing clips */}
+      {cols.map((x, c) =>
+        rows.map((z, r) => {
+          const key = `${c}-${r}`;
+          const pos: [number, number, number] = [x, 0.34, z];
+          // a round cabbage at one spot, a carrot at another, greens elsewhere
+          if (c === 1 && r === 0) {
+            return (
+              <group key={key} position={pos}>
+                <mesh position={[0, 0.08, 0]}>
+                  <icosahedronGeometry args={[0.13, 0]} />
+                  {m(LEAF)}
+                </mesh>
+                <mesh position={[0, 0.13, 0]}>
+                  <icosahedronGeometry args={[0.08, 0]} />
+                  {m(LEAF_LT)}
+                </mesh>
+              </group>
+            );
+          }
+          if (c === 3 && r === 1) {
+            return (
+              <group key={key} position={pos}>
+                <mesh position={[0, 0.05, 0]}>
+                  <coneGeometry args={[0.07, 0.16, 7]} />
+                  {m("#e88a3c")}
+                </mesh>
+                {[0, 1, 2].map((k) => {
+                  const a = (k / 3) * PI * 2;
+                  return (
+                    <mesh
+                      key={k}
+                      position={[Math.cos(a) * 0.04, 0.16, Math.sin(a) * 0.04]}
+                      rotation={[Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4]}
+                    >
+                      <coneGeometry args={[0.02, 0.16, 4]} />
+                      {m(LEAF_LT)}
+                    </mesh>
+                  );
+                })}
+              </group>
+            );
+          }
+          return <Seedling key={key} pos={pos} scale={0.92 + ((c + r) % 2) * 0.12} />;
+        }),
+      )}
+      {/* one bright tulip standing among the greens */}
+      <group position={[0.0, 0.34, 0.0]}>
+        <mesh position={[0, 0.18, 0]}>
+          <cylinderGeometry args={[0.018, 0.018, 0.36, 5]} />
+          {m("#6f9352")}
+        </mesh>
+        <mesh position={[0, 0.4, 0]}>
+          <coneGeometry args={[0.07, 0.17, 6]} />
+          {m("#e8607a")}
+        </mesh>
+      </group>
+
+      {/* the Capybanana sign on the camera-facing (+z) board */}
+      <BananaSign pos={[0.45, 0, HZ + 0.06]} />
     </group>
   );
 }
@@ -104,13 +283,16 @@ export default function Yard() {
 
   return (
     <group>
-      {/* (the stone doorstep slab at the house frame was removed) */}
       {/* stepping-stone path — flat faceted stone slabs */}
       {stones.map(([x, z, s], i) => (
         <group key={i} position={[x, 0.05, z]} rotation={[0, i * 1.1, 0]} scale={[s, 1, s]}>
           <mesh scale={[1, 0.3, 0.84]}>
             <icosahedronGeometry args={[0.3, 0]} />
-            {m("#c4baa6")}
+            {m(STONE)}
+          </mesh>
+          <mesh position={[0, 0.04, 0]} scale={[0.7, 0.18, 0.6]}>
+            <icosahedronGeometry args={[0.3, 0]} />
+            {m(STONE_LT)}
           </mesh>
         </group>
       ))}
@@ -132,8 +314,8 @@ export default function Yard() {
           <boxGeometry args={[0.36, 0.28, 0.44]} />
           {m(MAIL)}
         </mesh>
-        <mesh position={[0, 0.92, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.18, 0.18, 0.44, 16, 1, false, 0, Math.PI]} />
+        <mesh position={[0, 0.92, 0]} rotation={[PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.18, 0.18, 0.44, 16, 1, false, 0, PI]} />
           {m(MAIL)}
         </mesh>
         {/* cream front plate + dark letter slot */}
@@ -156,38 +338,50 @@ export default function Yard() {
         </mesh>
       </group>
 
-      {/* ===== GARDEN LAMP POST (stone lantern, beside the path) ===== */}
+      {/* ===== STONE GARDEN LANTERN (warm glow, beside the path) ===== */}
       <group position={[1.8, 0, 2.6]}>
-        <mesh position={[0, 0.05, 0]}>
-          <cylinderGeometry args={[0.13, 0.16, 0.1, 12]} />
-          {m(WOOD_DK)}
+        {/* stacked stone base + post */}
+        <mesh position={[0, 0.06, 0]}>
+          <cylinderGeometry args={[0.15, 0.18, 0.12, 8]} />
+          {m(STONE)}
         </mesh>
         <mesh position={[0, 0.7, 0]}>
-          <cylinderGeometry args={[0.045, 0.055, 1.4, 8]} />
-          {m("#5d4a40")}
+          <cylinderGeometry args={[0.06, 0.07, 1.2, 8]} />
+          {m(LANTERN)}
         </mesh>
-        <mesh position={[0, 1.46, 0]}>
-          <boxGeometry args={[0.22, 0.22, 0.22]} />
-          {m("#5d4a40")}
+        {/* lantern head — box housing with a warm glowing light */}
+        <mesh position={[0, 1.4, 0]}>
+          <boxGeometry args={[0.24, 0.24, 0.24]} />
+          {m(LANTERN)}
         </mesh>
-        <mesh position={[0, 1.46, 0]}>
-          <sphereGeometry args={[0.1, 12, 10]} />
-          {glow("#ffe9a8", "#ffce63", 1.0)}
+        <mesh position={[0, 1.4, 0]}>
+          <boxGeometry args={[0.16, 0.18, 0.16]} />
+          {glow("#ffe7a0", "#ffce63", 1.1)}
         </mesh>
-        <mesh position={[0, 1.62, 0]}>
-          <coneGeometry args={[0.16, 0.16, 4]} />
+        {/* little pyramid cap */}
+        <mesh position={[0, 1.58, 0]}>
+          <coneGeometry args={[0.18, 0.16, 4]} />
+          {m(LANTERN)}
+        </mesh>
+        <mesh position={[0, 1.68, 0]}>
+          <sphereGeometry args={[0.035, 8, 6]} />
           {m(WOOD_DK)}
         </mesh>
       </group>
 
-      {/* ===== BENCH ===== */}
-      <group position={[4.0, 0, 1.4]} rotation={[0, -Math.PI / 2.2, 0]}>
+      {/* ===== WOODEN BENCH (right of the path) ===== */}
+      <group position={[4.0, 0, 1.4]} rotation={[0, -PI / 2.2, 0]}>
         <mesh position={[0, 0.28, 0]}>
           <boxGeometry args={[1.0, 0.06, 0.3]} />
-          {m(WOOD)}
+          {m(WOOD_LT)}
         </mesh>
         <mesh position={[0, 0.46, -0.12]} rotation={[0.3, 0, 0]}>
           <boxGeometry args={[1.0, 0.06, 0.26]} />
+          {m(WOOD_LT)}
+        </mesh>
+        {/* a slim back slat for a touch more detail */}
+        <mesh position={[0, 0.6, -0.18]} rotation={[0.3, 0, 0]}>
+          <boxGeometry args={[1.0, 0.05, 0.04]} />
           {m(WOOD)}
         </mesh>
         {[-0.42, 0.42].map((x, i) => (
@@ -198,97 +392,22 @@ export default function Yard() {
         ))}
       </group>
 
-      {/* ===== FENCED VEG GARDEN (front-left, enlarged) ===== */}
+      {/* ===== WOODEN RAISED VEG BED (front-left) — timber planter, not a fence */}
       <group position={[-0.6, 0, 2.5]}>
-        {/* tilled soil bed */}
-        <mesh position={[0, 0.08, 0]}>
-          <boxGeometry args={[2.5, 0.16, 2.1]} />
-          {m("#7d553a")}
-        </mesh>
-        <mesh position={[0, 0.17, 0]}>
-          <boxGeometry args={[2.3, 0.02, 1.9]} />
-          {m("#8a623f")}
-        </mesh>
-        {/* rows of carrots, cabbages + a tulip */}
-        {[-0.8, -0.27, 0.27, 0.8].map((x, col) =>
-          [-0.6, 0.0, 0.6].map((z, row) => {
-            const carrot = (col + row) % 2 === 0;
-            return (
-              <group key={`${col}-${row}`} position={[x, 0.22, z]}>
-                {carrot ? (
-                  <>
-                    <mesh position={[0, 0.04, 0]}>
-                      <coneGeometry args={[0.08, 0.18, 7]} />
-                      {m("#e88a3c")}
-                    </mesh>
-                    {[0, 1, 2].map((k) => {
-                      const a = (k / 3) * Math.PI * 2;
-                      return (
-                        <mesh
-                          key={k}
-                          position={[Math.cos(a) * 0.05, 0.18, Math.sin(a) * 0.05]}
-                          rotation={[Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4]}
-                        >
-                          <coneGeometry args={[0.025, 0.18, 4]} />
-                          {m(LEAF_LT)}
-                        </mesh>
-                      );
-                    })}
-                  </>
-                ) : (
-                  <>
-                    <mesh position={[0, 0.06, 0]}>
-                      <icosahedronGeometry args={[0.14, 0]} />
-                      {m(LEAF)}
-                    </mesh>
-                    <mesh position={[0, 0.11, 0]}>
-                      <icosahedronGeometry args={[0.09, 0]} />
-                      {m(LEAF_LT)}
-                    </mesh>
-                  </>
-                )}
-              </group>
-            );
-          }),
-        )}
-        {/* a couple of bright tulips for a pop of color */}
-        {([[-0.8, -0.05], [0.55, 0.65]] as const).map(([tx, tz], i) => (
-          <group key={i} position={[tx, 0.22, tz]}>
-            <mesh position={[0, 0.16, 0]}>
-              <cylinderGeometry args={[0.018, 0.018, 0.32, 5]} />
-              {m("#6f9352")}
-            </mesh>
-            <mesh position={[0, 0.36, 0]}>
-              <coneGeometry args={[0.07, 0.16, 6]} />
-              {m(i ? "#f4c245" : "#e8607a")}
-            </mesh>
-          </group>
-        ))}
-        {/* white picket fence wrapping the bigger bed */}
-        <FenceSide pos={[0, 0, 1.05]} rot={0} len={2.55} />
-        <FenceSide pos={[0, 0, -1.05]} rot={0} len={2.55} />
-        <FenceSide pos={[1.27, 0, 0]} rot={Math.PI / 2} len={2.15} />
-        <FenceSide pos={[-1.27, 0, 0]} rot={Math.PI / 2} len={2.15} />
+        <RaisedBed />
       </group>
 
-      {/* a colorful spread of daisies scattered across the big lawn */}
+      {/* a few cultivated daisy clumps lining the path + bench (the wild
+          meadow flowers are scattered by Island.tsx) */}
       {([
-        [-2.6, 0, 3.9, "#f4d35e"],
-        [3.0, 0, 3.2, "#fff4f0"],
-        [3.6, 0, -0.6, "#f1a6bd"],
-        [-1.2, 0, 4.0, "#e8607a"],
-        [0.2, 0, 4.0, "#f4d35e"],
-        [-3.3, 0, -1.3, "#f0915b"],
-        [1.8, 0, 3.5, "#fff4f0"],
-        [-3.6, 0, 1.1, "#b89cd9"],
-        [4.8, 0, 2.2, "#f4d35e"],
-        [-4.8, 0, 2.0, "#fff4f0"],
-        [1.0, 0, 4.9, "#e8607a"],
-        [-2.0, 0, 4.7, "#f0915b"],
-        [4.6, 0, -2.0, "#f1a6bd"],
-        [-4.4, 0, -1.6, "#f4d35e"],
-        [2.4, 0, 4.4, "#b89cd9"],
-        [-0.6, 0, 5.0, "#fff4f0"],
+        [2.6, 0, 3.3, "#fff6ee"],
+        [3.0, 0, 2.2, "#f4d35e"],
+        [3.6, 0, -0.5, "#f0a6bd"],
+        [2.3, 0, 1.0, "#e8607a"],
+        [0.7, 0, 1.5, "#f4d35e"],
+        [2.0, 0, 4.6, "#fff6ee"],
+        [1.0, 0, 3.2, "#bfa3df"],
+        [2.9, 0, 4.2, "#f0915b"],
       ] as const).map(([x, y, z, c], i) => (
         <Flower key={i} pos={[x, y, z]} petal={c} />
       ))}

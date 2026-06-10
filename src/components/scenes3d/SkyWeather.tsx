@@ -41,27 +41,28 @@ function sunAt(t: number) {
 
 export default function SkyWeather({
   weather = "clear",
-  start = 0.47,
+  start = 0.38,
   castShadow = false,
 }: {
   weather?: Weather;
   speed?: number; // retained for API compatibility; the home light is fixed.
-  start?: number; // initial time-of-day (0.47 = soft late morning)
+  start?: number; // initial time-of-day (0.38 = a 45°-elevation morning sun that
+  //                  rakes in from the front-right and lights the cutaway interior)
   castShadow?: boolean; // let the ONE sun cast a real (disciplined) shadow
 }) {
   const s = sunAt(start);
   const clear = weather === "clear";
   const wDim = clear ? 1 : 0.8;
-  // Bright, high-key sunny fill: keep ambient + hemi generous so nothing (esp.
-  // the big ground) crushes to a murky dark, while the directional SUN still
-  // adds a warm highlight + a soft cast shadow on top. (Earlier this fill was
-  // dialed way down for max contrast and the scene read dim — a cozy cartoon
-  // wants bright + saturated, not dark + contrasty.)
-  const ambientIntensity = (clear ? 0.44 : 0.56) + s.elev * 0.05;
-  const hemiIntensity = (clear ? 0.52 : 0.6) * wDim;
-  // Sun stays the key light but eased back so it layers onto the brighter fill
-  // without blowing the cream walls / grass to white.
-  const sunIntensity = s.intensity * wDim * (clear ? 1.1 : 0.85);
+  // Bright, high-key sunny fill: generous ambient + hemi so nothing (esp. the
+  // big ground and the cutaway interior) crushes to a murky dark, while the 45°
+  // directional SUN adds a warm raking highlight + a soft cast shadow on top.
+  // (The scene was reading dim before — a cozy 治愈 cartoon wants bright +
+  // saturated, not dark + contrasty, so the fill is dialed up here.)
+  const ambientIntensity = (clear ? 0.62 : 0.7) + s.elev * 0.05;
+  const hemiIntensity = (clear ? 0.68 : 0.74) * wDim;
+  // Sun stays the key light, kept strong so the 45° rake reads, but balanced
+  // against the brighter fill so the cream walls / grass don't blow to white.
+  const sunIntensity = s.intensity * wDim * (clear ? 1.15 : 0.9);
 
   return (
     <>
@@ -79,19 +80,19 @@ export default function SkyWeather({
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
         shadow-camera-near={1}
-        shadow-camera-far={42}
-        shadow-camera-left={-9}
-        shadow-camera-right={9}
-        shadow-camera-top={9}
-        shadow-camera-bottom={-9}
+        shadow-camera-far={46}
+        shadow-camera-left={-11}
+        shadow-camera-right={11}
+        shadow-camera-top={11}
+        shadow-camera-bottom={-11}
         shadow-bias={-0.0006}
         shadow-normalBias={0.035}
       />
-      {/* cool sky bounce so shadowed faces still read — kept low so the sun keeps
-          its contrast */}
+      {/* cool sky bounce so shadowed faces still read — lifted a touch so the
+          back-lit walls + forest never go murky */}
       <directionalLight
         position={[-7, 5, -3]}
-        intensity={clear ? 0.24 : 0.36}
+        intensity={clear ? 0.34 : 0.44}
         color="#d7e5f8"
       />
     </>

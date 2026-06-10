@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local claude code skills (installed tooling, not part of the repo)
+.claude/skills/

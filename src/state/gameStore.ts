@@ -14,6 +14,7 @@ import type {
   Postcard,
   Trip,
 } from "@/game/types";
+import { coerceRarity } from "@/game/gacha";
 import { cloud } from "@/lib/cloudClient";
 import { supabaseSignOut } from "@/lib/supabaseClient";
 import type { CloudSave } from "@/server/types";
@@ -26,6 +27,20 @@ export const BAG_TTL_MS =
   Number.isFinite(BAG_TTL_OVERRIDE_MIN) && BAG_TTL_OVERRIDE_MIN > 0
     ? BAG_TTL_OVERRIDE_MIN * 60_000
     : 24 * 60 * 60_000;
+
+// Scrub any legacy/unknown rarity off postcards (persisted localStorage saves
+// bypass the server's coerceRarity, so a stale SSR/undefined would crash the
+// album). Returns the same array reference when nothing needed fixing.
+function sanitizePostcards(postcards: Postcard[]): Postcard[] {
+  let changed = false;
+  const next = postcards.map((pc) => {
+    const rarity = coerceRarity(pc.rarity);
+    if (rarity === pc.rarity) return pc;
+    changed = true;
+    return { ...pc, rarity };
+  });
+  return changed ? next : postcards;
+}
 
 export type Screen =
   | "login"
@@ -359,7 +374,7 @@ export const useGameStore = create<GameState>()(
           companionState: save.companionState,
           packedBag: save.packedBag,
           activeTrip: save.activeTrip,
-          postcards: save.postcards,
+          postcards: sanitizePostcards(save.postcards),
           souvenirs: save.souvenirs,
           battleRecords: save.battleRecords,
           companionDays: save.companionDays,
@@ -401,6 +416,7 @@ export const useGameStore = create<GameState>()(
         connectUrl: s.connectUrl,
       }),
       onRehydrateStorage: () => (state) => {
+        if (state) state.postcards = sanitizePostcards(state.postcards);
         state?.setHasHydrated(true);
       },
     },

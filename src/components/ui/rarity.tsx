@@ -36,6 +36,13 @@ export const RARITY_META: Record<Rarity, RarityStyle> = {
   },
 };
 
+// Safe lookup: persisted localStorage saves can carry a legacy/unknown rarity
+// (old SSR, or none) that bypassed the server-side coerceRarity, so never index
+// RARITY_META blindly — fall back to N so the album can't crash on stale data.
+export function rarityMeta(rarity: Rarity | string | null | undefined): RarityStyle {
+  return RARITY_META[rarity as Rarity] ?? RARITY_META.N;
+}
+
 export const isRareRarity = (r: Rarity): boolean => r === "SR";
 
 /** A compact rarity chip, e.g. "★ 史诗". */
@@ -46,7 +53,7 @@ export function RarityBadge({
   rarity: Rarity;
   className?: string;
 }) {
-  const m = RARITY_META[rarity];
+  const m = rarityMeta(rarity);
   return (
     <span
       className={cn(

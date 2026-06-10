@@ -7,44 +7,66 @@ import { toonMaterial } from "../../materials";
 const m = (c: string) => (
   <primitive object={toonMaterial(c)} attach="material" />
 );
+// double-sided toon material for the hand-built island shells (winding-proof)
+const mi = (c: string) => (
+  <primitive object={toonMaterial(c, { side: THREE.DoubleSide })} attach="material" />
+);
 
-// fresh, varied greens so the lawn never reads as one flat color — bumped to the
-// juicier spring green of the reference (more saturated, slightly cooler)
-const GRASS = "#82c648";
-const GRASS_LT = "#9bd863";
-const GRASS_YEL = "#aedc63";
-const GRASS_DK = "#6aac3e";
-const GRASS_EDGE = "#5d9c37";
-// warm faceted earth tones for the soil mound
-const SOIL_TOP = "#c49a64";
+// ---------------------------------------------------------------------------
+// 治愈系森林 palette — soft, harmonious greens that read fresh without going
+// neon, warm forest-floor browns, mossy stone, and a small set of cheerful
+// (but not candy) accent colors. Kept high-key so the cel ramp stays sunny.
+const GRASS = "#84c64e"; // fresh, vibrant meadow base (a touch cooler/cleaner)
+const GRASS_LT = "#a4d76e"; // sunlit highlight tufts
+const GRASS_SOFT = "#8fcc5a"; // barely-there sun dapple (blends into the base)
+const GRASS_DK = "#6daa44"; // shaded green
+const GRASS_EDGE = "#5d9a3a"; // grass rim skirt
+const MOSS = "#7cba50"; // soft moss dapple
+const MOSS_DK = "#5f9a3e";
+// warm faceted earth tones for the island body
+const SOIL_TOP = "#c39a64";
 const SOIL_1 = "#b07f49";
 const SOIL_2 = "#9c6d3b";
 const SOIL_3 = "#855b30";
-const ROCK = "#bcb4a3";
-const ROCK_DK = "#a59c8a";
-const PINE_DK = "#6f9d57";
-const PINE_LT = "#7cab60";
-const TRUNK = "#8c5f35";
+// mossy woodland stone
+const ROCK = "#b7b3a3";
+const ROCK_DK = "#9c9788";
+const ROCK_LT = "#cdc8b7";
+// trees
+const TRUNK = "#8a5e38";
+const TRUNK_DK = "#6f4a2c";
+const PINE_1 = "#4f8a47"; // deep conifer
+const PINE_2 = "#5d9b52";
+const PINE_3 = "#6cac5e"; // lit top tier
+const LEAF_A = "#73b056"; // broadleaf canopy
+const LEAF_B = "#88bd66";
+const LEAF_C = "#65a04a";
+// mushrooms
+const CAP_RED = "#e06a55";
+const CAP_BROWN = "#c98a52";
+const CAP_SPOT = "#fbeede";
+const STEM = "#f3e7cf";
+// pond
+const WATER = "#7fc4d6";
+const WATER_LT = "#a6dbe6";
 
-const LAWN_R = 7.2; // BIG tray — the whole house footprint sits well inside it
-//   (its far corner is ~6.6 from centre), with a green margin out to the edge
+const LAWN_R = 7.0; // BIG tray — the whole house footprint sits well inside it
 const PI = Math.PI;
 
 // ---------------------------------------------------------------------------
-// Irregular faceted "earth tray" geometry. The outline is a jittered polygon
-// (NOT a clean circle) and the body is a chunky thick tray that tapers to a soft
-// bottom — built as a stack of rings sharing the same jittered profile, scaled
-// down as they descend, so the whole island reads as a hand-broken chunk of land.
-const RIM_N = 10; // fewer, BIGGER facets — a chunky low-poly "polyhedron pile"
-// Wobbly, NON-regular vertex angles (shared by every layer so the side bands
-// don't twist) — the outline is an irregular blob, not a clean polygon.
+// Faceted "earth tray" geometry. A gently-jittered rounded polygon (a tidy,
+// healing-forest island, NOT a sharply broken chunk) caps a chunky thick body
+// that tapers to a soft bottom — a stack of rings sharing one profile, scaled
+// down as they descend.
+const RIM_N = 13; // a few more, smaller facets = a softer rounded island
+// gentle per-vertex angle wobble (shared by every layer so the side bands don't
+// twist) — organic but tidy, not jagged.
 const RIM_ANG = Array.from({ length: RIM_N }, (_, i) => {
   const s = Math.sin(i * 71.3 + 1.2) * 24634.21;
-  return (i / RIM_N) * PI * 2 + ((s - Math.floor(s)) - 0.5) * 0.55; // ±0.27 rad
+  return (i / RIM_N) * PI * 2 + ((s - Math.floor(s)) - 0.5) * 0.28; // ±0.14 rad
 });
-// A per-LAYER radius jitter (seeded differently per layer) so each stacked ring
-// juts in/out at its own vertices — the grass top and the soil courses DON'T
-// line up, giving an offset, hand-stacked "堆砌" look (草地 ≠ 土).
+// a small per-LAYER radius jitter so the courses stagger slightly (hand-stacked
+// look) without the spiky offsets of the old "broken dirt" island.
 function layerJitter(seed: number, lo: number, hi: number): number[] {
   return Array.from({ length: RIM_N }, (_, i) => {
     const s = Math.sin(i * 127.1 + seed * 13.7 + 3.7) * 43758.5453;
@@ -93,128 +115,164 @@ function bandGeometry(top: THREE.Vector3[], bot: THREE.Vector3[]): THREE.BufferG
   return g;
 }
 
-// ---- scattered ground dressing (kept off the house footprint + walking lanes)
-// house footprint: x[-4.6, 0.4], z[-4.6, -0.2]. Everything below stays clear of it.
-const CLOVERS: [number, number][] = [
-  [3.5, 2.4], [-3.6, 2.5], [3.9, -1.0], [-2.5, 3.4],
-  [5.4, 1.0], [-5.2, 0.6], [1.6, 5.2], [-1.6, 5.4], [4.8, 3.4], [-4.6, 3.2],
-  [5.8, -0.8], [0.2, 5.8],
-];
-const ROCKS: [number, number, number][] = [
-  [-1.0, 4.0, 0.32], [-3.9, 1.6, 0.34], [3.8, 2.1, 0.3],
-  [5.6, -0.4, 0.4], [-5.5, 1.9, 0.38], [0.2, 6.0, 0.34], [5.0, 3.8, 0.3],
-  [-4.9, -1.0, 0.32],
-];
-const TUFTS: [number, number][] = [
-  [-3.4, 2.9], [0.4, 4.2], [3.9, 1.7], [2.9, -3.1], [-4.1, -0.8],
-  [5.2, 1.9], [-5.4, -0.2], [1.0, 5.6], [-2.3, 5.2], [4.4, 4.2], [-4.8, 2.6],
-  [3.2, 4.6], [-3.2, 4.8], [5.9, 0.6], [6.0, 2.0], [-6.0, 1.2], [-1.0, 6.0],
-  [2.2, 5.4], [-5.0, -1.6], [4.0, -3.0],
-];
-const PEBBLES: [number, number][] = [
-  [-3.6, 2.6], [2.8, -2.7], [5.0, 0.2], [-1.6, 4.8], [1.8, 4.6], [-5.0, 1.0],
-];
-// a richer, more colorful flower scatter, spread across the whole lawn
-const FLOWERS: [number, number, string][] = [
-  [-3.7, 2.3, "#f1a6bd"], [4.2, -0.9, "#fff4f0"], [-3.0, 3.1, "#f4d35e"],
-  [3.4, 2.7, "#e8607a"], [-1.2, 3.9, "#f0915b"], [4.0, 1.0, "#b89cd9"],
-  [0.9, 4.1, "#f4d35e"], [-4.0, 0.6, "#fff4f0"], [4.3, -2.0, "#f1a6bd"],
-  [5.6, 1.4, "#f4d35e"], [-5.2, 1.2, "#e8607a"], [1.4, 5.4, "#fff4f0"],
-  [-1.9, 5.2, "#f0915b"], [4.7, 3.6, "#b89cd9"], [-4.7, 3.0, "#f4d35e"],
-  [5.8, -1.2, "#fff4f0"], [-0.4, 5.8, "#f1a6bd"], [2.6, 5.0, "#f4d35e"],
-  [-5.4, -0.8, "#fff4f0"],
-];
-// large, soft color patches that break up the flat lawn (x, z, radius, color)
-const GRASS_PATCHES: [number, number, number, string][] = [
-  [2.6, 1.9, 1.7, GRASS_LT],
-  [-3.3, 1.0, 1.6, GRASS_DK],
-  [1.2, 3.4, 1.5, GRASS_YEL],
-  [3.6, -1.2, 1.4, GRASS_DK],
-  [-1.6, 3.4, 1.4, GRASS_LT],
-  [0.4, -3.2, 1.4, GRASS_YEL],
-];
+// ===========================================================================
+// FOREST PROPS — the "natural" woodland layer (trees, stone, fungi, ferns).
+// The cultivated yard (path / mailbox / bench / veg bed) lives in Yard.tsx.
+// ===========================================================================
 
-// ---------- decorative props for the wide-open left / right grass ----------
-
-// A chunky low-poly conifer: stacked cones on a stubby trunk.
-function Pine({
-  pos,
-  scale = 1,
-}: {
-  pos: [number, number, number];
-  scale?: number;
-}) {
+// A chunky low-poly conifer: stacked cones on a stubby trunk, 3 lit tiers.
+function Pine({ pos, scale = 1 }: { pos: [number, number, number]; scale?: number }) {
   return (
     <group position={pos} scale={scale}>
-      <mesh position={[0, 0.3, 0]}>
-        <cylinderGeometry args={[0.12, 0.17, 0.6, 6]} />
+      <mesh position={[0, 0.26, 0]}>
+        <cylinderGeometry args={[0.13, 0.18, 0.55, 6]} />
         {m(TRUNK)}
       </mesh>
-      <mesh position={[0, 0.82, 0]}>
-        <coneGeometry args={[0.6, 0.9, 7]} />
-        {m(PINE_DK)}
+      <mesh position={[0, 0.78, 0]}>
+        <coneGeometry args={[0.62, 0.95, 8]} />
+        {m(PINE_1)}
       </mesh>
-      <mesh position={[0, 1.32, 0]}>
-        <coneGeometry args={[0.46, 0.8, 7]} />
-        {m(PINE_LT)}
+      <mesh position={[0, 1.3, 0]}>
+        <coneGeometry args={[0.48, 0.82, 8]} />
+        {m(PINE_2)}
       </mesh>
       <mesh position={[0, 1.78, 0]}>
-        <coneGeometry args={[0.32, 0.7, 7]} />
-        {m(PINE_DK)}
+        <coneGeometry args={[0.33, 0.7, 8]} />
+        {m(PINE_3)}
       </mesh>
     </group>
   );
 }
 
-// A round, fluffy faceted broadleaf tree (the big one in the reference corner).
-function ShadeTree({
-  pos,
-  scale = 1,
-}: {
-  pos: [number, number, number];
-  scale?: number;
-}) {
+// A round, fluffy faceted broadleaf tree — the cozy "shade tree" in the corner.
+function ShadeTree({ pos, scale = 1 }: { pos: [number, number, number]; scale?: number }) {
   return (
     <group position={pos} scale={scale}>
-      <mesh position={[0, 0.55, 0]}>
-        <cylinderGeometry args={[0.2, 0.28, 1.1, 7]} />
+      <mesh position={[0, 0.6, 0]}>
+        <cylinderGeometry args={[0.2, 0.3, 1.2, 7]} />
         {m(TRUNK)}
       </mesh>
-      <mesh position={[0, 1.7, 0]}>
-        <icosahedronGeometry args={[1.1, 0]} />
-        {m("#73ab52")}
+      <mesh position={[0, 1.85, 0]}>
+        <icosahedronGeometry args={[1.15, 0]} />
+        {m(LEAF_A)}
       </mesh>
-      <mesh position={[0.5, 1.95, 0.2]}>
-        <icosahedronGeometry args={[0.66, 0]} />
-        {m("#82b860")}
+      <mesh position={[0.55, 2.05, 0.2]}>
+        <icosahedronGeometry args={[0.7, 0]} />
+        {m(LEAF_B)}
       </mesh>
-      <mesh position={[-0.45, 1.85, -0.15]}>
-        <icosahedronGeometry args={[0.58, 0]} />
-        {m("#6c9f4c")}
+      <mesh position={[-0.5, 1.95, -0.18]}>
+        <icosahedronGeometry args={[0.6, 0]} />
+        {m(LEAF_C)}
       </mesh>
-      <mesh position={[0.05, 2.45, -0.05]}>
-        <icosahedronGeometry args={[0.5, 0]} />
-        {m("#82b860")}
+      <mesh position={[0.05, 2.6, -0.05]}>
+        <icosahedronGeometry args={[0.55, 0]} />
+        {m(LEAF_B)}
       </mesh>
     </group>
   );
 }
 
-// A little huddle of faceted boulders.
-function Boulders({ pos }: { pos: [number, number, number] }) {
+// A huddle of mossy faceted boulders — grey stone capped with soft moss.
+function Boulders({ pos, scale = 1 }: { pos: [number, number, number]; scale?: number }) {
   return (
-    <group position={pos}>
-      <mesh position={[0, 0.3, 0]} scale={[1.35, 0.88, 1]}>
-        <icosahedronGeometry args={[0.52, 0]} />
+    <group position={pos} scale={scale}>
+      <mesh position={[0, 0.3, 0]} scale={[1.35, 0.9, 1]}>
+        <icosahedronGeometry args={[0.54, 0]} />
         {m(ROCK)}
       </mesh>
-      <mesh position={[0.55, 0.2, 0.25]}>
+      <mesh position={[0, 0.52, 0]} scale={[1.15, 0.5, 0.95]}>
+        <icosahedronGeometry args={[0.4, 0]} />
+        {m(MOSS)}
+      </mesh>
+      <mesh position={[0.56, 0.2, 0.26]}>
         <icosahedronGeometry args={[0.3, 0]} />
         {m(ROCK_DK)}
       </mesh>
-      <mesh position={[-0.36, 0.16, 0.32]}>
-        <icosahedronGeometry args={[0.23, 0]} />
-        {m("#cbc4b4")}
+      <mesh position={[-0.38, 0.17, 0.32]}>
+        <icosahedronGeometry args={[0.24, 0]} />
+        {m(ROCK_LT)}
+      </mesh>
+    </group>
+  );
+}
+
+// A single toadstool: domed cap + cream spots + a stubby stem.
+function Mushroom({
+  pos,
+  scale = 1,
+  cap = CAP_RED,
+}: {
+  pos: [number, number, number];
+  scale?: number;
+  cap?: string;
+}) {
+  return (
+    <group position={pos} scale={scale}>
+      <mesh position={[0, 0.09, 0]}>
+        <cylinderGeometry args={[0.06, 0.075, 0.18, 7]} />
+        {m(STEM)}
+      </mesh>
+      <mesh position={[0, 0.2, 0]} scale={[1, 0.72, 1]}>
+        <sphereGeometry args={[0.15, 10, 8, 0, PI * 2, 0, PI / 2]} />
+        {m(cap)}
+      </mesh>
+      {[0, 1, 2].map((i) => {
+        const a = (i / 3) * PI * 2 + 0.4;
+        return (
+          <mesh key={i} position={[Math.cos(a) * 0.08, 0.24, Math.sin(a) * 0.08]}>
+            <sphereGeometry args={[0.022, 6, 6]} />
+            {m(CAP_SPOT)}
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+// A little cluster of toadstools nestled in the grass.
+function MushroomCluster({ pos }: { pos: [number, number] }) {
+  return (
+    <group position={[pos[0], 0, pos[1]]}>
+      <Mushroom pos={[0, 0, 0]} scale={1} />
+      <Mushroom pos={[0.16, 0, 0.1]} scale={0.66} cap={CAP_BROWN} />
+      <Mushroom pos={[-0.13, 0, 0.12]} scale={0.5} cap={CAP_RED} />
+    </group>
+  );
+}
+
+// A low fern/shrub clump: a few angled leaf blades fanning out of the grass.
+function Fern({ pos, scale = 1 }: { pos: [number, number]; scale?: number }) {
+  return (
+    <group position={[pos[0], 0.02, pos[1]]} scale={scale}>
+      {[-0.5, -0.2, 0.1, 0.4].map((a, i) => (
+        <mesh
+          key={i}
+          position={[Math.sin(a) * 0.12, 0.16, Math.cos(a) * 0.04]}
+          rotation={[0.5, a * 1.4, a * 0.6]}
+        >
+          <coneGeometry args={[0.07, 0.4, 4]} />
+          {m(i % 2 ? GRASS_DK : MOSS)}
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// A round low bush — soft rounded foliage to fill the forest floor.
+function Bush({ pos, scale = 1 }: { pos: [number, number]; scale?: number }) {
+  return (
+    <group position={[pos[0], 0.1, pos[1]]} scale={scale}>
+      <mesh>
+        <icosahedronGeometry args={[0.34, 0]} />
+        {m(LEAF_C)}
+      </mesh>
+      <mesh position={[0.24, 0.12, 0.04]}>
+        <icosahedronGeometry args={[0.22, 0]} />
+        {m(LEAF_A)}
+      </mesh>
+      <mesh position={[-0.2, 0.08, 0.1]}>
+        <icosahedronGeometry args={[0.18, 0]} />
+        {m(LEAF_B)}
       </mesh>
     </group>
   );
@@ -225,13 +283,9 @@ function Tuft({ pos }: { pos: [number, number] }) {
   return (
     <group position={[pos[0], 0.06, pos[1]]}>
       {[-1, 0, 1].map((i) => (
-        <mesh
-          key={i}
-          position={[i * 0.06, 0.12, i * 0.04]}
-          rotation={[0, 0, i * 0.22]}
-        >
-          <coneGeometry args={[0.03, 0.26, 4]} />
-          {m(i % 2 ? "#9ec872" : "#86b35f")}
+        <mesh key={i} position={[i * 0.06, 0.12, i * 0.04]} rotation={[0, 0, i * 0.22]}>
+          <coneGeometry args={[0.03, 0.28, 4]} />
+          {m(i % 2 ? GRASS_LT : GRASS_DK)}
         </mesh>
       ))}
     </group>
@@ -244,21 +298,21 @@ function PebbleCluster({ pos }: { pos: [number, number] }) {
     [0, 0.16, 0.16],
     [0.18, 0.12, 0.1],
     [-0.14, 0.1, 0.12],
-    [0.05, 0.09, 0.08],
   ];
   return (
     <group position={[pos[0], 0.05, pos[1]]}>
       {stones.map(([x, z, r], i) => (
         <mesh key={i} position={[x, r * 0.5, z]} scale={[1.2, 0.65, 1]}>
           <icosahedronGeometry args={[r, 0]} />
-          {m(i % 2 ? "#cbc2af" : "#bbb19c")}
+          {m(i % 2 ? ROCK_LT : ROCK)}
         </mesh>
       ))}
     </group>
   );
 }
 
-// A single stemmed bloom — simpler than the yard daisies, for filling grass.
+// A single stemmed bloom — simple wildflowers dotting the meadow (kept lighter
+// than the cultivated yard daisies so the two read at different "detail tiers").
 function Bloom({ pos, color }: { pos: [number, number]; color: string }) {
   return (
     <group position={[pos[0], 0.06, pos[1]]}>
@@ -278,52 +332,124 @@ function Bloom({ pos, color }: { pos: [number, number]; color: string }) {
   );
 }
 
-// (The swept sandy-ribbon footpath was removed — the path now reads only as the
-// stepping-STONE slabs rendered in Yard.tsx.)
+// A small woodland pond — a soft faceted water disc with lily pads, a couple of
+// reedy cattails and a stone or two on its rim. The pet's nav clamp (r≈5) keeps
+// it from ever stepping in.
+function Pond({ pos }: { pos: [number, number] }) {
+  return (
+    <group position={[pos[0], 0, pos[1]]}>
+      {/* mossy bank ring */}
+      <mesh position={[0, 0.03, 0]} scale={[1.15, 1, 1.0]}>
+        <cylinderGeometry args={[1.0, 1.12, 0.12, 11]} />
+        {m(MOSS_DK)}
+      </mesh>
+      {/* water surface, just below the bank lip */}
+      <mesh position={[0, 0.07, 0]} scale={[1.12, 1, 0.97]}>
+        <cylinderGeometry args={[0.9, 0.9, 0.06, 11]} />
+        {m(WATER)}
+      </mesh>
+      <mesh position={[-0.18, 0.1, 0.12]} scale={[0.55, 1, 0.5]}>
+        <cylinderGeometry args={[0.42, 0.42, 0.04, 9]} />
+        {m(WATER_LT)}
+      </mesh>
+      {/* lily pads */}
+      {([[0.35, 0.2], [-0.3, -0.25], [0.1, -0.4]] as const).map(([x, z], i) => (
+        <mesh key={i} position={[x * 1.0, 0.11, z * 0.9]} scale={[1, 0.18, 1]}>
+          <icosahedronGeometry args={[0.16, 0]} />
+          {m(i % 2 ? LEAF_A : LEAF_C)}
+        </mesh>
+      ))}
+      {/* a little lily bloom */}
+      <mesh position={[0.35, 0.14, 0.18]}>
+        <sphereGeometry args={[0.05, 7, 6]} />
+        {m("#f4b8cd")}
+      </mesh>
+      {/* cattail reeds at the back edge */}
+      {([[-0.7, -0.5], [-0.55, -0.62]] as const).map(([x, z], i) => (
+        <group key={`r${i}`} position={[x, 0.1, z]}>
+          <mesh position={[0, 0.3, 0]}>
+            <cylinderGeometry args={[0.02, 0.02, 0.6, 5]} />
+            {m(GRASS_DK)}
+          </mesh>
+          <mesh position={[0, 0.58, 0]}>
+            <capsuleGeometry args={[0.04, 0.14, 4, 8]} />
+            {m(TRUNK_DK)}
+          </mesh>
+        </group>
+      ))}
+      {/* a rim stone */}
+      <mesh position={[0.85, 0.12, -0.5]} scale={[1.2, 0.7, 1]}>
+        <icosahedronGeometry args={[0.26, 0]} />
+        {m(ROCK)}
+      </mesh>
+    </group>
+  );
+}
 
 // ---------------------------------------------------------------------------
-// The island is a REAL, IRREGULAR faceted "earth tray": a jittered-polygon grass
-// top (not a circle) capping a chunky thick body that tapers to a soft bottom,
-// built from rings sharing the jittered profile (see ring/fan/band helpers).
-// Everything sits flat on top (no shader deform), and lumps + half-buried rocks
-// dapple the flanks so it reads as a hand-broken chunk of land.
+// Scatter / placement. Everything below stays off the house footprint
+// (x[-4.6,0.4], z[-4.6,-0.2]), the veg bed (≈x[-1.85,0.65], z[1.45,3.55]) and
+// the stepping-stone lane down the front-right.
 
-// Lumps half-buried in the flanks (azimuth, t down the flank 0..1, scale, tone).
+// soft sunlit patches very gently dappling the lawn — kept close to the base
+// green + LIGHTER-only (no dark moss blobs) so the meadow reads as one clean,
+// vibrant green like the reference instead of a mottled, busy surface.
+const GRASS_PATCHES: [number, number, number, string][] = [
+  [2.7, 1.9, 2.3, GRASS_SOFT],
+  [-3.3, 1.0, 2.0, GRASS_SOFT],
+  [1.2, 3.6, 1.8, GRASS_SOFT],
+  [0.5, -3.2, 2.0, GRASS_SOFT],
+];
+
+// grey rocks dotted on the lawn (x, z, radius)
+const ROCKS: [number, number, number][] = [
+  [-1.1, 4.1, 0.32], [3.9, 2.2, 0.3], [5.4, -0.6, 0.4],
+  [-5.4, 1.9, 0.36], [0.3, 5.9, 0.32], [-4.9, -0.9, 0.3],
+];
+
+// a sparse scatter of grass tufts near the rim — just enough to soften the edge
+// (quality over quantity: a clean lawn reads better than a carpet of spikes).
+const TUFTS: [number, number][] = [
+  [-3.5, 2.9], [4.0, 1.7], [-4.2, -0.7], [5.2, 1.9], [-2.3, 5.0],
+  [3.3, 4.6], [5.8, 0.6], [-5.0, -1.7], [1.6, -5.1],
+];
+
+const PEBBLES: [number, number][] = [
+  [2.8, -2.7], [-1.7, 4.8], [-5.1, 1.0],
+];
+
+// a modest wildflower scatter (x, z, color) — small cheerful daisy clumps near
+// the rim, refined and not a candy carpet
+const FLOWERS: [number, number, string][] = [
+  [-3.7, 2.3, "#f0a6bd"], [4.2, -1.0, "#fff6ee"], [-3.0, 3.2, "#f6d35e"],
+  [3.4, 2.8, "#e8607a"], [4.0, 1.1, "#bfa3df"], [4.4, 3.5, "#fff6ee"],
+  [5.7, -1.2, "#fff6ee"], [-0.4, 5.8, "#f0a6bd"], [-4.6, 2.9, "#f6d35e"],
+  [-2.4, 5.2, "#bfa3df"],
+];
+
+// Lumps + half-buried rocks dappling the island flank (azimuth, t, scale, tone).
 const SOIL_LUMPS: [number, number, number, string][] = [
   [0.5, 0.2, 0.9, SOIL_1],
-  [1.5, 0.45, 1.0, SOIL_2],
-  [2.6, 0.25, 0.8, SOIL_TOP],
-  [3.7, 0.5, 0.95, SOIL_2],
-  [4.7, 0.3, 0.85, SOIL_1],
-  [5.6, 0.5, 0.9, SOIL_2],
+  [1.6, 0.45, 1.0, SOIL_2],
+  [2.7, 0.25, 0.8, SOIL_TOP],
+  [3.8, 0.5, 0.95, SOIL_2],
+  [4.8, 0.3, 0.85, SOIL_1],
+  [5.7, 0.5, 0.9, SOIL_2],
 ];
-// a couple of grey rocks embedded in the upper soil
 const FLANK_ROCKS: [number, number, number][] = [
   [2.0, 0.18, 0.7],
   [5.0, 0.22, 0.6],
 ];
 
-// double-sided toon material for the hand-built island shells (winding-proof)
-const mi = (c: string) => (
-  <primitive object={toonMaterial(c, { side: THREE.DoubleSide })} attach="material" />
-);
-
 export default function Island() {
-  // the irregular tray: a grass-top fan + tapering soil bands over a soft base,
-  // all sharing the jittered rim profile.
+  // the rounded tray: a grass-top fan + tapering soil bands over a soft base.
   const island = useMemo(() => {
     const topC = new THREE.Vector3(0, 0.05, 0);
-    // a chunky, ANGULAR stack of soil bands — each band has its OWN per-vertex
-    // jitter (seeded per layer) so the courses jut in/out independently and read
-    // as offset, hand-stacked slabs rather than clean nested cones.
-    // Fuller, SOLID body (扎实): a slow, substantial taper with a deep base —
-    // the jitter is kept moderate per layer so the courses still stagger/offset
-    // but the whole pile reads as a chunky solid block, not thin spikes.
-    const r0 = ring(0.05, layerJitter(0, 0.93, 1.1)); // grass rim
-    const r1 = ring(-0.75, layerJitter(1, 0.9, 1.06)); // soil top (slight ledge)
-    const r2 = ring(-1.6, layerJitter(2, 0.84, 1.0)); // soil upper
-    const r3 = ring(-2.45, layerJitter(3, 0.72, 0.92)); // soil mid
-    const r4 = ring(-3.15, layerJitter(4, 0.54, 0.78)); // soil low (fuller base)
+    const r0 = ring(0.05, layerJitter(0, 0.95, 1.06)); // grass rim (tidy)
+    const r1 = ring(-0.75, layerJitter(1, 0.92, 1.03)); // soil top (slight ledge)
+    const r2 = ring(-1.6, layerJitter(2, 0.85, 0.98)); // soil upper
+    const r3 = ring(-2.45, layerJitter(3, 0.72, 0.9)); // soil mid
+    const r4 = ring(-3.15, layerJitter(4, 0.54, 0.76)); // soil low (fuller base)
     const baseC = new THREE.Vector3(0, -3.7, 0); // deep, solid planet bottom
     return {
       grass: fanGeometry(topC, r0),
@@ -340,11 +466,7 @@ export default function Island() {
         const y = -0.55 - t * 1.5;
         const r = LAWN_R * 0.9 - t * 3.0;
         return {
-          pos: [Math.cos(az) * r, y, Math.sin(az) * r] as [
-            number,
-            number,
-            number,
-          ],
+          pos: [Math.cos(az) * r, y, Math.sin(az) * r] as [number, number, number],
           sc,
           tone,
         };
@@ -357,11 +479,7 @@ export default function Island() {
         const y = -0.5 - t * 1.4;
         const r = LAWN_R * 0.92 - t * 2.8;
         return {
-          pos: [Math.cos(az) * r, y, Math.sin(az) * r] as [
-            number,
-            number,
-            number,
-          ],
+          pos: [Math.cos(az) * r, y, Math.sin(az) * r] as [number, number, number],
           sc,
         };
       }),
@@ -370,22 +488,22 @@ export default function Island() {
 
   return (
     <group>
-      {/* irregular faceted grass top (a jittered polygon, not a circle) */}
+      {/* rounded faceted grass top */}
       <mesh geometry={island.grass}>{mi(GRASS)}</mesh>
-      {/* soft color patches dappling the lawn so it isn't one flat green */}
+      {/* soft moss patches dappling the lawn so it isn't one flat green */}
       {GRASS_PATCHES.map(([x, z, r, c], i) => (
         <mesh key={`gp${i}`} position={[x, 0.06, z]} scale={[1, 0.022, 1]}>
           <icosahedronGeometry args={[r * 0.85, 1]} />
           {m(c)}
         </mesh>
       ))}
-      {/* grassy rim skirt + the chunky angular soil pile + faceted base */}
+      {/* grassy rim skirt + chunky soil pile + faceted base */}
       <mesh geometry={island.skirt}>{mi(GRASS_EDGE)}</mesh>
       <mesh geometry={island.soilA}>{mi(SOIL_TOP)}</mesh>
       <mesh geometry={island.soilB}>{mi(SOIL_1)}</mesh>
       <mesh geometry={island.soilC}>{mi(SOIL_2)}</mesh>
       <mesh geometry={island.base}>{mi(SOIL_3)}</mesh>
-      {/* lumps + rocks dappling the flank for a hand-sculpted, varied surface */}
+      {/* lumps + rocks dappling the flank for a hand-sculpted surface */}
       {lumps.map((l, i) => (
         <mesh key={`lp${i}`} position={l.pos} scale={[l.sc * 1.2, l.sc * 0.8, l.sc]}>
           <icosahedronGeometry args={[0.75, 0]} />
@@ -399,33 +517,15 @@ export default function Island() {
         </mesh>
       ))}
 
-      {/* (sandy footpath ribbons removed — only the stepping-STONE slabs in
-          Yard.tsx remain as the path) */}
-
       {/* grey rocks dotted on the lawn */}
       {ROCKS.map(([x, z, r], i) => (
         <mesh key={`r${i}`} position={[x, 0.06 + r * 0.4, z]} scale={[1, 0.78, 1]}>
           <icosahedronGeometry args={[r, 0]} />
-          {m(i % 2 ? ROCK : "#cbc4b4")}
+          {m(i % 2 ? ROCK : ROCK_LT)}
         </mesh>
       ))}
 
-      {/* clover tufts */}
-      {CLOVERS.map(([x, z], i) => (
-        <group key={`c${i}`} position={[x, 0.08, z]}>
-          {[0, 1, 2].map((j) => {
-            const a = (j / 3) * PI * 2;
-            return (
-              <mesh key={j} position={[Math.cos(a) * 0.07, 0, Math.sin(a) * 0.07]}>
-                <icosahedronGeometry args={[0.07, 0]} />
-                {m(j % 2 ? "#9ec872" : "#86b35f")}
-              </mesh>
-            );
-          })}
-        </group>
-      ))}
-
-      {/* grass tufts, pebbles, blooms — filling the wide-open grass */}
+      {/* grass tufts, pebbles, wildflowers — filling the open meadow */}
       {TUFTS.map((p, i) => (
         <Tuft key={`t${i}`} pos={p} />
       ))}
@@ -436,15 +536,39 @@ export default function Island() {
         <Bloom key={`f${i}`} pos={[x, z]} color={c} />
       ))}
 
-      {/* ---- feature props spread EVENLY around the rim of the big tray ---- */}
-      <ShadeTree pos={[5.3, 0, 1.9]} scale={1.05} />
-      <ShadeTree pos={[4.4, 0, -3.0]} scale={0.82} />
-      <Pine pos={[-5.4, 0, 1.7]} scale={1.0} />
-      <Pine pos={[-4.4, 0, 4.1]} scale={0.72} />
-      <Pine pos={[2.9, 0, 4.9]} scale={0.7} />
-      <Boulders pos={[-5.6, 0, -0.7]} />
-      <Boulders pos={[5.5, 0, -1.3]} />
-      <Boulders pos={[0.4, 0, 5.9]} />
+      {/* ===== the forest ===== a cozy ring of conifers + broadleaf trees set
+          back at the rim (away from the cutaway interior), with mushrooms,
+          ferns, bushes and a small pond nestled among them. */}
+      {/* hero broadleaf behind-right of the house (matches reference) */}
+      <ShadeTree pos={[5.2, 0, -2.5]} scale={1.18} />
+      <ShadeTree pos={[5.9, 0, 1.5]} scale={0.85} />
+      <ShadeTree pos={[-5.0, 0, -3.6]} scale={0.9} />
+      {/* conifer cluster along the left + back rim (behind the solid wall) */}
+      <Pine pos={[-5.9, 0, -1.2]} scale={1.12} />
+      <Pine pos={[-5.5, 0, 1.7]} scale={0.86} />
+      <Pine pos={[-4.9, 0, 3.6]} scale={0.7} />
+      <Pine pos={[1.8, 0, -5.4]} scale={0.82} />
+      {/* short conifers tucked at the front corners (don't block the view) */}
+      <Pine pos={[3.5, 0, 4.9]} scale={0.6} />
+      <Pine pos={[-3.4, 0, 4.8]} scale={0.58} />
+
+      {/* mossy boulders */}
+      <Boulders pos={[-5.7, 0, -2.9]} scale={1.05} />
+      <Boulders pos={[5.7, 0, -0.3]} scale={0.9} />
+      <Boulders pos={[0.4, 0, 5.7]} scale={0.85} />
+
+      {/* a couple of mushroom clusters + ferns + bushes nestled at the tree bases
+          near the rim (kept sparse — the open lawn stays clean) */}
+      <MushroomCluster pos={[-5.0, 2.7]} />
+      <MushroomCluster pos={[4.4, -1.6]} />
+      <Fern pos={[-5.4, -1.9]} scale={1.0} />
+      <Fern pos={[5.0, -1.4]} scale={0.95} />
+      <Bush pos={[-5.6, 0.4]} scale={1.0} />
+      <Bush pos={[5.4, 2.6]} scale={0.9} />
+      <Bush pos={[-2.8, -4.7]} scale={0.85} />
+
+      {/* a small woodland pond out in the front-left meadow */}
+      <Pond pos={[-3.9, 4.0]} />
     </group>
   );
 }

@@ -73,7 +73,7 @@ export default function ProfileScreen() {
           fold; the footer below stays pinned. */}
       <div className="no-scrollbar relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-4">
         <div className="relative -mx-5 h-[180px] shrink-0">
-          <SceneCanvas controls="spin">
+          <SceneCanvas controls="spin" postfx postfxTilt={false}>
             <group position={[0, -0.58, 0]} scale={0.84}>
               <Pedestal />
               <CharacterModel

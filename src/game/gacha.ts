@@ -63,6 +63,18 @@ export function isRare(r: Rarity): boolean {
   return r === "SR";
 }
 
+/**
+ * Normalize any stored rarity onto the current 3-tier set (legacy 传说 SSR → SR,
+ * unknown / missing → N). Mirrors the server-side coerce in store.ts, but lives
+ * here so the client can scrub persisted localStorage saves (which bypass the
+ * server projection) before the UI ever indexes a missing RARITY_META entry.
+ */
+export function coerceRarity(r: string | null | undefined): Rarity {
+  if (r === "R" || r === "SR") return r;
+  if (r === "SSR") return "SR";
+  return "N";
+}
+
 /** A stable id for the (destination × rarity) 图鉴 slot. */
 export function cardId(theme: DestinationTheme, rarity: Rarity): string {
   return `${theme}:${rarity}`;

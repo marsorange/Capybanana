@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { companionStats } from "@/game/companionLevel";
+import { pick } from "@/game/util";
 import { useGameStore } from "@/state/gameStore";
 import HomeModel from "../scenes3d/home/HomeModel";
 import HomeFloor from "../scenes3d/home/HomeFloor";
@@ -26,6 +27,28 @@ const READY_LINES = [
   "也许去远方，也许就在岛上晒太阳。",
   "你留的那句话，我悄悄藏进包里了。",
 ];
+// Wistful, ambient lines for the quiet house while the pet is away — owner's-POV
+// 牵挂, never revealing where it went or when it returns (the trip length is
+// random + secret). One is shown per home visit; "它会带什么回来呢" gently primes
+// the postcard/souvenir payoff.
+const AWAY_LINES = [
+  "不知道它现在，正看着什么呢。",
+  "门口的灯，给它留着。",
+  "它常坐的地方，还空着。",
+  "风从窗缝钻进来，带着点远方的味道。",
+  "院子里静悄悄的，就少了它。",
+  "它会带什么回来呢？",
+];
+
+// Fuzzy elapsed-since-departure. On purpose it only says how LONG it's been gone,
+// never when it returns — the trip length is random and hidden, and the not-knowing
+// is the point. The "累积感" (出门第 N 天了) is what builds the 牵挂.
+function awayElapsed(startedAt: number, now: number): string {
+  const h = Math.floor((now - startedAt) / 3_600_000);
+  if (h < 1) return "刚出门没多久";
+  if (h < 24) return `出门 ${h} 小时了`;
+  return `出门第 ${Math.floor(h / 24) + 1} 天了`;
+}
 
 function LeafGlyph({ className = "" }: { className?: string }) {
   return (
@@ -148,9 +171,52 @@ function NoticeToast({
   );
 }
 
+/** The "while away" home overlay. Replaces the empty house's lonely silence with
+    a warm paper note: how long it's been gone (never when it returns) + a soft,
+    rotating 思念 line that differs each visit, so coming back to an empty home
+    feels like missing someone rather than a blank screen. Pure 2D — the 3D scene
+    just goes quiet (the pet is gone from it). */
+function AwayNote({ name, startedAt }: { name: string; startedAt?: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    // slow tick — elapsed only changes on the hour, no need for a fast timer
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  // one 思念 line per visit (this re-mounts whenever the owner returns to home)
+  const line = useMemo(() => pick(AWAY_LINES), []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.42, ease: "easeOut" }}
+      className="pointer-events-none absolute inset-x-0 top-[84px] z-20 flex justify-center px-6"
+    >
+      <div className="sketch tex-grain w-full max-w-[300px] rounded-[24px] border-2 border-[#e2c596] bg-paper/95 px-4 py-3.5 text-center shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_5px_0_rgba(143,101,54,0.16),0_16px_28px_-18px_rgba(58,46,42,0.48)]">
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-lg">🎒</span>
+          <p className="font-hand text-[16px] font-bold leading-none text-ink">
+            {name} 还在外面
+          </p>
+        </div>
+        {startedAt != null && (
+          <p className="mt-1.5 font-hand text-[12px] text-ink-soft">
+            {awayElapsed(startedAt, now)}
+          </p>
+        )}
+        <p className="mt-2.5 font-hand text-[13px] leading-snug text-ink-soft/85">
+          {line}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function HomeScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const companionState = useGameStore((s) => s.companionState);
+  const activeTrip = useGameStore((s) => s.activeTrip);
   const packedBag = useGameStore((s) => s.packedBag);
   const postcards = useGameStore((s) => s.postcards);
   const companionDays = useGameStore((s) => s.companionDays);
@@ -202,6 +268,10 @@ export default function HomeScreen() {
           // SkyWeather). Drop this one prop to fall back to the zero-risk,
           // ContactShadows-only sunny look if a phone shows context loss.
           sun
+          // mobile-tuned post-processing (AO + filmic grade + bloom + SMAA) — the
+          // "Abeto" polish. Half-res AO + dpr 1; auto-sheds on the first context
+          // loss before the spiral-breaker ever trips, so it's safe on phones.
+          postfx
           dpr={[1, 1]}
           cameraPosition={[6, 7, 12]}
           target={[-0.6, 0.7, -0.8]}
@@ -276,19 +346,7 @@ export default function HomeScreen() {
         </motion.div>
       </div>
 
-      {away && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.34, ease: "easeOut" }}
-          className="pointer-events-none absolute inset-x-0 top-[88px] z-20 flex justify-center px-6"
-        >
-          <div className="sketch flex items-center gap-2 rounded-full border-2 border-[#e2c596] bg-paper/95 px-4 py-2 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.16)]">
-            <span className="text-lg">🎒</span>
-            <p className="font-hand text-[13px] text-ink">它背着包裹出门啦，回来再看。</p>
-          </div>
-        </motion.div>
-      )}
+      {away && <AwayNote name={companion.name} startedAt={activeTrip?.startedAt} />}
 
       <AnimatePresence>
         {notice && (

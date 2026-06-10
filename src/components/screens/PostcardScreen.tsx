@@ -7,7 +7,7 @@ import { getDestination } from "@/game/destinations";
 import type { Postcard } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
 import PostcardArt from "../ui/PostcardArt";
-import { isRareRarity, RARITY_META, RarityBadge } from "../ui/rarity";
+import { isRareRarity, rarityMeta, RarityBadge } from "../ui/rarity";
 import { PrimaryButton, ScreenHeader, SecondaryButton } from "../ui/kit";
 
 function fmtDate(iso: string): string {
@@ -25,7 +25,7 @@ function Front({ card }: { card: Postcard }) {
     <div className={CARD}>
       <div
         className="relative h-[66%] overflow-hidden rounded-[18px] border-2"
-        style={{ borderColor: RARITY_META[card.rarity].ring }}
+        style={{ borderColor: rarityMeta(card.rarity).ring }}
       >
         <PostcardArt theme={card.destinationTheme} rounded={false} />
         <div className="ui-wood-surface absolute left-3 top-3 rotate-[-8deg] rounded-full px-2 py-0.5 text-[10px] text-ink/70">
@@ -123,7 +123,7 @@ export default function PostcardScreen() {
         <div className="px-5 pt-5 text-center">
           <div className="ui-wood-surface mx-auto w-fit max-w-full rounded-[28px] px-5 py-2.5">
           <h1 className="font-hand text-2xl text-ink">
-            {rare ? `${RARITY_META[card.rarity].badge} ${RARITY_META[card.rarity].label}明信片！` : "我给你寄信啦"}
+            {rare ? `${rarityMeta(card.rarity).badge} ${rarityMeta(card.rarity).label}明信片！` : "我给你寄信啦"}
           </h1>
           <p className="mt-0.5 text-sm text-ink-soft">
             {rare ? "这张，我等了好久才遇上。" : "把远方的一小段，寄给你。"}
@@ -146,7 +146,7 @@ export default function PostcardScreen() {
               aria-hidden
               className="pointer-events-none absolute -inset-5 rounded-[44px]"
               style={{
-                background: `radial-gradient(circle at 50% 45%, ${RARITY_META[card.rarity].glow} 0%, transparent 68%)`,
+                background: `radial-gradient(circle at 50% 45%, ${rarityMeta(card.rarity).glow} 0%, transparent 68%)`,
               }}
               initial={{ opacity: 0.5, scale: 0.96 }}
               animate={

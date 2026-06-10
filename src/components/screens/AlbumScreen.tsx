@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useGameStore } from "@/state/gameStore";
 import { cn } from "../ui/cn";
 import PostcardArt from "../ui/PostcardArt";
-import { RARITY_META } from "../ui/rarity";
+import { rarityMeta } from "../ui/rarity";
 import { Panel, PrimaryButton, ScreenHeader, TabBar } from "../ui/kit";
 
 type Tab = "cards" | "battles";
@@ -70,7 +70,7 @@ export default function AlbumScreen() {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {postcards.map((pc) => {
-                  const meta = RARITY_META[pc.rarity];
+                  const meta = rarityMeta(pc.rarity);
                   return (
                     <button
                       key={pc.id}

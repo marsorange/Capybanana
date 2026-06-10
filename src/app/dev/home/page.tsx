@@ -26,6 +26,7 @@ export default function DevHome() {
         minPolar={0.7}
         maxPolar={1.3}
         bendStrength={0}
+        postfx
       >
         <HomeModel mode="home" />
         <HomeFloor />

@@ -2,40 +2,15 @@ import * as THREE from "three";
 
 export const INK = "#3a2e2a";
 
-// Shared 4-step ramp that gives MeshToonMaterial its crisp cel shading. The
-// darkest band is lifted off pure black (FLOOR) so back-lit facets and the
-// shadowed ground stay readable + keep their color/质感 instead of crushing to
-// a murky blob — a sunny cartoon look is high-key, not high-contrast.
-let gradient: THREE.DataTexture | null = null;
-
-export function getToonGradient(): THREE.DataTexture {
-  if (!gradient) {
-    const steps = 4;
-    const FLOOR = 92; // 0..255; the brightness floor of the darkest cel band
-    const data = new Uint8Array(steps);
-    for (let i = 0; i < steps; i++) {
-      data[i] = Math.round(FLOOR + (i / (steps - 1)) * (255 - FLOOR));
-    }
-    const tex = new THREE.DataTexture(data, steps, 1, THREE.RedFormat);
-    tex.minFilter = THREE.NearestFilter;
-    tex.magFilter = THREE.NearestFilter;
-    tex.generateMipmaps = false;
-    tex.needsUpdate = true;
-    gradient = tex;
-  }
-  return gradient;
-}
-
 // ---------------------------------------------------------------------------
-// "Tiny-planet" bend — one shared uniform object referenced by EVERY toon
-// material, so a single update curls the whole scene (Abeto's world-bending
-// trick, scoped to taste). strength 0 = perfectly flat (portrait turntables);
-// the home scene dials in a subtle curl. The vertex shader pulls each vertex's
-// world Y down by the squared horizontal distance from `center`, so geometry
-// near the island middle (where the pet actually walks) barely moves while the
-// edges droop into a little planet. This is a VISUAL-only displacement; the pet
-// walks on the flat un-bent middle (its world position is plain Three.js math),
-// so the look and the navigation never disagree where it matters.
+// "Tiny-planet" bend — one shared uniform object referenced by EVERY material,
+// so a single update curls the whole scene (Abeto's world-bending trick, scoped
+// to taste). strength 0 = perfectly flat (portrait turntables); the home scene
+// dials in a subtle curl. The vertex shader pulls each vertex's world Y down by
+// the squared horizontal distance from `center`, so geometry near the island
+// middle (where the pet walks) barely moves while the edges droop into a little
+// planet. VISUAL-only displacement; the pet walks on the flat un-bent middle
+// (plain Three.js math), so the look and the navigation never disagree.
 export const sceneBend = {
   strength: { value: 0 },
   center: { value: new THREE.Vector3(0, 0, 0) },
@@ -43,15 +18,25 @@ export const sceneBend = {
 };
 
 // ---------------------------------------------------------------------------
-// Cached toon material factory. Crisp cel ramp + flat shading for the chunky
-// low-poly look + a soft Fresnel rim that lifts silhouettes off the background
-// (the "toy" pop) + the shared planet bend. Constructed in TS — NOT as a
-// <meshToonMaterial> JSX element — on purpose: R3F's generated props for
-// meshToonMaterial choke on `flatShading`, and minting one material per mesh
-// would throw away program/material sharing. Reach for this via
-// `<primitive object={toonMaterial(color)} attach="material" />` so N
-// same-colored meshes share ONE compiled material (cheap to build, leaves GPU
-// headroom for the physics step).
+// SOFT "Abeto" material factory (was a hard 4-band cel toon — see git history).
+//
+// The cozy, premium-feeling low-poly look does NOT come from cel banding; it
+// comes from SOFT, matte, environment-lit shading + ambient occlusion (added in
+// PostFX) + a warm grade. So this mints a matte `MeshStandardMaterial`:
+//   • roughness ≈ 0.92, metalness 0  → soft clay/felt diffuse falloff (no specular
+//     glints), so a single directional + hemi/IBL reads as gentle gradient light
+//     instead of a flat poster.
+//   • flatShading kept (the chunky LEGO-block facets are the project's identity);
+//     the SOFTNESS comes from the lighting model, not from smooth normals — which
+//     the low geometry can't carry anyway.
+//   • a soft Fresnel rim toward white lifts silhouettes off the cream background
+//     (the gentle "toy" pop), and the shared planet-bend curls the world.
+//
+// Built in TS (not as a JSX <meshStandardMaterial>) on purpose: R3F's generated
+// props choke on `flatShading`, and minting one material per mesh would throw away
+// program/material sharing. Reach for it via
+// `<primitive object={toonMaterial(color)} attach="material" />` so N same-colored
+// meshes share ONE compiled material.
 interface ToonOpts {
   emissive?: string;
   emissiveIntensity?: number;
@@ -64,35 +49,47 @@ interface ToonOpts {
   // Render side. Default FrontSide; the domed grass disc uses DoubleSide so its
   // hand-built ring geometry shows regardless of triangle winding.
   side?: THREE.Side;
+  // Surface roughness. Default 0.92 (matte clay). Lower → a touch of sheen.
+  roughness?: number;
+  // Flat facets (default true). Pass false for organic forms you'd rather have
+  // smoothly shaded.
+  flat?: boolean;
 }
 
-const toonCache = new Map<string, THREE.MeshToonMaterial>();
+const toonCache = new Map<string, THREE.MeshStandardMaterial>();
 
-export function toonMaterial(hex: string, opts: ToonOpts = {}): THREE.MeshToonMaterial {
-  const rim = opts.rim ?? 0.45;
+export function toonMaterial(hex: string, opts: ToonOpts = {}): THREE.MeshStandardMaterial {
+  const rim = opts.rim ?? 0.4;
   const bend = opts.bend ?? true;
   const side = opts.side ?? THREE.FrontSide;
-  const key = `${hex}|${opts.emissive ?? ""}|${opts.emissiveIntensity ?? 0}|${rim}|${bend}|${side}`;
+  const rough = opts.roughness ?? 0.92;
+  const flat = opts.flat ?? true;
+  const key = `${hex}|${opts.emissive ?? ""}|${opts.emissiveIntensity ?? 0}|${rim}|${bend}|${side}|${rough}|${flat}`;
   let mat = toonCache.get(key);
   if (!mat) {
-    mat = new THREE.MeshToonMaterial({ color: hex, gradientMap: getToonGradient(), side });
-    // three's TS types omit `flatShading` on MeshToonMaterial even though the
-    // renderer honors it; a narrow cast keeps the chunky faceted low-poly look.
-    (mat as unknown as { flatShading: boolean }).flatShading = true;
+    mat = new THREE.MeshStandardMaterial({
+      color: hex,
+      roughness: rough,
+      metalness: 0,
+      side,
+    });
+    // three's TS types omit `flatShading` on the material constructor options even
+    // though the renderer honors it; a narrow cast keeps the chunky faceted look.
+    (mat as unknown as { flatShading: boolean }).flatShading = flat;
     if (opts.emissive) {
       mat.emissive = new THREE.Color(opts.emissive);
       mat.emissiveIntensity = opts.emissiveIntensity ?? 1;
     }
-    applyToonShaderPatch(mat, rim, bend);
+    applySoftShaderPatch(mat, rim, bend);
     toonCache.set(key, mat);
   }
   return mat;
 }
 
-// The shared cel rim + planet-bend injection. Applied to EVERY toon material
+// The shared Fresnel rim + planet-bend injection. Applied to EVERY material
 // (procedural meshes and converted GLB materials alike) so the edge glow and the
 // home bend read consistently across the whole scene.
-function applyToonShaderPatch(mat: THREE.MeshToonMaterial, rim: number, bend = true) {
+function applySoftShaderPatch(mat: THREE.MeshStandardMaterial, rim: number, bend = true) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uRim = { value: rim };
 
@@ -131,22 +128,24 @@ function applyToonShaderPatch(mat: THREE.MeshToonMaterial, rim: number, bend = t
         "#include <dithering_fragment>",
         `#include <dithering_fragment>
          float rimFres = pow( 1.0 - clamp( dot( normalize( normal ), normalize( vViewPosition ) ), 0.0, 1.0 ), 3.0 );
-         gl_FragColor.rgb += rimFres * uRim * 0.32;`,
+         gl_FragColor.rgb += rimFres * uRim * 0.3;`,
       );
   };
 }
 
-// Convert a GLTF-authored standard material into our toon look while KEEPING its
+// Convert a GLTF-authored standard material into our soft look while KEEPING its
 // authored baseColor / map / emissive. This is the key to a rigged multi-material
-// model staying multi-colored instead of being flattened to a single tint.
+// model staying multi-colored instead of being flattened to a single tint. (The
+// GLB pipeline is currently disabled; kept compatible for when it returns.)
 export function toonFromStandard(
   src: THREE.MeshStandardMaterial,
   opts: { rim?: number; flat?: boolean } = {},
-): THREE.MeshToonMaterial {
-  const mat = new THREE.MeshToonMaterial({
+): THREE.MeshStandardMaterial {
+  const mat = new THREE.MeshStandardMaterial({
     color: src.color,
     map: src.map ?? null,
-    gradientMap: getToonGradient(),
+    roughness: src.roughness ?? 0.92,
+    metalness: 0,
     transparent: src.transparent,
     opacity: src.opacity,
     alphaTest: src.alphaTest,
@@ -158,11 +157,9 @@ export function toonFromStandard(
     mat.emissiveMap = src.emissiveMap ?? null;
     mat.emissiveIntensity = src.emissiveIntensity;
   }
-  // Flat shading by default keeps the chunky low-poly facets reading as cel.
-  if (opts.flat ?? true) {
-    (mat as unknown as { flatShading: boolean }).flatShading = true;
-  }
-  applyToonShaderPatch(mat, opts.rim ?? 0.45);
+  // Flat shading by default keeps the chunky low-poly facets reading cleanly.
+  (mat as unknown as { flatShading: boolean }).flatShading = opts.flat ?? true;
+  applySoftShaderPatch(mat, opts.rim ?? 0.4);
   return mat;
 }
 

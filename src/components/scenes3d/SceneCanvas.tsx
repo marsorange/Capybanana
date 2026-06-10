@@ -1,11 +1,12 @@
 "use client";
 
-import { ContactShadows, OrbitControls } from "@react-three/drei";
+import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ReactNode } from "react";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { sceneBend } from "./materials";
+import PostFX from "./PostFX";
 import SkyWeather, { type Weather } from "./SkyWeather";
 import { zoomBus } from "./zoomBus";
 
@@ -37,7 +38,27 @@ interface SceneCanvasProps {
   // dpr², so heavy scenes (the home diorama) pass [1, 1] to halve framebuffer
   // pressure on retina phones — a key lever against WebGL context loss.
   dpr?: number | [number, number];
+  // Opt into the mobile-tuned post-processing pass (AO + filmic grade + bloom +
+  // SMAA) — the "Abeto" polish layer. Auto-degrades to the plain pipeline on the
+  // first WebGL context loss.
+  postfx?: boolean;
+  // Include the tilt-shift "miniature" blur (default true, for the diorama).
+  // Portrait turntables (a single centered model) pass false: AO + grade only.
+  postfxTilt?: boolean;
   className?: string;
+}
+
+// Keeps the renderer's tone-mapping in sync with whether the post-fx pass is live:
+// when PostFX is on, the <ToneMapping> effect owns the ACES grade so the renderer
+// must NOT also tone-map (double-darkening); when it's off (or has degraded after a
+// context loss), the renderer does ACES itself so colors stay correct.
+function ToneMapSync({ active }: { active: boolean }) {
+  const gl = useThree((s) => s.gl);
+  useEffect(() => {
+    gl.toneMapping = active ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = 1;
+  }, [gl, active]);
+  return null;
 }
 
 // Drives the module-level bend uniforms from props and, crucially, resets the
@@ -65,6 +86,30 @@ function BendApplier({
 
 // Stable default so SceneCanvas re-renders don't churn the BendApplier effect.
 const FLAT_CENTER: [number, number, number] = [0, 0, 0];
+
+// Soft procedural IBL — the diffuse half of the "Abeto" soft look. Built from a
+// few Lightformer panels (NOT a fetched HDRI), so it's offline/headless/mobile
+// safe and costs one tiny 64px cubemap baked ONCE (frames=1). The matte
+// MeshStandardMaterials pick this up as gentle, directional ambient — the thing a
+// flat ambientLight can't give. Background stays untouched (transparent over the
+// cream page). Warm key front-right + cool sky fill + warm ground bounce + a
+// camera-front fill so faces toward the viewer never go flat-dark.
+function SoftEnv() {
+  return (
+    <Environment resolution={64} frames={1}>
+      <Lightformer intensity={1.5} color="#fff3df" position={[6, 7, 7]} scale={[12, 12, 1]} />
+      <Lightformer intensity={0.7} color="#cdddf2" position={[-7, 6, -5]} scale={[12, 12, 1]} />
+      <Lightformer
+        intensity={0.5}
+        color="#efe3cc"
+        position={[0, -6, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+        scale={[16, 16, 1]}
+      />
+      <Lightformer intensity={0.55} color="#fef7ec" position={[0, 2, 9]} scale={[14, 10, 1]} />
+    </Environment>
+  );
+}
 
 function ZoomApplier({ min, max }: { min: number; max: number }) {
   // Read the camera from the per-frame state (not a hook return) so applying the
@@ -173,6 +218,8 @@ export default function SceneCanvas({
   bendCenter = FLAT_CENTER,
   bendFalloff = 0.05,
   dpr = [1, 1.25],
+  postfx = false,
+  postfxTilt = true,
   className,
 }: SceneCanvasProps) {
   // Context-loss spiral breaker: count recover-attempted losses; once they pile
@@ -181,8 +228,20 @@ export default function SceneCanvas({
   const [instanceKey, setInstanceKey] = useState(0);
   const [dead, setDead] = useState(false);
   const lossTimes = useRef<number[]>([]);
+  // Post-fx runs as a live toggle so we can shed it on GPU trouble. The ref lets
+  // the (stable) loss handler read the current value without a stale closure.
+  const [postfxOn, setPostfxOn] = useState(postfx);
+  const postfxRef = useRef(postfx);
 
   const handleContextLoss = useCallback(() => {
+    // Graceful degrade FIRST: if the heavy post-fx pass is live, drop it and give
+    // the lighter pipeline a chance — don't count this loss toward the fatal
+    // limit. Only losses on the already-lean pipeline escalate to the reload card.
+    if (postfxRef.current) {
+      postfxRef.current = false;
+      setPostfxOn(false);
+      return;
+    }
     const now = typeof performance !== "undefined" ? performance.now() : 0;
     lossTimes.current = lossTimes.current.filter((t) => now - t < LOSS_WINDOW_MS);
     lossTimes.current.push(now);
@@ -232,6 +291,11 @@ export default function SceneCanvas({
       style={{ touchAction: "none" }}
     >
       <WebGLContextGuard onLoss={handleContextLoss} />
+      {/* only manage tone-mapping for scenes that opted into post-fx; the portrait
+          turntables keep R3F's default renderer tone-mapping untouched */}
+      {postfx && <ToneMapSync active={postfxOn} />}
+      {/* soft IBL for the matte materials (the diffuse half of the soft look) */}
+      <SoftEnv />
       <BendApplier strength={bendStrength} center={bendCenter} falloff={bendFalloff} />
       {sun && <ShadowEnabler />}
       {sky ? (
@@ -282,6 +346,10 @@ export default function SceneCanvas({
       )}
 
       <Suspense fallback={null}>{children}</Suspense>
+
+      {/* mobile-tuned post-processing (AO + filmic grade + bloom + SMAA). Mounted
+          last so it wraps the rendered scene; auto-shed on the first context loss. */}
+      {postfxOn && <PostFX tiltShift={postfxTilt} />}
 
       {orthographic && <ZoomApplier min={minZoom} max={maxZoom} />}
 

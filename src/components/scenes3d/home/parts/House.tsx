@@ -64,13 +64,15 @@ const CREAM = "#fff6e6";
 const PINK = "#f1a6bd";
 
 // The cottage opts OUT of the shared planet bend so its rigid structure stands
-// straight while the island ground domes around it.
+// straight while the island ground domes around it. Low rim too: flat-shaded
+// boxy walls catch the Fresnel rim across whole faces at grazing angles, which
+// reads as a thick white border around the house instead of a subtle edge glow.
 const m = (c: string) => (
-  <primitive object={toonMaterial(c, { bend: false })} attach="material" />
+  <primitive object={toonMaterial(c, { bend: false, rim: 0.1 })} attach="material" />
 );
 const glow = (c: string, e: string, i = 0.85) => (
   <primitive
-    object={toonMaterial(c, { emissive: e, emissiveIntensity: i, bend: false })}
+    object={toonMaterial(c, { emissive: e, emissiveIntensity: i, bend: false, rim: 0.1 })}
     attach="material"
   />
 );

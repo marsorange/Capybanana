@@ -46,7 +46,7 @@ export default function CharacterPreviewPage() {
   return (
     <div className="flex h-dvh w-full flex-col bg-cream text-ink">
       <div className="relative flex-1 overflow-hidden bg-gradient-to-b from-cream-soft to-cream-deep">
-        <SceneCanvas controls={spin ? "spin" : "orbit"} enableZoom>
+        <SceneCanvas controls={spin ? "spin" : "orbit"} enableZoom postfx postfxTilt={false}>
           <Pedestal />
           <CharacterModel
             key={seed}
