@@ -18,6 +18,8 @@ interface Props {
   label: string;
   color?: string;
   onClick?: () => void;
+  /** greyed-out + inert (e.g. while the pet is away travelling) */
+  disabled?: boolean;
   /** lift the label higher (e.g. tall props like the tree) */
   labelY?: number;
   labelX?: number;
@@ -30,33 +32,45 @@ export default function InteractionMarker({
   label,
   color = "#e8b85c",
   onClick,
+  disabled = false,
   labelY = 0.95,
   labelX = 0,
 }: Props) {
   const ring = useRef<THREE.Mesh>(null);
   useFrame((s) => {
-    const k = (Math.sin(s.clock.elapsedTime * 2) + 1) / 2;
-    if (ring.current) {
-      const sc = 0.82 + k * 0.5;
-      ring.current.scale.set(sc, sc, sc);
-      (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.5 - k * 0.34;
+    if (!ring.current) return;
+    if (disabled) {
+      ring.current.scale.set(1, 1, 1);
+      (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.14;
+      return;
     }
+    const k = (Math.sin(s.clock.elapsedTime * 2) + 1) / 2;
+    const sc = 0.82 + k * 0.5;
+    ring.current.scale.set(sc, sc, sc);
+    (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.5 - k * 0.34;
   });
   return (
     <group position={pos}>
       <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]}>
         <ringGeometry args={[0.3, 0.42, 28]} />
         <meshBasicMaterial
-          color={color}
+          color={disabled ? "#9b9588" : color}
           transparent
           opacity={0.46}
           depthWrite={false}
         />
       </mesh>
-      <Html position={[labelX, labelY, 0]} center zIndexRange={[25, 0]}>
+      {/* z-index stays below the HUD (z-10) and floating notes (z-20) so scene
+          pills never cover screen chrome */}
+      <Html position={[labelX, labelY, 0]} center zIndexRange={[9, 0]}>
         <button
-          onClick={onClick}
-          className="ui-action-pill pointer-events-auto relative h-[40px] whitespace-nowrap rounded-full py-0 pl-[46px] pr-3.5 font-hand text-[13px] font-bold leading-[40px] text-[#6b4f2e] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+          onClick={disabled ? undefined : onClick}
+          disabled={disabled}
+          className={`ui-action-pill pointer-events-auto relative h-[40px] whitespace-nowrap rounded-full py-0 pl-[46px] pr-3.5 font-hand text-[13px] font-bold leading-[40px] text-[#6b4f2e] ${
+            disabled
+              ? "opacity-55 grayscale"
+              : "transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+          }`}
         >
           <span className="ui-action-badge absolute left-[-5px] top-1/2 grid h-[49px] w-[49px] -translate-y-1/2 place-items-center rounded-full">
             <Icon

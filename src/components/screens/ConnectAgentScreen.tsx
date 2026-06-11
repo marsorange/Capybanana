@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useGameStore } from "@/state/gameStore";
 import { Panel, PrimaryButton, ScreenHeader, SecondaryButton } from "../ui/kit";
@@ -62,6 +62,15 @@ export default function ConnectAgentScreen() {
     else goTo("home");
   };
 
+  // The gate flips to "ready" live (GameRoot polls every 5s until the Agent
+  // registers a pet). Hold the name reveal for a beat, then walk the owner
+  // onto the island without a tap — the button stays for the impatient.
+  useEffect(() => {
+    if (mode !== "ready") return;
+    const id = setTimeout(() => completeOnboarding(), 3200);
+    return () => clearTimeout(id);
+  }, [mode, completeOnboarding]);
+
   const copy = async () => {
     if (!snippet) return;
     try {
@@ -81,7 +90,8 @@ export default function ConnectAgentScreen() {
 
   const header =
     mode === "gate"
-      ? { eyebrow: "岛上有谁醒了", title: "把我交给你的 Agent" }
+      ? // short enough to never truncate on a 320px-wide screen
+        { eyebrow: "岛上有谁醒了", title: "把我交给 Agent" }
       : mode === "ready"
         ? { eyebrow: "我探出了头", title: `我叫${companion!.name}啦` }
         : { eyebrow: "小岛口令", title: "接入 Agent" };
@@ -178,18 +188,23 @@ export default function ConnectAgentScreen() {
                   <p className="text-[12px] leading-snug text-ink">
                     重新生成后，<b>现在照看我的 Agent 会立刻失效</b>，要把新口令发给接手的 Agent 才行。确定吗？
                   </p>
+                  {/* flex-basis (not width overrides) sizes this pair: the kit
+                      buttons are w-full and cn() has no tailwind-merge, so a
+                      w-auto className can lose the CSS-order fight — flex-1 on
+                      a flex child makes the width moot instead. nowrap keeps
+                      the labels on one line at 320px. */}
                   <div className="mt-2.5 flex gap-2">
                     <button
                       onClick={regenerate}
                       disabled={cloudBusy}
-                      className="sketch flex-1 rounded-[16px] border-2 border-[#b8504a] bg-gradient-to-b from-[#f28c70] to-[#df614f] px-4 py-2.5 font-hand text-[14px] font-bold text-cream-soft shadow-[inset_0_1.5px_0_rgba(255,255,255,0.34),0_4px_0_rgba(150,70,58,0.42)] transition active:translate-y-0.5 active:shadow-[inset_0_1.5px_0_rgba(255,255,255,0.34),0_1px_0_rgba(150,70,58,0.42)] disabled:opacity-45"
+                      className="sketch flex-[1.5] whitespace-nowrap rounded-[16px] border-2 border-[#b8504a] bg-gradient-to-b from-[#f28c70] to-[#df614f] px-3 py-2.5 font-hand text-[14px] font-bold text-cream-soft shadow-[inset_0_1.5px_0_rgba(255,255,255,0.34),0_4px_0_rgba(150,70,58,0.42)] transition active:translate-y-0.5 active:shadow-[inset_0_1.5px_0_rgba(255,255,255,0.34),0_1px_0_rgba(150,70,58,0.42)] disabled:opacity-45"
                     >
                       {cloudBusy ? "生成中…" : "确定，换一个"}
                     </button>
                     <SecondaryButton
                       onClick={() => setConfirmingReset(false)}
                       size="sm"
-                      className="w-auto px-4"
+                      className="flex-1 whitespace-nowrap px-3"
                     >
                       再想想
                     </SecondaryButton>
@@ -228,7 +243,7 @@ export default function ConnectAgentScreen() {
         )}
         {mode === "ready" && (
           <p className="mt-2 text-center text-[11px] text-ink-soft/70">
-            以后想换 Agent 或再发口令，从岛上的「接入 Agent」来。
+            我去开门啦，马上带你进来…
           </p>
         )}
       </div>

@@ -14,7 +14,7 @@ import { useGameStore } from "@/state/gameStore";
 import CapyAvatar from "../ui/CapyAvatar";
 import { cn } from "../ui/cn";
 import Icon, { type IconName } from "../ui/Icon";
-import { Chip, Panel, PrimaryButton, ProgressBar, ScreenHeader } from "../ui/kit";
+import { Chip, Panel, ProgressBar, ScreenHeader } from "../ui/kit";
 import ScreenArtwork from "../ui/ScreenArtwork";
 
 function fmtDate(iso: string): string | null {
@@ -207,22 +207,6 @@ export default function ProfileScreen() {
           </div>
         </Panel>
 
-        <Panel className="px-4 py-3" sketch={false}>
-          <div className="flex items-start gap-3">
-            <span className="ui-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-full">
-              <Icon name="handbook" className="h-6 w-6 drop-shadow-[0_2px_2px_rgba(126,83,38,0.14)]" />
-            </span>
-            <div className="min-w-0">
-              <p className="font-hand text-[17px] leading-tight text-ink">
-                这里只记你能看见的成长。
-              </p>
-              <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-                心情、印记、信件和切磋会慢慢留下来；具体数值还是交给 Agent 照看。
-              </p>
-            </div>
-          </div>
-        </Panel>
-
         {/* 今天心情 — qualitative only, the numbers stay the Agent's secret */}
         <Panel className="relative overflow-hidden px-4 py-3.5" sketch={false}>
           <SectionTitle>今天心情</SectionTitle>
@@ -325,7 +309,6 @@ export default function ProfileScreen() {
         className="game-bottom-panel relative z-10 shrink-0 space-y-2 px-5 pt-3"
         style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
       >
-        <PrimaryButton size="sm" onClick={() => goTo("home")}>回小屋</PrimaryButton>
         {bound && (
           <div className="flex items-center justify-center gap-2 pt-0.5 text-[11px] text-ink-soft/70">
             {email && <span className="truncate">{email}</span>}

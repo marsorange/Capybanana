@@ -26,6 +26,11 @@ function DevProbe() {
 }
 
 export default function DevHome() {
+  // ?away=1 mirrors the travelling state: pet gone, pack off the bench,
+  // pet-bound markers greyed out.
+  const away =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("away") === "1";
   return (
     <div style={{ position: "fixed", inset: 0, background: "#f6ecd8" }}>
       <SceneCanvas
@@ -44,16 +49,18 @@ export default function DevHome() {
         bendStrength={0}
         postfx
       >
-        <HomeModel mode="home" />
+        <HomeModel mode={away ? "away" : "home"} />
         <HomeFloor />
-        <RoamingCompanion
-          type="capybara"
-          color="#a87b4f"
-          accessory="scarf"
-          seed="dev"
-          clickLines={["（开发预览）"]}
-        />
-        <InteractionLayer />
+        {!away && (
+          <RoamingCompanion
+            type="capybara"
+            color="#a87b4f"
+            accessory="scarf"
+            seed="dev"
+            clickLines={["（开发预览）"]}
+          />
+        )}
+        <InteractionLayer away={away} />
         <DevProbe />
       </SceneCanvas>
     </div>

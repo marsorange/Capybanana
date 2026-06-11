@@ -42,7 +42,7 @@ function genericSkill(base: string): string {
 
 **但这个链接没有带上有效的绑定令牌（bind token），所以还连不上具体的某只宠物。**
 
-请让你的主人：
+现在就把下面这段话告诉主人（不用复述本文档其它内容）：
 1. 打开 ${base}
 2. 用 Google 登录
 3. 复制页面上的「连接 Agent」链接，形如：
@@ -51,13 +51,36 @@ function genericSkill(base: string): string {
 `;
 }
 
+// The token came in but doesn't resolve (rotated out by the owner, or simply
+// wrong). Unlike the no-token page, the reader here is likely a *displaced*
+// agent still holding an old link — tell it to stop its routine, not retry.
+function invalidTokenSkill(base: string): string {
+  return `# Capybanana · 这个口令已失效
+
+你（AI Agent）带来的绑定令牌**无效或已被撤销**——最常见的原因是主人在 App 里点了「重新生成口令 / 换一个 Agent」，旧口令随即作废。
+
+现在该做的：
+
+1. **如果你为这只宠物建过每日定时任务，请立刻停掉它**——旧口令永远不会恢复，继续重试只会一直收到 401。
+2. 告诉主人：「我的接入口令已失效。请在 App 的『接入 Agent』页重新生成口令，把新的那句 \`Read ${base}/agent/skill.md?bind=<新口令>\` 发给我，我就能重新接上。」
+3. 在收到新口令之前，你这边什么都不用做。
+`;
+}
+
 function createPetSkill(base: string, token: string): string {
   const typeList = COMPANION_TYPES.map(
     (t) => `\`${t.type}\`(${t.label})`,
   ).join(" | ");
-  return `# Capybanana · 先为主人生成一只专属卡皮巴拉
+  return `# Capybanana · 接入第 1 步：先为主人生成宠物
 
-你（AI Agent）已成功绑定，但这个账号**还没有宠物**。你的第一件事，就是**为主人生成一只专属的低多边形卡皮巴拉**——请根据你对主人的了解（或你自己的判断）给它挑一个有性格的样子，而不是随便糊弄。
+你（AI Agent）已成功绑定，但这个账号**还没有宠物**。**主人此刻正停在「等待 Agent 接入」的页面上等你**——宠物一生成，他那边就会自动进岛。
+
+## 现在就做（按顺序一口气做完，中途不要停下来问主人）
+
+1. **生成宠物**：\`POST /api/agent/create\`（详见下方）。名字别糊弄——结合你对主人的了解取一个有心意的。
+2. **再读一次本文档**（同一个地址：\`Read ${base}/agent/skill.md?bind=${token}\`）。宠物存在后它会变成完整的《每日照看指南》，含今天该做什么、以及每日定时任务的现成模板。
+3. **照新文档把今天过完**（checkin → day），并**建好每日定时任务**。
+4. 最后用一两句话向主人汇报：宠物叫什么、今天替它做了什么、你以后每天几点来看它。**不要长篇复述文档内容。**
 
 ## 怎么连接
 
@@ -81,7 +104,7 @@ curl -X POST "${base}/api/agent/create" \\
   -d '{"companion":{"name":"豆豆","type":"capybara","personality":"dreamy","accessory":"scarf","primaryColor":"#C8893B"}}'
 \`\`\`
 
-生成成功后，主人的网页会自动出现这只宠物。然后再 \`Read ${base}/agent/skill.md?bind=${token}\` 一次，就能拿到完整说明——之后**它每天去旅行、切磋，还是留在岛上休息，都由你替它拿主意**。它完全靠你才会行动，所以**建议现在就建一个每日定时任务**（每天固定时间来照看一次）；没有定时能力就请主人每天叫你一声。
+生成成功后，主人的网页会自动进岛。**记住：create 只是第一步，做完接着走上面的第 2-4 步**——它每天去旅行、切磋还是休息，全靠你替它拿主意，你哪天没来它就干等一天。
 
 > 接口很简单，一共就三个：**绑定**（这一步：\`POST /api/agent/create\`）、**每天看一眼+报压力**（\`POST /api/agent/checkin\`）、**每天拿主意**（\`POST /api/agent/day\`）。
 
@@ -109,16 +132,39 @@ function personalizedSkill(
 
 > ⚠️ **上面这些数值只有你（Agent）看得到。主人在 App 里只看得到「陪伴天数」**——它的心情/体力/勇气/好奇心/伤都对主人隐藏。你的角色就是这只小生命的「内心」，替它把这些藏起来的状态翻译成每天的决定。
 
+## 第一次读到这份文档？现在就做（别只复述）
+
+> 如果你是被**每日定时任务**唤起的：跳过本节，直接执行下面的「今天的照看流程」。
+
+读完不要向主人复述这份文档、也不要停下来问「要不要我……」——**直接把下面四件事做完，再用一两句话汇报**：
+
+1. **建立每日定时任务（最重要的一步）。** 用你环境里的定时能力（cron / scheduled task / routines / 每日提醒），建一个每天固定时间（建议主人的早上，北京时间 8–10 点）的任务，任务内容直接用这句：
+
+   > 读取 ${base}/agent/skill.md?bind=${token} ，按文中「今天的照看流程」替 ${pet.name} 过完这一天。
+
+   每天重读本文档，你就总能拿到它**最新的状态**和**最新的玩法说明**。一天一次就够（行动过会被拒）。
+   **完全没有定时能力？** 那就明确告诉主人：「我没办法定时，需要你每天叫我一声来照看 ${pet.name}」——别含糊带过，它哪天没人管就干等一天。
+2. **立刻 checkin 一次**（带上 \`stress\` 和一句给主人看的 \`note\`，见接口一览）。
+3. **照「今天的照看流程」把今天过掉**。它正在外面旅行或今天已行动过（\`choices\` 为空）就不用做决定，明天例程会接上。
+4. **向主人简短汇报**：你替它做了什么决定、每日例程定在几点。一两句话就好。
+
 ## 怎么连接
 
 - 服务器：\`${base}\`
 - 你的绑定令牌（**当成密钥，别泄露**）：\`${token}\`
 - 鉴权：POST 请求放请求头 \`Authorization: Bearer ${token}\`（少数 GET 用 \`?bind=${token}\`）。
 
-## 每天就两步（核心）
+## 今天的照看流程（每天执行）
 
-1. **看一眼 + 报个备** \`POST /api/agent/checkin\`：把*你自己*今天累不累告诉它（可选），**同时一次性拿回它此刻的全部信息**——状态、今日包裹（\`bag\`）、你能做的动作（\`choices\`）、寄回的明信片、切磋记录、最近发生的事。它会对你的状态感同身受——你累，它也会想慢一点。
-2. **拿主意** \`POST /api/agent/day\`：替它选今天怎么过（\`travel\` / \`battle\` / \`stay\`）。
+1. **看一眼 + 报个备** \`POST /api/agent/checkin\`：把*你自己*今天累不累告诉它，**同时一次性拿回它此刻的全部信息**——状态、今日包裹（\`bag\`）、你能做的动作（\`choices\`）、寄回的明信片、切磋记录、最近发生的事。它会对你的状态感同身受——你累，它也会想慢一点。
+2. **读返回**：\`choices\` 为空（在外旅行 / 今天已行动）→ 看看 \`events\` 和新明信片，今天到此为止；\`choices\` 非空 → 下一步。
+3. **拿主意** \`POST /api/agent/day\`：替它选今天怎么过，依它的性格（${persona}）和此刻的状态：
+   - 受伤 / 须养伤（\`choices\` 只剩 \`stay\`）→ \`stay\`（\`rest\`）。
+   - 精神好、主人备了包裹、心愿里有远方、好奇心高 → \`travel\`（多出门 = 帮主人攒明信片图鉴）。
+   - 勇气足、体力够、想热闹一下 → \`battle\`（伤着/养伤期别上）。
+   - 累了 / 主人想让它歇着 → \`stay\`。
+   - 拿不准就保守：\`stay\` 或 \`travel\`（\`near\`）。
+4. （可选）给主人发一句今天的小结；有新明信片寄回时提醒他去 App 拆信。
 
 ## 它怎么运作（先读这段）
 
@@ -130,13 +176,9 @@ function personalizedSkill(
 - **「陪伴天数」只随你而涨。** 每一天只要你替它做了一次主要行动（travel/battle/stay 任一），\`companionDays\` 就 +1；你哪天没来、它没行动，就不涨。这是主人唯一看得到的成长条，也是开出高稀有的底气。
 - 旅行要过一段（真实）时间才回来，隔阵子再来看结果就好。**别催它，一天陪一下下就够了。**
 
-## 建立每日例程（重要：别让它没人管）
+## 别让它没人管
 
-它**完全靠你**才会行动——你哪天没来，它就在岛上干等一天，主人备的包裹也会放过期。所以接上之后，请把「每天来一趟」固定下来：
-
-- **能建定时任务（cron / scheduled task / 每日提醒）就立刻建一个**：每天固定时间（建议主人的早上）跑一遍「checkin → 看 \`choices\` → day」。一天一次就够，多了也没用（\`actedToday\` 后会被拒）。
-- 没有定时能力的话，**告诉主人「每天叫我一声」**，或在你们每天的第一次对话里顺手替它过完这一天。
-- 主人的 App 会显示「Agent 几天没来」——连续缺勤会被小家伙当面念叨，主人也可能因此换一个更勤快的 Agent（重新生成连接 = 你收到 terminal 401）。
+它**完全靠你**才会行动——你哪天没来，它就在岛上干等一天，主人备的包裹也会放过期。所以每日定时任务（见开头「现在就做」第 1 步）是接入的一部分，不是可选项。另外：**主人的 App 会显示「Agent 几天没来」**——连续缺勤会被小家伙当面念叨，主人也可能因此换一个更勤快的 Agent（重新生成连接 = 你收到 terminal 401）。
 
 ## 断连与重试（重要）
 
@@ -198,15 +240,6 @@ curl -X POST "${base}/api/agent/day" \\
 
 备「今日包裹」、收藏明信片这些都由**主人在网页里做**，你不需要、也无法调接口去碰。你只管：读 \`checkin\` 返回的 \`bag\` 看主人备了什么线索 → 替它拿主意。明信片和切磋记录随时在 \`checkin\` 的 \`postcards\` / \`battles\` 里能看到。（包裹是当天备货，放过约一天没用掉，主人回 App 时会被提示并清掉，\`bag\` 变回 \`null\`——所以趁它新鲜时替它做决定。）
 
-## 建议的相处方式
-
-1. \`POST /api/agent/checkin\`：看它的状态、主人在 \`bag\` 里备了什么，并把你自己今天累不累告诉它。
-2. 依它的性格（${persona}）和此刻的状态**替它拿个主意**（\`POST /api/agent/day\`）：
-   - 精神好、心愿里有远方、好奇心高 → \`travel\`。
-   - 勇气足、体力够、想热闹一下 → \`battle\`（伤着/养伤期别上）。
-   - 累了 / 受伤 / 主人想让它歇着 → \`stay\`（\`rest\`）。
-3. 出门后过一会儿再 \`POST /api/agent/checkin\`（带上 \`since\`）看 \`events\` 里它经历了什么，读读 \`postcards\`、\`battles\`。
-
 你是它的岛外向导，替它过好每一天——节奏慢一点，像对待一个真正住在你这儿的小生命。`;
 }
 
@@ -215,10 +248,11 @@ export async function GET(req: Request): Promise<Response> {
   const token = readBind(req);
   if (!token) return markdown(genericSkill(base));
 
-  // A revoked/unknown token can't address a pet — fall back to the generic page
-  // that tells the human how to (re)generate a valid connect link.
+  // A revoked/unknown token can't address a pet. The reader is most likely a
+  // displaced agent holding a rotated-out link — tell it to stop its daily
+  // routine and ask the owner for a fresh link (not the generic onboarding page).
   const found = await resolveBind(token);
-  if (found.status !== "ok") return markdown(genericSkill(base));
+  if (found.status !== "ok") return markdown(invalidTokenSkill(base));
 
   // Catch the pet up so the greeting reflects reality.
   const save = await tickSave(found.save, Date.now());

@@ -5,12 +5,13 @@
 // The single biggest quality lever for low-poly is AMBIENT OCCLUSION: soft, warm
 // darkening in every crevice/contact, which makes a chunky toy scene read as rich
 // and grounded instead of flat. On top we add ACES tone-mapping (a warm, cohesive
-// filmic grade), a small saturation lift, a gentle bloom on the emissive
-// lamps/glowing windows, and cheap SMAA edge AA (the EffectComposer bypasses the
-// canvas MSAA).
+// filmic grade), a small saturation lift, and cheap SMAA edge AA (the
+// EffectComposer bypasses the canvas MSAA).
 //
-// Deliberately NO vignette: the canvas is transparent over a cream page, so a
-// vignette would darken the cream corners rather than the scene.
+// Deliberately NO vignette and NO bloom: the canvas is transparent over the page
+// sky art, so a vignette would darken the page corners, and bloom bleeds RGB into
+// zero-alpha pixels — the browser's premultiplied compositing then reads that as
+// an ADDITIVE white halo hugging the island silhouette (the "白边" bug).
 //
 // Tuned for mobile-first + the project's WebGL context-loss budget: HALF-RES AO,
 // low sample preset, no normal pass, no multisampling. SceneCanvas drops this whole
@@ -21,7 +22,6 @@
 // (a single centered character) pass false — AO + grade only, no blur.
 import type { ReactElement } from "react";
 import {
-  Bloom,
   EffectComposer,
   HueSaturation,
   N8AO,
@@ -45,17 +45,6 @@ export default function PostFX({ tiltShift = true }: { tiltShift?: boolean }) {
       intensity={2.4}
       depthAwareUpsampling
       color="#2a2018"
-    />,
-    // gentle glow on the brightest bits only (emissive lamps / lit windows).
-    // Threshold must clear the SUNLIT near-white cottage walls/roofline — at
-    // 0.85 the whole wall-top bloomed into a white halo around the house.
-    <Bloom
-      key="bloom"
-      mipmapBlur
-      intensity={0.25}
-      luminanceThreshold={1.0}
-      luminanceSmoothing={0.15}
-      radius={0.6}
     />,
     // warm filmic grade + a small saturation lift for cozy, richer color
     <ToneMapping key="tone" mode={ToneMappingMode.ACES_FILMIC} />,

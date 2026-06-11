@@ -29,8 +29,10 @@ export const sceneBend = {
 //   • flatShading kept (the chunky LEGO-block facets are the project's identity);
 //     the SOFTNESS comes from the lighting model, not from smooth normals — which
 //     the low geometry can't carry anyway.
-//   • a soft Fresnel rim toward white lifts silhouettes off the cream background
-//     (the gentle "toy" pop), and the shared planet-bend curls the world.
+//   • the Fresnel rim is OPT-IN (default 0): on flat-shaded geometry whole facets
+//     catch it at grazing angles, which reads as a thick white border around the
+//     island/house silhouette instead of a subtle edge glow. Pass `rim` explicitly
+//     for the rare mesh that wants the toy pop.
 //
 // Built in TS (not as a JSX <meshStandardMaterial>) on purpose: R3F's generated
 // props choke on `flatShading`, and minting one material per mesh would throw away
@@ -40,7 +42,7 @@ export const sceneBend = {
 interface ToonOpts {
   emissive?: string;
   emissiveIntensity?: number;
-  // Rim light strength (0 = off). Default gives a gentle edge glow.
+  // Rim light strength. Default 0 (off) — see the factory note above.
   rim?: number;
   // Opt OUT of the shared "tiny-planet" bend. Default true (curls with the
   // scene). The home cottage sets this false so its rigid structure stands
@@ -59,7 +61,7 @@ interface ToonOpts {
 const toonCache = new Map<string, THREE.MeshStandardMaterial>();
 
 export function toonMaterial(hex: string, opts: ToonOpts = {}): THREE.MeshStandardMaterial {
-  const rim = opts.rim ?? 0.4;
+  const rim = opts.rim ?? 0;
   const bend = opts.bend ?? true;
   const side = opts.side ?? THREE.FrontSide;
   const rough = opts.roughness ?? 0.92;
@@ -88,11 +90,11 @@ export function toonMaterial(hex: string, opts: ToonOpts = {}): THREE.MeshStanda
 
 // The shared Fresnel rim + planet-bend injection. Applied to EVERY material
 // (procedural meshes and converted GLB materials alike) so the edge glow and the
-// home bend read consistently across the whole scene.
+// home bend read consistently across the whole scene. Materials that want
+// neither (rim 0 + bend false) stay completely stock — cheapest shader.
 function applySoftShaderPatch(mat: THREE.MeshStandardMaterial, rim: number, bend = true) {
+  if (rim <= 0 && !bend) return;
   mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uRim = { value: rim };
-
     // Vertex: curl world-space Y down by horizontal distance² from center. We
     // re-derive mvPosition/gl_Position here; the stock `vViewPosition = -
     // mvPosition.xyz;` line that follows still picks up our bent mvPosition.
@@ -121,15 +123,18 @@ function applySoftShaderPatch(mat: THREE.MeshStandardMaterial, rim: number, bend
         );
     }
 
-    // Fragment: add a soft Fresnel rim toward white at grazing angles.
-    shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\n uniform float uRim;`)
-      .replace(
-        "#include <dithering_fragment>",
-        `#include <dithering_fragment>
-         float rimFres = pow( 1.0 - clamp( dot( normalize( normal ), normalize( vViewPosition ) ), 0.0, 1.0 ), 3.0 );
-         gl_FragColor.rgb += rimFres * uRim * 0.3;`,
-      );
+    // Fragment: add a soft Fresnel rim toward white at grazing angles (opt-in).
+    if (rim > 0) {
+      shader.uniforms.uRim = { value: rim };
+      shader.fragmentShader = shader.fragmentShader
+        .replace("#include <common>", `#include <common>\n uniform float uRim;`)
+        .replace(
+          "#include <dithering_fragment>",
+          `#include <dithering_fragment>
+           float rimFres = pow( 1.0 - clamp( dot( normalize( normal ), normalize( vViewPosition ) ), 0.0, 1.0 ), 3.0 );
+           gl_FragColor.rgb += rimFres * uRim * 0.3;`,
+        );
+    }
   };
 }
 
@@ -159,7 +164,7 @@ export function toonFromStandard(
   }
   // Flat shading by default keeps the chunky low-poly facets reading cleanly.
   (mat as unknown as { flatShading: boolean }).flatShading = opts.flat ?? true;
-  applySoftShaderPatch(mat, opts.rim ?? 0.4);
+  applySoftShaderPatch(mat, opts.rim ?? 0);
   return mat;
 }
 

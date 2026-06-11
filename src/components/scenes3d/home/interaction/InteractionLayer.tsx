@@ -15,7 +15,9 @@ import {
 
 // All the labelled, tap-to-move interaction points in the home scene. Tapping a
 // label sends the pet walking there, then opens a screen or plays an activity.
-export default function InteractionLayer() {
+// While the pet is away travelling there's no walker to consume the command, so
+// pet-bound actions (打包/休息) grey out and 明信片 opens the album directly.
+export default function InteractionLayer({ away = false }: { away?: boolean }) {
   const goTo = useGameStore((s) => s.goTo);
 
   const walk = (
@@ -32,6 +34,7 @@ export default function InteractionLayer() {
         pos={PACK_BENCH}
         label="打包"
         labelY={1.4}
+        disabled={away}
         onClick={() => walk(PACK.pos, 0, () => goTo("pack"))}
       />
       {/* 明信片 — on the postcard board out in the yard (right of the house) */}
@@ -40,7 +43,11 @@ export default function InteractionLayer() {
         label="明信片"
         labelY={1.75}
         labelX={-0.55}
-        onClick={() => walk(POSTCARD.pos, 0, () => goTo("album"))}
+        onClick={
+          away
+            ? () => goTo("album")
+            : () => walk(POSTCARD.pos, 0, () => goTo("album"))
+        }
       />
       {/* 休息 — the bed up in the loft (the pet climbs the stairs to get there) */}
       <InteractionMarker
@@ -48,6 +55,7 @@ export default function InteractionLayer() {
         label="休息"
         color="#9aa6c8"
         labelY={1.55}
+        disabled={away}
         onClick={() =>
           walk(REST.pos, 1, undefined, {
             activity: "sleep",

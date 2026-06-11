@@ -318,7 +318,9 @@ export default function RoamingCompanion({
       </group>
 
       {speech && (
-        <Html position={[0, 1.9, 0]} center zIndexRange={[30, 0]}>
+        // below the HUD (z-10) and floating notes (z-20) so the bubble never
+        // covers screen chrome
+        <Html position={[0, 1.9, 0]} center zIndexRange={[9, 0]}>
           <SpeechBubble className="w-max">{speech}</SpeechBubble>
         </Html>
       )}

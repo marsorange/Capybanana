@@ -10,7 +10,7 @@ import { cn } from "../ui/cn";
 import Icon, { type IconName } from "../ui/Icon";
 import PostcardArt from "../ui/PostcardArt";
 import { RarityBadge, rarityMeta } from "../ui/rarity";
-import { Panel, PrimaryButton, ScreenHeader, TabBar } from "../ui/kit";
+import { Panel, ScreenHeader, TabBar } from "../ui/kit";
 import ScreenArtwork from "../ui/ScreenArtwork";
 
 type Tab = "cards" | "diary" | "battles";
@@ -354,13 +354,6 @@ export default function AlbumScreen() {
           ))}
       </div>
 
-      {((tab === "cards" && postcards.length === 0) ||
-        (tab === "diary" && diary.length === 0) ||
-        (tab === "battles" && battles.length === 0)) && (
-        <div className="shrink-0 px-5 pb-5">
-          <PrimaryButton onClick={() => goTo("home")}>回小屋看看</PrimaryButton>
-        </div>
-      )}
     </div>
   );
 }

@@ -7,8 +7,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 import { DEFAULT_CAPY } from "@/game/defaults";
+import { cardId } from "@/game/gacha";
 import { useGameStore, type Screen } from "@/state/gameStore";
 import type { BattleRecord, Companion, Postcard } from "@/game/types";
+import type { AgentEvent } from "@/server/types";
 import PortraitFrame from "@/components/ui/PortraitFrame";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import AboutScreen from "@/components/screens/AboutScreen";
@@ -67,6 +69,9 @@ const BATTLES: BattleRecord[] = [
     day: "2026-06-04",
     opponentName: "爱炫耀的圆圆",
     opponentSpecies: "duck",
+    opponentPersonality: "dreamy",
+    opponentAccessory: "scarf",
+    opponentColor: "#6FA8C9",
     isNpc: false,
     result: "lose",
     title: "我输了一场",
@@ -74,6 +79,37 @@ const BATTLES: BattleRecord[] = [
     injury: 22,
     ratingDelta: -15,
     createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+  },
+];
+
+// A believable activity log: drives the album 日记 tab and the home StressNote
+// (the newest checkin is "today", so the stress one-liner previews too).
+const EVENTS: AgentEvent[] = [
+  {
+    seq: 1,
+    at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    type: "departed",
+    text: "我背上包裹，出门去远方了。",
+  },
+  {
+    seq: 2,
+    at: new Date(Date.now() - 2 * 86_400_000 + 6 * 3_600_000).toISOString(),
+    type: "postcard",
+    text: "我寄回了一张明信片：「山坡上的问题」。",
+    postcardId: "pc-0",
+  },
+  {
+    seq: 3,
+    at: new Date(Date.now() - 86_400_000).toISOString(),
+    type: "battle",
+    text: "我和「爱炫耀的圆圆」切磋了一场，输了。",
+  },
+  {
+    seq: 4,
+    at: new Date().toISOString(),
+    type: "checkin",
+    text: "照看我的人今天有点累，它说：「白天开了一天会」。我把下巴搁在它脚边，陪它坐了一会儿。",
+    stress: "tired",
   },
 ];
 
@@ -131,6 +167,11 @@ export default function DevScreen() {
       companionState: "idle_home",
       packedBag: null,
       postcards: POSTCARDS,
+      cardDex: Array.from(
+        new Set(POSTCARDS.map((p) => cardId(p.destinationTheme, p.rarity))),
+      ),
+      events: EVENTS,
+      lastActionDay: null,
       souvenirs: ["一颗温热的小石头", "半张被风吹皱的车票"],
       battleRecords: BATTLES,
       pendingPostcardId: null,

@@ -499,8 +499,11 @@ export default function HomeScreen() {
         <div className="ui-home-sky-shade absolute inset-0" />
       </div>
 
-      {/* full-bleed 3D diorama — the page IS the scene; UI just floats over it */}
-      <div className="absolute inset-0">
+      {/* full-bleed 3D diorama — the page IS the scene; UI just floats over it.
+          isolate: scene-injected HTML (drei Html pills/bubbles) gets its own
+          stacking context so it can never paint over the HUD (z-10) or the
+          floating notes (z-20), whatever z-index drei assigns inside */}
+      <div className="absolute inset-0 isolate">
         <SceneCanvas
           controls="orbit"
           orthographic
@@ -525,9 +528,11 @@ export default function HomeScreen() {
           bendStrength={0}
         >
           {/* visual diorama (throwaway art) — taps on the backpack / postcard
-              rack route to those screens, so the scene is the navigation */}
+              rack route to those screens, so the scene is the navigation.
+              "away" while travelling: the pack leaves the bench with the pet
+              and pet-bound taps go inert */}
           <HomeModel
-            mode="home"
+            mode={away ? "away" : "home"}
             postcardThemes={wallThemes}
             onOpenPack={() => goTo("pack")}
             onOpenAlbum={() => goTo("album")}
@@ -545,7 +550,7 @@ export default function HomeScreen() {
               clickLines={clickLines}
             />
           )}
-          <InteractionLayer />
+          <InteractionLayer away={away} />
         </SceneCanvas>
       </div>
 

@@ -46,7 +46,34 @@ interface SceneCanvasProps {
   // Include the tilt-shift "miniature" blur (default true, for the diorama).
   // Portrait turntables (a single centered model) pass false: AO + grade only.
   postfxTilt?: boolean;
+  // Frame-rate ceiling. A cozy idle diorama doesn't need the display's native
+  // refresh — on a 120Hz phone/laptop an uncapped loop burns 4× the CPU/GPU for
+  // zero perceptible gain (the "CPU 发热" bug). 0 = uncapped.
+  fpsCap?: number;
   className?: string;
+}
+
+// Caps rendering at `fps` by running the Canvas in frameloop="demand" and
+// invalidating on our own rAF cadence. Delta-based animation (walker, mixers,
+// orbit damping) advances by clock delta, so motion speed is unaffected. Bonus:
+// rAF stops in background tabs, so a hidden island costs ~nothing.
+function FpsLimiter({ fps }: { fps: number }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    let raf = 0;
+    let last = 0;
+    const interval = 1000 / fps;
+    const loop = (t: number) => {
+      raf = requestAnimationFrame(loop);
+      if (t - last >= interval - 1) {
+        last = t;
+        invalidate();
+      }
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [fps, invalidate]);
+  return null;
 }
 
 // Keeps the renderer's tone-mapping in sync with whether the post-fx pass is live:
@@ -221,6 +248,7 @@ export default function SceneCanvas({
   dpr = [1, 1.25],
   postfx = false,
   postfxTilt = true,
+  fpsCap = 30,
   className,
 }: SceneCanvasProps) {
   // Context-loss spiral breaker: count recover-attempted losses; once they pile
@@ -289,10 +317,16 @@ export default function SceneCanvas({
       // the static directional below.
       shadows={sun ? "percentage" : false}
       dpr={dpr}
-      gl={{ alpha: true, antialias: true, powerPreference: "default" }}
+      // canvas MSAA is wasted when the EffectComposer is on (it renders into its
+      // own non-MSAA buffers and SMAA does the AA) — skip allocating it. Note the
+      // gl config is fixed at context creation, so a runtime postfx degrade keeps
+      // whatever was chosen here.
+      gl={{ alpha: true, antialias: !postfx, powerPreference: "default" }}
       camera={camera}
+      frameloop={fpsCap > 0 ? "demand" : "always"}
       style={{ touchAction: "none" }}
     >
+      {fpsCap > 0 && <FpsLimiter fps={fpsCap} />}
       <WebGLContextGuard onLoss={handleContextLoss} />
       {/* only manage tone-mapping for scenes that opted into post-fx; the portrait
           turntables keep R3F's default renderer tone-mapping untouched */}
@@ -309,17 +343,20 @@ export default function SceneCanvas({
           {/* soft contact shadows (小阴影) under the ground-level objects — adds
               grounding/depth without darkening the bright scene. far is low so it
               only catches the pet + furniture + yard props, not the whole house.
-              When the real sun shadow is on, this drops to a faint AO so the two
-              don't stack into a muddy blob. */}
-          <ContactShadows
-            position={[-0.6, 0.07, -1.0]}
-            scale={17}
-            resolution={256}
-            blur={2.6}
-            far={1.7}
-            opacity={sun ? 0.16 : 0.32}
-            color="#8a6a48"
-          />
+              ONLY when the real sun shadow is off: ContactShadows re-renders the
+              whole scene from above EVERY frame, and with the sun (+ AO in
+              post) grounding everything already, that pass was pure heat. */}
+          {!sun && (
+            <ContactShadows
+              position={[-0.6, 0.07, -1.0]}
+              scale={17}
+              resolution={256}
+              blur={2.6}
+              far={1.7}
+              opacity={0.32}
+              color="#8a6a48"
+            />
+          )}
         </>
       ) : (
         <>

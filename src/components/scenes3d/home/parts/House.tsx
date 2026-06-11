@@ -435,16 +435,17 @@ function WindowWall({
       <mesh geometry={geo}>{m(color)}</mesh>
       {holes.map((hl, i) => (
         <group key={i} position={[hl.u, hl.v, 0]}>
-          {/* translucent glass pane — the sky shows through it (透光) */}
+          {/* translucent glass pane — kept nearly clear and NON-emissive so the
+              sky/backdrop behind the wall actually shows through the opening
+              (the old emissive 0.4 pane lit up into an opaque white square) */}
           <mesh>
             <planeGeometry args={[hl.w, hl.h]} />
             <meshStandardMaterial
-              color="#d3ece7"
+              color="#cfe6ec"
               transparent
-              opacity={0.4}
-              emissive="#eaf6f3"
-              emissiveIntensity={0.4}
-              roughness={1}
+              opacity={0.16}
+              depthWrite={false}
+              roughness={0.35}
               side={THREE.DoubleSide}
             />
           </mesh>
@@ -540,11 +541,12 @@ export default function House({
   onOpenPack,
   onOpenAlbum,
 }: HouseProps) {
-  // tap -> walk the companion over, then open
+  // tap -> walk the companion over, then open. While the pet is away travelling
+  // ("away" mode) there is no walker: packing is locked (GameRoot bounces the
+  // pack screen anyway), but the postcard rack opens the album directly.
   const goPack = () => {
-    if (!onOpenPack) return;
-    if (mode === "away") onOpenPack();
-    else commandWalk(BACKPACK_SPOT, 0, onOpenPack);
+    if (!onOpenPack || mode === "away") return;
+    commandWalk(BACKPACK_SPOT, 0, onOpenPack);
   };
   const goAlbum = () => {
     if (!onOpenAlbum) return;
@@ -1010,45 +1012,45 @@ export default function House({
         </group>
       </group>
 
-      {/* backpack (diegetic -> pack); the labelled "打包" marker rings it */}
-      {mode === "home" && (
-        <group
-          position={PACK_BENCH}
-          scale={1.0}
-          onClick={(e: ThreeEvent<MouseEvent>) => {
-            e.stopPropagation();
-            goPack();
-          }}
-        >
-          {/* low plank bench the pack rests on (the reference's 打包 corner) */}
-          <mesh position={[0, 0.21, 0.04]}>
-            <boxGeometry args={[1.0, 0.07, 0.5]} />
-            {m(WOOD_LT)}
-          </mesh>
-          {([[-0.42, -0.16], [0.42, -0.16], [-0.42, 0.24], [0.42, 0.24]] as const).map(
-            ([x, z], i) => (
-              <mesh key={i} position={[x, 0.09, z]}>
-                <boxGeometry args={[0.07, 0.22, 0.07]} />
-                {m(WOOD_DK)}
-              </mesh>
-            ),
-          )}
-          {/* folded map laid on the bench */}
-          <mesh position={[0.36, 0.255, 0.06]} rotation={[-Math.PI / 2, 0, 0.3]}>
-            <planeGeometry args={[0.32, 0.24]} />
-            {m("#e3d6ba")}
-          </mesh>
-          {/* small crate tucked beside the bench */}
-          <mesh position={[-0.05, 0.13, -0.42]}>
-            <boxGeometry args={[0.3, 0.26, 0.3]} />
-            {m("#bd8a52")}
-          </mesh>
-          {/* the pack, raised onto the bench */}
+      {/* backpack bench (diegetic -> pack); the labelled "打包" marker rings it */}
+      <group
+        position={PACK_BENCH}
+        scale={1.0}
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation();
+          goPack();
+        }}
+      >
+        {/* low plank bench the pack rests on (the reference's 打包 corner) */}
+        <mesh position={[0, 0.21, 0.04]}>
+          <boxGeometry args={[1.0, 0.07, 0.5]} />
+          {m(WOOD_LT)}
+        </mesh>
+        {([[-0.42, -0.16], [0.42, -0.16], [-0.42, 0.24], [0.42, 0.24]] as const).map(
+          ([x, z], i) => (
+            <mesh key={i} position={[x, 0.09, z]}>
+              <boxGeometry args={[0.07, 0.22, 0.07]} />
+              {m(WOOD_DK)}
+            </mesh>
+          ),
+        )}
+        {/* folded map laid on the bench */}
+        <mesh position={[0.36, 0.255, 0.06]} rotation={[-Math.PI / 2, 0, 0.3]}>
+          <planeGeometry args={[0.32, 0.24]} />
+          {m("#e3d6ba")}
+        </mesh>
+        {/* small crate tucked beside the bench */}
+        <mesh position={[-0.05, 0.13, -0.42]}>
+          <boxGeometry args={[0.3, 0.26, 0.3]} />
+          {m("#bd8a52")}
+        </mesh>
+        {/* the pack, raised onto the bench — it leaves with the pet while away */}
+        {mode === "home" && (
           <group position={[-0.12, 0.25, 0.04]}>
             <Backpack />
           </group>
-        </group>
-      )}
+        )}
+      </group>
     </group>
   );
 }
