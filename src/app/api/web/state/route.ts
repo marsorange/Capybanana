@@ -3,7 +3,7 @@
 // full CloudSave. (The agent reads its own curated bundle via /api/agent/checkin.)
 import { authed } from "@/server/api";
 import { tickSave } from "@/server/engine";
-import { savePet } from "@/server/store";
+import { agentSeenAt, savePet } from "@/server/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,5 +15,9 @@ export async function GET(req: Request): Promise<Response> {
   // Persist only when the tick actually resolved something (avoids a DB write on
   // every 5s idle poll).
   if (save.rev !== a.save.rev) await savePet(a.user.petId, save);
-  return Response.json({ ok: true, rev: save.rev, save });
+  // While the account is petless, the connect gate wants the sub-signal "has
+  // the Agent at least touched the API (read skill.md)?" — token use doesn't
+  // bump rev, so it rides alongside the save instead of inside it.
+  const seenAt = save.companion ? null : await agentSeenAt(a.user.id);
+  return Response.json({ ok: true, rev: save.rev, save, agentSeenAt: seenAt });
 }

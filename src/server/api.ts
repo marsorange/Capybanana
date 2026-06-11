@@ -41,14 +41,20 @@ export async function authed(
   return { user: r.user, save: r.save };
 }
 
-/** Persist the save and reply with the standard envelope (raw save + summary). */
-export async function commit(petId: string, save: CloudSave): Promise<Response> {
+/** Persist the save and reply with the standard envelope (raw save + summary).
+ * `extra` lets a route add fields on top (e.g. create's 接入成功 message). */
+export async function commit(
+  petId: string,
+  save: CloudSave,
+  extra?: Record<string, unknown>,
+): Promise<Response> {
   await savePet(petId, save);
   return Response.json({
     ok: true,
     rev: save.rev,
     save,
     pet: summarizePet(save),
+    ...extra,
   });
 }
 
@@ -121,7 +127,12 @@ export function petAction(
     const now = Date.now();
     const save = await tickSave(a.save, now);
     if (requireNoCompanion && save.companion)
-      return jsonError("已经有一只宠物了", 409);
+      // Only create uses this gate — phrase it as "binding already done", so a
+      // re-run reads as idempotent success, not a failure to puzzle over.
+      return jsonError(
+        "已经接入过了——宠物早已在岛上，无需再 create。重读接入文档（skill.md）按《每日照看指南》照看它即可。",
+        409,
+      );
     if (requireCompanion && !save.companion)
       return jsonError("还没有宠物，请先调用 create", 409);
     const result = await fn(save, { user: a.user, now, req, body });

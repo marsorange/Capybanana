@@ -28,6 +28,11 @@ export const BAG_TTL_MS =
     ? BAG_TTL_OVERRIDE_MIN * 60_000
     : 24 * 60 * 60_000;
 
+// One state pull at a time. Without this, a slow/hung server stacks a new
+// in-flight GET every poll tick until the browser's per-origin connection
+// limit chokes — at which point even a manual refresh can't get through.
+let pullInflight = false;
+
 // Scrub any legacy/unknown rarity off postcards (persisted localStorage saves
 // bypass the server's coerceRarity, so a stale SSR/undefined would crash the
 // album). Returns the same array reference when nothing needed fixing.
@@ -90,6 +95,10 @@ interface GameState {
   // Transient (not persisted) one-line cozy hint shown over home, e.g. when the
   // packed bag went stale. Cleared on dismiss / re-pack.
   notice: string | null;
+  // While waiting on the connect gate: when the Agent last touched the API with
+  // its bind token (read skill.md / any call). Non-null lets the gate say
+  // "你的 Agent 来过啦" before the pet exists. Transient, fed by cloudPull.
+  agentSeenAt: string | null;
 
   // cloud / account
   cloud: CloudAuth | null;
@@ -139,6 +148,7 @@ function emptyLocalState() {
     selectedPostcardId: null,
     pendingPostcardId: null,
     notice: null,
+    agentSeenAt: null as string | null,
   };
 }
 
@@ -342,9 +352,15 @@ export const useGameStore = create<GameState>()(
 
       cloudPull: async () => {
         const s = get();
-        if (!s.cloud) return;
+        if (!s.cloud || pullInflight) return;
+        pullInflight = true;
         try {
-          const { save } = await cloud.state(s.cloud.bindToken);
+          const { save, agentSeenAt } = await cloud.state(s.cloud.bindToken);
+          // The Agent's first visit (reading skill.md) doesn't bump rev, so
+          // surface it BEFORE the rev short-circuit — it's how the connect
+          // gate flips to "你的 Agent 来过啦" while the pet doesn't exist yet.
+          if ((agentSeenAt ?? null) !== s.agentSeenAt)
+            set({ agentSeenAt: agentSeenAt ?? null });
           if (save.rev === s.cloud.rev) return;
           const prevResult = s.lastResult;
           get().adoptSave(save);
@@ -369,6 +385,8 @@ export const useGameStore = create<GameState>()(
           });
         } catch (e) {
           if ((e as { status?: number }).status === 401) get().logout();
+        } finally {
+          pullInflight = false;
         }
       },
 

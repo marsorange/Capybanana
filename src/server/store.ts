@@ -800,6 +800,26 @@ export async function regenerateAgentLink(userId: string): Promise<string> {
   return sql.begin((tx) => rotateToken(tx, userId, "agent"));
 }
 
+/**
+ * When the active 'agent' bind token was last presented to any endpoint.
+ * resolveBind stamps last_used_at on every use and only the Agent holds this
+ * token, so this reads as "the Agent's last visit" — non-null means it has at
+ * least read skill.md. null = token never used yet (or no active agent token).
+ * The connect gate polls this to show 接入 progress before the pet exists.
+ */
+export async function agentSeenAt(userId: string): Promise<string | null> {
+  const sql = sqlDb();
+  const rows = await sql<{ last_used_at: Date | string | null }[]>`
+    select last_used_at
+    from agent_tokens
+    where user_id = ${userId}::uuid and name = 'agent' and revoked_at is null
+    order by created_at desc
+    limit 1
+  `;
+  const at = rows[0]?.last_used_at;
+  return at ? iso(at) : null;
+}
+
 // Outcome of resolving a bind token. `revoked` vs `unknown` is the signal the
 // route layer turns into a *terminal* 401 (vs a transient 5xx): a revoked token
 // means the owner regenerated the link / swapped Agents, so the caller should

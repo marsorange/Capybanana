@@ -2,8 +2,8 @@
 // (battle verdicts, travel planning, and future decisions). OpenAI-compatible
 // POST /chat/completions. The secret key lives only on the server (.env.local).
 //
-// Image understanding stays on MiniMax (see minimax.ts `understandImage`); this
-// module is text / JSON only. Docs: https://openrouter.ai/docs/quickstart
+// Image understanding lives on GLM-4V-Flash (see glm.ts `understandImage`);
+// this module is text / JSON only. Docs: https://openrouter.ai/docs/quickstart
 //
 //   OPENROUTER_API_KEY    = <bearer token>                     (required)
 //   OPENROUTER_MODEL      = deepseek/deepseek-v4-flash         (default below)

@@ -14,9 +14,9 @@ const DAILY_STEPS = [
   { icon: "💌", label: "等我把远方寄回来" },
 ];
 
-function StepList() {
+function StepList({ className }: { className?: string }) {
   return (
-    <Panel className="p-4">
+    <Panel className={`p-4 ${className ?? ""}`}>
       <p className="mb-3 text-[11px] font-medium text-accent">以后，你每天来看看我——</p>
       <ul className="space-y-3">
         {DAILY_STEPS.map((s) => (
@@ -35,6 +35,7 @@ function StepList() {
 export default function ConnectAgentScreen() {
   const connectUrl = useGameStore((s) => s.connectUrl);
   const companion = useGameStore((s) => s.companion);
+  const agentSeenAt = useGameStore((s) => s.agentSeenAt);
   const cloudError = useGameStore((s) => s.cloudError);
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const hasOnboarded = useGameStore((s) => s.hasOnboarded);
@@ -120,12 +121,14 @@ export default function ConnectAgentScreen() {
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
                 把下面这句话交给你的 Agent。它会替我取个名字，也会听见我每天的小心思。
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-ink">
-                等我安顿好，你就能上岛找我啦。
-              </p>
+              {/* Two-step liveness: the Agent reading skill.md stamps its bind
+                  token server-side, so the owner sees progress (它来过了) before
+                  the pet exists — not just a silent wait until create lands. */}
               <p className="mt-2.5 inline-flex items-center gap-1.5 text-xs text-accent">
                 <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-                我在岛上，等你的 Agent…
+                {agentSeenAt
+                  ? "你的 Agent 来过啦，正在给我取名字…"
+                  : "我在岛上，等你的 Agent…"}
               </p>
             </>
           )}
@@ -224,18 +227,23 @@ export default function ConnectAgentScreen() {
 
         {cloudError && <p className="text-center text-sm text-accent">{cloudError}</p>}
 
-        {/* the daily loop, for first-timers (gate / ready); returning owners know it */}
-        {mode !== "revisit" && <StepList />}
+        {/* the daily loop, for first-timers (gate / ready); returning owners
+            know it. On short screens it's the first thing to give way so the
+            口令 panel (and its copy button) never gets pushed out of view. */}
+        {mode !== "revisit" && (
+          <StepList className="[@media(max-height:700px)]:hidden" />
+        )}
       </div>
 
       <div className="relative z-10 shrink-0 px-5 pb-5 pt-3">
         {mode === "gate" ? (
-          <>
-            <PrimaryButton disabled>等我安顿好…</PrimaryButton>
-            <p className="mt-2 text-center text-[11px] text-ink-soft/70">
-              等我有了名字，这扇门就开了。
-            </p>
-          </>
+          // Not a button — nothing is tappable while we wait for the Agent. A
+          // slim status pill keeps the whole gate (incl. 复制口令) on one
+          // 320×568 screen, where the old disabled button pushed it under.
+          <p className="mx-auto flex w-fit max-w-full items-center gap-2 rounded-full bg-paper/80 px-4 py-2 text-[12px] text-ink-soft shadow-[0_4px_14px_-10px_rgba(58,46,42,0.55)] backdrop-blur-sm">
+            <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" />
+            等我有了名字，这扇门就开了
+          </p>
         ) : (
           <PrimaryButton onClick={enterIsland}>
             {mode === "ready" ? "进岛找我" : "回小屋"}

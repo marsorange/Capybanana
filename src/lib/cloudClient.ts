@@ -19,6 +19,9 @@ export interface MutationResult {
   ok: boolean;
   rev: number;
   save: CloudSave;
+  // /api/web/state only, while the account is petless: when the Agent last
+  // touched the API with its bind token (non-null = it has read skill.md).
+  agentSeenAt?: string | null;
 }
 
 type Method = "GET" | "POST";
@@ -38,11 +41,27 @@ async function call<T>(
       ? `${path}${path.includes("?") ? "&" : "?"}bind=${encodeURIComponent(token)}`
       : path;
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      // A wedged server instance must FAIL the call, not strand it forever —
+      // a hung fetch here is what froze the connect-gate poll (the pet arrived
+      // server-side but no response ever came back, so the UI never flipped).
+      // With a deadline, the next 5s poll retries fresh and recovers on its own.
+      signal: AbortSignal.timeout(12_000),
+    });
+  } catch (e) {
+    const name = (e as DOMException).name;
+    if (name === "TimeoutError" || name === "AbortError") {
+      const err = new Error("请求超时了，稍后会自动再试");
+      (err as Error & { status?: number }).status = 0;
+      throw err;
+    }
+    throw e;
+  }
   const data = await res.json().catch(() => ({}) as Record<string, unknown>);
   if (!res.ok || data?.ok === false) {
     const err = new Error((data?.error as string) || `请求失败（${res.status}）`);
