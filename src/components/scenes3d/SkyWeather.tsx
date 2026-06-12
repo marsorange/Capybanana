@@ -6,6 +6,13 @@ import * as THREE from "three";
 // lights when mounted, so SceneCanvas renders it instead of the static lights.
 // Kept light on purpose — only sunshine ("clear") and overcast ("cloudy").
 //
+// TOON TUNING (2026-06-12): the materials are MeshToonMaterial with a stepped
+// gradient ramp, so the recipe is ONE strong directional key + weak ambient.
+// The key:ambient ratio (~2.5:1) is what makes the light/shadow bands read as
+// crisp low-poly facets; the old PBR-era stack (big hemi + big ambient + sun)
+// flattened the ramp to a single washed band. Intensities are on three's
+// physical-light scale (÷π ≈ the classic "sun 1.2 / ambient 0.45" numbers).
+//
 // SHADOWS: off by default. When `castShadow` is on, the ONE sun casts a real
 // shadow with a DISCIPLINED budget — a small 1024 map, a frustum tightened to
 // just the island (so a small map still reads crisp), and PCF (not soft) on the
@@ -33,10 +40,7 @@ function sunAt(t: number) {
   const warm = 1 - elev; // warmer toward the horizons
   const color = new THREE.Color().copy(NOON).lerp(HORIZON, warm * 0.35);
   if (!inDay) color.copy(NIGHT);
-  // Soft high sun: enough direction for low-poly facets, but not so hot that
-  // the cream walls and sky art wash out.
-  const intensity = inDay ? 1.45 + elev * 0.42 : 0.62;
-  return { dir, color, intensity, elev, inDay };
+  return { dir, color, elev, inDay };
 }
 
 export default function SkyWeather({
@@ -52,22 +56,16 @@ export default function SkyWeather({
 }) {
   const s = sunAt(start);
   const clear = weather === "clear";
-  const wDim = clear ? 1 : 0.8;
-  // Bright, high-key sunny fill: generous ambient + hemi so nothing (esp. the
-  // big ground and the cutaway interior) crushes to a murky dark, while the 45°
-  // directional SUN adds a warm raking highlight + a soft cast shadow on top.
-  // (The scene was reading dim before — a cozy 治愈 cartoon wants bright +
-  // saturated, not dark + contrasty, so the fill is dialed up here.)
-  const ambientIntensity = (clear ? 0.62 : 0.7) + s.elev * 0.05;
-  const hemiIntensity = (clear ? 0.68 : 0.74) * wDim;
-  // Sun stays the key light, kept strong so the 45° rake reads, but balanced
-  // against the brighter fill so the cream walls / grass don't blow to white.
-  const sunIntensity = s.intensity * wDim * (clear ? 1.15 : 0.9);
+  // STRONG key: the toon ramp's lit band comes almost entirely from the sun, so
+  // overcast softens it instead of dimming the whole scene.
+  const sunIntensity = (s.inDay ? 2.6 + s.elev * 0.5 : 0.9) * (clear ? 1 : 0.62);
+  // WEAK ambient: a sky/ground hemisphere (cool above, warm bounce below) keeps
+  // the shadow band colorful instead of black, but stays low so the bands show.
+  const hemiIntensity = clear ? 1.05 : 1.35;
 
   return (
     <>
-      <hemisphereLight args={["#fffdfa", "#eadbbd", hemiIntensity]} />
-      <ambientLight intensity={ambientIntensity} color="#fff7ee" />
+      <hemisphereLight args={["#fdf3e0", "#d9c2a0", hemiIntensity]} />
       {/* fixed sun — the scene's key light, and (opt-in) the only shadow caster.
           Shadow budget kept tight on purpose: 1024 map + a frustum hugging the
           island so texel density stays high without a big map. PCF vs soft is
@@ -88,11 +86,11 @@ export default function SkyWeather({
         shadow-bias={-0.0006}
         shadow-normalBias={0.035}
       />
-      {/* cool sky bounce so shadowed faces still read — lifted a touch so the
-          back-lit walls + forest never go murky */}
+      {/* faint cool sky bounce from the back-left so the dark band keeps a hint
+          of form on the shaded side of the house/forest */}
       <directionalLight
         position={[-7, 5, -3]}
-        intensity={clear ? 0.34 : 0.44}
+        intensity={clear ? 0.45 : 0.55}
         color="#d7e5f8"
       />
     </>

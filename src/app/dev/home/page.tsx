@@ -42,12 +42,10 @@ export default function DevHome() {
         target={[-0.6, 0.4, -0.8]}
         zoom={38}
         enableZoom
-        minZoom={24}
-        maxZoom={110}
-        minPolar={0.7}
-        maxPolar={1.3}
-        bendStrength={0}
-        postfx
+        minZoom={34}
+        maxZoom={84}
+        minPolar={0.58}
+        maxPolar={1.38}
       >
         <HomeModel mode={away ? "away" : "home"} />
         <HomeFloor />

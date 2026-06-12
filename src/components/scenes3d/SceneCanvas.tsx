@@ -1,15 +1,21 @@
 "use client";
 
-import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei";
+import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ReactNode } from "react";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { PrimaryButton } from "../ui/kit";
-import { sceneBend } from "./materials";
-import PostFX from "./PostFX";
 import SkyWeather, { type Weather } from "./SkyWeather";
 import { zoomBus } from "./zoomBus";
+
+// The render pipeline is deliberately PLAIN (2026-06-12 rework): toon materials
+// (materials.ts) + a strong directional key + weak ambient fill, MSAA on the
+// canvas, renderer-native ACES tone mapping (R3F's default), and NO
+// EffectComposer. The old post-fx chain (N8AO/SMAA/TiltShift/grade) blurred
+// scene RGB into zero-alpha pixels of this transparent canvas — premultiplied
+// compositing then drew it as a white halo on every silhouette (the "白边"
+// bug). One forward pass also makes this the cheapest the scene has ever been.
 
 interface SceneCanvasProps {
   children: ReactNode;
@@ -29,23 +35,10 @@ interface SceneCanvasProps {
   // the home diorama uses it.
   sky?: boolean;
   weather?: Weather;
-  // "Tiny-planet" curl of the shared toon materials. 0 = flat (the turntables);
-  // the home diorama dials in a subtle curl so the island edges droop like a
-  // little planet. See sceneBend in materials.ts.
-  bendStrength?: number;
-  bendCenter?: [number, number, number];
-  bendFalloff?: number;
   // Device-pixel-ratio cap for the renderer's framebuffer. Memory scales with
   // dpr², so heavy scenes (the home diorama) pass [1, 1] to halve framebuffer
   // pressure on retina phones — a key lever against WebGL context loss.
   dpr?: number | [number, number];
-  // Opt into the mobile-tuned post-processing pass (AO + filmic grade + bloom +
-  // SMAA) — the "Abeto" polish layer. Auto-degrades to the plain pipeline on the
-  // first WebGL context loss.
-  postfx?: boolean;
-  // Include the tilt-shift "miniature" blur (default true, for the diorama).
-  // Portrait turntables (a single centered model) pass false: AO + grade only.
-  postfxTilt?: boolean;
   // Frame-rate ceiling. A cozy idle diorama doesn't need the display's native
   // refresh — on a 120Hz phone/laptop an uncapped loop burns 4× the CPU/GPU for
   // zero perceptible gain (the "CPU 发热" bug). 0 = uncapped.
@@ -74,69 +67,6 @@ function FpsLimiter({ fps }: { fps: number }) {
     return () => cancelAnimationFrame(raf);
   }, [fps, invalidate]);
   return null;
-}
-
-// Keeps the renderer's tone-mapping in sync with whether the post-fx pass is live:
-// when PostFX is on, the <ToneMapping> effect owns the ACES grade so the renderer
-// must NOT also tone-map (double-darkening); when it's off (or has degraded after a
-// context loss), the renderer does ACES itself so colors stay correct.
-function ToneMapSync({ active }: { active: boolean }) {
-  const gl = useThree((s) => s.gl);
-  useEffect(() => {
-    gl.toneMapping = active ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
-    gl.toneMappingExposure = 1;
-  }, [gl, active]);
-  return null;
-}
-
-// Drives the module-level bend uniforms from props and, crucially, resets the
-// curl to flat on unmount — the toon materials are a shared cache, so without
-// this a turntable mounted after the home scene would inherit its bend.
-function BendApplier({
-  strength,
-  center,
-  falloff,
-}: {
-  strength: number;
-  center: [number, number, number];
-  falloff: number;
-}) {
-  useEffect(() => {
-    sceneBend.strength.value = strength;
-    sceneBend.center.value.set(center[0], center[1], center[2]);
-    sceneBend.falloff.value = falloff;
-    return () => {
-      sceneBend.strength.value = 0;
-    };
-  }, [strength, center, falloff]);
-  return null;
-}
-
-// Stable default so SceneCanvas re-renders don't churn the BendApplier effect.
-const FLAT_CENTER: [number, number, number] = [0, 0, 0];
-
-// Soft procedural IBL — the diffuse half of the "Abeto" soft look. Built from a
-// few Lightformer panels (NOT a fetched HDRI), so it's offline/headless/mobile
-// safe and costs one tiny 64px cubemap baked ONCE (frames=1). The matte
-// MeshStandardMaterials pick this up as gentle, directional ambient — the thing a
-// flat ambientLight can't give. Background stays untouched (transparent over the
-// cream page). Warm key front-right + cool sky fill + warm ground bounce + a
-// camera-front fill so faces toward the viewer never go flat-dark.
-function SoftEnv() {
-  return (
-    <Environment resolution={64} frames={1}>
-      <Lightformer intensity={1.5} color="#fff3df" position={[6, 7, 7]} scale={[12, 12, 1]} />
-      <Lightformer intensity={0.7} color="#cdddf2" position={[-7, 6, -5]} scale={[12, 12, 1]} />
-      <Lightformer
-        intensity={0.5}
-        color="#efe3cc"
-        position={[0, -6, 0]}
-        rotation={[Math.PI / 2, 0, 0]}
-        scale={[16, 16, 1]}
-      />
-      <Lightformer intensity={0.55} color="#fef7ec" position={[0, 2, 9]} scale={[14, 10, 1]} />
-    </Environment>
-  );
 }
 
 function ZoomApplier({ min, max }: { min: number; max: number }) {
@@ -242,12 +172,7 @@ export default function SceneCanvas({
   sun = false,
   sky = false,
   weather = "clear",
-  bendStrength = 0,
-  bendCenter = FLAT_CENTER,
-  bendFalloff = 0.05,
   dpr = [1, 1.25],
-  postfx = false,
-  postfxTilt = true,
   fpsCap = 30,
   className,
 }: SceneCanvasProps) {
@@ -257,20 +182,8 @@ export default function SceneCanvas({
   const [instanceKey, setInstanceKey] = useState(0);
   const [dead, setDead] = useState(false);
   const lossTimes = useRef<number[]>([]);
-  // Post-fx runs as a live toggle so we can shed it on GPU trouble. The ref lets
-  // the (stable) loss handler read the current value without a stale closure.
-  const [postfxOn, setPostfxOn] = useState(postfx);
-  const postfxRef = useRef(postfx);
 
   const handleContextLoss = useCallback(() => {
-    // Graceful degrade FIRST: if the heavy post-fx pass is live, drop it and give
-    // the lighter pipeline a chance — don't count this loss toward the fatal
-    // limit. Only losses on the already-lean pipeline escalate to the reload card.
-    if (postfxRef.current) {
-      postfxRef.current = false;
-      setPostfxOn(false);
-      return;
-    }
     const now = typeof performance !== "undefined" ? performance.now() : 0;
     lossTimes.current = lossTimes.current.filter((t) => now - t < LOSS_WINDOW_MS);
     lossTimes.current.push(now);
@@ -317,35 +230,26 @@ export default function SceneCanvas({
       // the static directional below.
       shadows={sun ? "percentage" : false}
       dpr={dpr}
-      // canvas MSAA is wasted when the EffectComposer is on (it renders into its
-      // own non-MSAA buffers and SMAA does the AA) — skip allocating it. Note the
-      // gl config is fixed at context creation, so a runtime postfx degrade keeps
-      // whatever was chosen here.
-      gl={{ alpha: true, antialias: !postfx, powerPreference: "default" }}
+      // plain forward pipeline → the canvas's own MSAA is the AA.
+      gl={{ alpha: true, antialias: true, powerPreference: "default" }}
       camera={camera}
       frameloop={fpsCap > 0 ? "demand" : "always"}
       style={{ touchAction: "none" }}
     >
       {fpsCap > 0 && <FpsLimiter fps={fpsCap} />}
       <WebGLContextGuard onLoss={handleContextLoss} />
-      {/* only manage tone-mapping for scenes that opted into post-fx; the portrait
-          turntables keep R3F's default renderer tone-mapping untouched */}
-      {postfx && <ToneMapSync active={postfxOn} />}
-      {/* soft IBL for the matte materials (the diffuse half of the soft look) */}
-      <SoftEnv />
-      <BendApplier strength={bendStrength} center={bendCenter} falloff={bendFalloff} />
       {sun && <ShadowEnabler />}
       {sky ? (
         <>
-          {/* fixed sun + fill lights; casts a real (disciplined) shadow when the
-              scene opts into `sun` */}
+          {/* one strong sun + weak fills (toon-tuned, see SkyWeather); casts a
+              real (disciplined) shadow when the scene opts into `sun` */}
           <SkyWeather weather={weather} castShadow={sun} />
           {/* soft contact shadows (小阴影) under the ground-level objects — adds
               grounding/depth without darkening the bright scene. far is low so it
               only catches the pet + furniture + yard props, not the whole house.
               ONLY when the real sun shadow is off: ContactShadows re-renders the
-              whole scene from above EVERY frame, and with the sun (+ AO in
-              post) grounding everything already, that pass was pure heat. */}
+              whole scene from above EVERY frame, and with the sun grounding
+              everything already, that pass was pure heat. */}
           {!sun && (
             <ContactShadows
               position={[-0.6, 0.07, -1.0]}
@@ -360,16 +264,19 @@ export default function SceneCanvas({
         </>
       ) : (
         <>
-          {/* static warm "日系" low-poly light (the portrait turntables) */}
-          <hemisphereLight args={["#fffdf6", "#e7d8be", 0.72]} />
-          <ambientLight intensity={0.32} color="#fff4e6" />
+          {/* static turntable light, same recipe as the diorama: ONE strong warm
+              key from high front-right so the toon bands read, a weak sky/ground
+              hemisphere as ambient, and a faint cool fill so the dark band keeps
+              a hint of form. (three's physical-light scale: ÷π ≈ the classic
+              "key 1.2 / ambient 0.4" toon numbers.) */}
+          <hemisphereLight args={["#fff6e4", "#d9c4a3", 1.15]} />
           <directionalLight
             position={[8, 12, 5]}
-            intensity={sun ? 2.9 : 2.2}
-            color="#ffeec6"
+            intensity={2.6}
+            color="#fff1d4"
             castShadow={sun}
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
             shadow-camera-near={0.5}
             shadow-camera-far={48}
             shadow-camera-left={-12}
@@ -379,17 +286,11 @@ export default function SceneCanvas({
             shadow-bias={-0.0011}
             shadow-normalBias={0.025}
           />
-          {/* cool sky bounce + a warm back rim so shadowed faces still read */}
           <directionalLight position={[-7, 5, -3]} intensity={0.5} color="#cdddf2" />
-          <directionalLight position={[-2, 3, -9]} intensity={0.32} color="#ffd9bc" />
         </>
       )}
 
       <Suspense fallback={null}>{children}</Suspense>
-
-      {/* mobile-tuned post-processing (AO + filmic grade + bloom + SMAA). Mounted
-          last so it wraps the rendered scene; auto-shed on the first context loss. */}
-      {postfxOn && <PostFX tiltShift={postfxTilt} />}
 
       {orthographic && <ZoomApplier min={minZoom} max={maxZoom} />}
 

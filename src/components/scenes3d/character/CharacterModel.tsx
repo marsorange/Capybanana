@@ -213,7 +213,7 @@ function GltfCharacter({
       if (!toon) {
         const std = src as THREE.MeshStandardMaterial;
         toon = toonFromStandard(std);
-        const out = toon as THREE.MeshStandardMaterial;
+        const out = toon as THREE.MeshToonMaterial;
         if (std.name === "capy_body") {
           // the owner's color, blended over the authored fur
           out.color.lerp(new THREE.Color(color), BODY_TINT);

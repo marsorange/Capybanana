@@ -61,7 +61,7 @@ export default function ResultScreen() {
           className="pointer-events-none absolute inset-0"
           style={{ background: `radial-gradient(70% 55% at 50% 60%, ${theme.glow} 0%, transparent 70%)` }}
         />
-        <SceneCanvas controls="spin" postfx postfxTilt={false}>
+        <SceneCanvas controls="spin">
           <group position={[0, -0.56, 0]} scale={0.84}>
             <Pedestal color={theme.pedestal} />
             <CharacterModel

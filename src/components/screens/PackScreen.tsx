@@ -8,31 +8,27 @@ import { tagsFromHint } from "@/game/itemTags";
 import type { PackedItem } from "@/game/types";
 import { dayKey8, uid } from "@/game/util";
 import { useGameStore } from "@/state/gameStore";
+import Icon from "../ui/Icon";
+import { PrimaryButton, ScreenHeader, SecondaryButton } from "../ui/kit";
 import { extractElement } from "../ui/photoExtract";
 
 const MAX = 3;
 
-// ── soft peach palette, local to this screen (reference: cozy pastel mock) ───
-// Cards are barely-there cream on a peach wash; all line-work is warm brown.
-const CARD = "rounded-[24px] border border-[#f2dfc4] bg-[#fdf4e6] shadow-[0_5px_14px_rgba(187,134,84,0.10)]";
-const INK = "#54402e";
-const INK_SOFT = "#b08a5e";
+// Same paper card as PostcardScreen / kit Panel — this screen shares the global
+// storybook material system. (Future background art slots in as <ScreenArtwork>
+// right under the root, same as the postcard screen.)
+const CARD =
+  "tex-grain rounded-[24px] border-2 border-[#e4c89c] bg-paper/95 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.14),0_14px_26px_-18px_rgba(58,46,42,0.42)]";
 
-// Owner→pet message ideas, straight from the reference mock (tap to fill).
+// Owner→pet message ideas (tap to fill).
 const MESSAGE_IDEAS = [
   "今天想去有风的地方看看。",
   "如果累了，就在家慢慢休息。",
   "带着这个，找一个安静的小角落吧。",
 ];
 
-// ── inline SVG icons (rounded, soft — no emoji) ──────────────────────────────
+// ── inline SVG bits the PNG icon set doesn't cover ───────────────────────────
 type IP = { className?: string };
-const BackArrow = ({ className }: IP) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 12H6" />
-    <path d="m11.5 6.5-6 5.5 6 5.5" />
-  </svg>
-);
 const Switch = ({ className }: IP) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 10a8 8 0 0 1 13.5-3.3L20 9" />
@@ -41,54 +37,13 @@ const Switch = ({ className }: IP) => (
     <path d="M4 20v-5h5" />
   </svg>
 );
-const Camera = ({ className }: IP) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round">
-    <rect x="2.5" y="7" width="19" height="13.5" rx="3.2" />
-    <path d="M8 7 9.4 4.6h5.2L16 7" />
-    <circle cx="12" cy="13.6" r="3.7" />
-  </svg>
-);
-const Heart = ({ className }: IP) => (
-  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-    <path d="M12 20.4S4.2 15.5 4.2 9.9C4.2 7.3 6.1 5.6 8.3 5.6c1.5 0 2.8.8 3.7 2 .9-1.2 2.2-2 3.7-2 2.2 0 4.1 1.7 4.1 4.3 0 5.6-7.8 10.5-7.8 10.5Z" />
-  </svg>
-);
 const Speech = ({ className }: IP) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5c-1.2 0-2.4-.27-3.4-.76L4 19.5l1.3-4.4A7.5 7.5 0 1 1 20 11.5Z" />
     <path d="M9 10.5h.01M12.5 10.5h.01M16 10.5h.01" strokeWidth={2.6} />
   </svg>
 );
-const Parcel = ({ className }: IP) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3.5 8.5 12 4l8.5 4.5v7L12 20l-8.5-4.5z" />
-    <path d="M3.5 8.5 12 13l8.5-4.5" />
-    <path d="M12 13v7" />
-  </svg>
-);
-/** Tiny manga-style emphasis rays flanking the title. */
-const Spark = ({ className }: IP) => (
-  <svg viewBox="0 0 16 16" className={className} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
-    <path d="M8 2.5v3" />
-    <path d="m3.4 4.8 2 2" />
-    <path d="m12.6 4.8-2 2" />
-  </svg>
-);
-/** Four-point sparkle (CTA accent). */
-const Twinkle = ({ className }: IP) => (
-  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-    <path d="M12 3.5 13.9 9.6 20 11.5l-6.1 1.9L12 19.5l-1.9-6.1L4 11.5l6.1-1.9Z" />
-  </svg>
-);
-/** Little tuft of leaves peeking from a card corner. */
-const LeafTuft = ({ className }: IP) => (
-  <svg viewBox="0 0 48 26" className={className} aria-hidden="true">
-    <path d="M24 24C20 15 12 11 4 13c4 9 12 13 20 11Z" fill="#8fb267" />
-    <path d="M24 24c2-10-2-18-10-20-2 8 2 16 10 20Z" fill="#a3c277" />
-    <path d="M24 24c6-8 14-10 20-6-4 7-14 9-20 6Z" fill="#7da053" />
-  </svg>
-);
-/** Capybara peeking over the wish card's top edge, with a tiny heart. */
+/** Capybara peeking over the tray card's top edge, with a tiny heart. */
 const CapyPeek = ({ className }: IP) => (
   <svg viewBox="0 0 76 46" className={className} aria-hidden="true">
     <path
@@ -266,45 +221,29 @@ export default function PackScreen() {
       : "拍下想让我带走的小东西";
 
   return (
-    <div
-      className="relative flex h-full flex-col overflow-hidden"
-      style={{
-        background:
-          "radial-gradient(120% 70% at 50% 0%, #fdf3e4 0%, #fbecd9 55%, #f7e2c8 100%)",
-      }}
-    >
-      {/* ── header: soft squircle back + sparkled title ──────────────────────── */}
-      <header className="relative z-20 flex items-center gap-2 px-4 pt-3">
-        <button
-          onClick={() => goTo("home")}
-          aria-label="返回"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] border border-[#f2dfc4] bg-[#fdf4e6] text-[#8a6a4c] shadow-[0_4px_10px_rgba(187,134,84,0.14)] transition active:translate-y-0.5"
-        >
-          <BackArrow className="h-5 w-5" />
-        </button>
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
-          <Spark className="h-3.5 w-3.5 shrink-0 -rotate-45 text-[#eda05f]" />
-          <h1 className="truncate font-hand text-[21px] font-bold" style={{ color: INK }}>
-            今日包裹
-          </h1>
-          <Spark className="h-3.5 w-3.5 shrink-0 rotate-45 text-[#eda05f]" />
-        </div>
-        <div className="h-11 w-11 shrink-0" aria-hidden />
-      </header>
+    <div className="screen-bg relative flex h-full flex-col overflow-hidden">
+      {/* 背景图占位：后续在这里挂 <ScreenArtwork src=... overlay="soft" />，
+          与 PostcardScreen 同构；现在先用 screen-bg 素底。 */}
+
+      <ScreenHeader
+        compact
+        onBack={() => goTo("home")}
+        eyebrow="拍到的都会变成我旅行的线索"
+        title="今日包裹"
+        right={<Icon name="package" className="h-7 w-7 drop-shadow-[0_3px_2px_rgba(126,83,38,0.18)]" />}
+      />
 
       {gated ? (
         /* ── 已经打包过 / 它在旅行 — a quiet recap instead of the camera form ── */
-        <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-center gap-3 px-4 pb-8">
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-center gap-3 px-5 pb-8">
           <div className={`relative px-5 pb-6 pt-7 text-center ${CARD}`}>
-            <LeafTuft className="pointer-events-none absolute -bottom-1.5 -left-2.5 h-6 w-11" />
-            <LeafTuft className="pointer-events-none absolute -bottom-1.5 -right-2.5 h-6 w-11 -scale-x-100" />
-            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#fbeeda] text-[#bd9468]">
-              <Parcel className="h-7 w-7" />
+            <span className="ui-icon-well mx-auto h-16 w-16 rounded-[20px]">
+              <Icon name="package" className="h-9 w-9" />
             </span>
-            <p className="mt-3 font-hand text-[18px] font-bold leading-none" style={{ color: INK }}>
+            <p className="mt-3 font-hand text-[18px] font-bold leading-none text-ink">
               {away ? "我还在外面呢" : existing ? "包裹已经放在门口啦" : "今天已经打包过啦"}
             </p>
-            <p className="mt-2 text-[12px] leading-relaxed" style={{ color: INK_SOFT }}>
+            <p className="mt-2 text-[12px] leading-relaxed text-ink-soft">
               {away
                 ? "等我回家，再给我装新的小东西吧。"
                 : existing
@@ -321,37 +260,32 @@ export default function PackScreen() {
                       key={i.id}
                       src={i.photo}
                       alt={i.label}
-                      className="h-14 w-14 rounded-[14px] border border-[#f2dfc4] object-cover shadow-[0_3px_8px_rgba(187,134,84,0.18)]"
+                      className="h-14 w-14 rounded-[14px] border-2 border-[#e4c89c] object-cover shadow-[0_3px_0_rgba(143,101,54,0.14)]"
                     />
                   ))}
               </div>
             )}
             {!away && existing?.message && (
-              <p className="mt-3 font-hand text-[13px] leading-snug text-[#7a5c40]">
+              <p className="mt-3 font-hand text-[13px] leading-snug text-ink-soft">
                 「{existing.message}」
               </p>
             )}
           </div>
-          <button
-            onClick={() => goTo("home")}
-            className="flex h-[50px] w-full items-center justify-center rounded-[22px] border border-[#f2dfc4] bg-[#fdf4e6] font-hand text-[16px] font-bold text-[#8a6a4c] shadow-[0_4px_10px_rgba(187,134,84,0.14)] transition active:translate-y-0.5"
-          >
+          <SecondaryButton size="sm" onClick={() => goTo("home")}>
             回小屋
-          </button>
+          </SecondaryButton>
         </div>
       ) : (
         <>
-      {/* ── single adaptive column: the viewfinder FLEXES to absorb whatever
-          height the screen has; the idea-chips and hint line drop out on short
-          screens so everything always fits without scrolling (overflow-y-auto
-          is only the extreme-squeeze fallback) ─────────────────────────────── */}
-      <div className="no-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 pb-2 pt-2.5 [@media(max-height:620px)]:gap-2">
-        {/* viewfinder card — camera window + grid + shutter + status pill */}
+      {/* ── viewfinder is the hero: it FLEXES to absorb all leftover height;
+          the tray below stays one compact card so the camera gets the screen.
+          overflow-y-auto is only the extreme-squeeze fallback ───────────────── */}
+      <div className="no-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 pb-2 pt-2.5">
+        {/* viewfinder card — camera window + grid + shutter + status chip */}
         <div
-          className={`relative mb-2 min-h-[150px] w-full flex-1 p-[7px] [@media(max-height:620px)]:min-h-[140px] ${CARD}`}
-          style={{ borderRadius: 28 }}
+          className={`relative min-h-[220px] w-full flex-1 p-2 [@media(max-height:620px)]:min-h-[180px] ${CARD}`}
         >
-          <div className="relative h-full w-full overflow-hidden rounded-[22px] bg-[#3a322a]">
+          <div className="relative h-full w-full overflow-hidden rounded-[17px] bg-[#352c22]">
             <video
               ref={videoRef}
               autoPlay
@@ -361,10 +295,10 @@ export default function PackScreen() {
               style={{ display: camPhase === "live" ? "block" : "none" }}
             />
             {camPhase !== "live" && (
-              <div className="absolute inset-0 grid place-items-center bg-gradient-to-b from-[#f6e8d2] to-[#eedab9] px-8 text-center">
+              <div className="absolute inset-0 grid place-items-center bg-gradient-to-b from-cream-soft to-cream-deep px-8 text-center">
                 <div>
-                  <Camera className="mx-auto mb-2 h-7 w-7 text-[#bd9468]/80" />
-                  <p className="whitespace-pre-line font-hand text-[14px] leading-relaxed text-[#8a6a4c]">
+                  <Icon name="photo" className="mx-auto mb-2 h-9 w-9 opacity-80" />
+                  <p className="whitespace-pre-line font-hand text-[14px] leading-relaxed text-ink-soft">
                     {camPhase === "starting"
                       ? "我在等镜头醒来…"
                       : "这里拿不到相机。\n先给我留一句话也可以。"}
@@ -387,10 +321,15 @@ export default function PackScreen() {
                 <button
                   onClick={switchCamera}
                   aria-label="切换镜头"
-                  className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-[14px] bg-[#241f1a]/35 text-white backdrop-blur-sm transition active:scale-95"
+                  className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-[#241f1a]/40 text-white backdrop-blur-sm transition active:scale-95"
                 >
                   <Switch className="h-4.5 w-4.5" />
                 </button>
+                {/* status chip — camera-HUD style, top-left inside the window */}
+                <div className="absolute left-3 top-3 z-10 flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#241f1a]/40 px-3 backdrop-blur-sm">
+                  <Icon name="photo" className="h-4 w-4 shrink-0" />
+                  <span className="font-hand text-[12px] leading-none text-white/95">{pillText}</span>
+                </div>
               </>
             )}
             {flashKey > 0 && (
@@ -404,38 +343,29 @@ export default function PackScreen() {
             )}
           </div>
 
-          {/* shutter — floats inside the window, above the status pill */}
+          {/* shutter — floats inside the window's bottom edge */}
           <button
             onClick={capture}
             disabled={camPhase !== "live" || full}
             aria-label="给我拍一样东西"
-            className="absolute bottom-8 left-1/2 z-20 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full bg-[#fff8ee]/95 p-[5px] shadow-[0_5px_14px_rgba(58,40,20,0.28)] transition active:scale-92 disabled:opacity-45 disabled:active:scale-100"
+            className="absolute bottom-5 left-1/2 z-20 grid h-[68px] w-[68px] -translate-x-1/2 place-items-center rounded-full border-2 border-[#d9b982] bg-paper p-[5px] shadow-[inset_0_2px_0_rgba(255,255,255,0.9),0_5px_0_rgba(143,101,54,0.3),0_16px_26px_-14px_rgba(58,46,42,0.55)] transition active:scale-95 disabled:opacity-45 disabled:active:scale-100"
           >
-            <span className="grid h-full w-full place-items-center rounded-full border-2 border-[#e9d6bb] bg-[#fffdf8]">
-              <Camera className="h-6 w-6 text-[#8a6a4c]" />
+            <span className="grid h-full w-full place-items-center rounded-full border-2 border-[#e4c89c] bg-cream-soft">
+              <Icon name="photo" className="h-8 w-8" />
             </span>
           </button>
-
-          {/* status pill — straddles the card's bottom edge */}
-          <div className="absolute -bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#f2dfc4] bg-[#fdf4e6] px-4 py-1.5 shadow-[0_4px_10px_rgba(187,134,84,0.16)]">
-            <Camera className="h-3.5 w-3.5 shrink-0 text-[#bd9468]" />
-            <span className="font-hand text-[12px] leading-none text-[#8a6a4c]">{pillText}</span>
-          </div>
         </div>
 
-        {/* 可放入物品 — three big tappable slots, leaf tufts at the corners */}
-        <section className={`relative shrink-0 px-4 pb-3 pt-3 ${CARD}`}>
-          <LeafTuft className="pointer-events-none absolute -bottom-1.5 -left-2.5 h-6 w-11" />
-          <LeafTuft className="pointer-events-none absolute -bottom-1.5 -right-2.5 h-6 w-11 -scale-x-100" />
-          <div className="flex items-center justify-between">
-            <h2 className="font-hand text-[15px] font-bold leading-none" style={{ color: INK }}>
-              可放入物品
-            </h2>
-            <span className="text-[13px] font-bold tabular-nums leading-none" style={{ color: INK_SOFT }}>
+        {/* tray — slots + wish in ONE compact card, capy peeking over the edge */}
+        <section className={`relative shrink-0 px-3 pb-3 pt-2.5 ${CARD}`}>
+          <CapyPeek className="pointer-events-none absolute -top-[27px] right-4 h-[42px] w-[70px]" />
+          <div className="flex items-center justify-between px-1">
+            <h2 className="font-hand text-[15px] font-bold leading-none text-ink">给我带上的小东西</h2>
+            <span className="text-[12px] font-bold tabular-nums leading-none text-ink-soft">
               {photos.length}/{MAX}
             </span>
           </div>
-          <div className="mt-2.5 grid grid-cols-3 gap-3">
+          <div className="mt-2 flex gap-2">
             {[0, 1, 2].map((i) => {
               const item = photos[i];
               const busy = item ? busyIds.includes(item.id) : false;
@@ -446,10 +376,10 @@ export default function PackScreen() {
                     onClick={capture}
                     disabled={camPhase !== "live"}
                     aria-label="给我拍一样东西"
-                    className="flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[18px] border-2 border-dashed border-[#e8cda7] bg-[#fbeeda]/70 transition active:scale-95 disabled:active:scale-100 [@media(max-height:620px)]:aspect-auto [@media(max-height:620px)]:h-16"
+                    className="flex h-14 flex-1 items-center justify-center gap-1 rounded-[14px] border-2 border-dashed border-[#d9b982] bg-cream-soft/80 transition active:scale-95 disabled:opacity-55 disabled:active:scale-100"
                   >
-                    <span className="text-[26px] font-light leading-none text-[#d8b48e]">+</span>
-                    <span className="font-hand text-[11px] leading-none text-[#c9a883]">拍照添加</span>
+                    <span className="text-[20px] font-light leading-none text-[#c2a06f]">+</span>
+                    <span className="font-hand text-[11px] leading-none text-ink-soft">拍一样</span>
                   </button>
                 );
               }
@@ -459,20 +389,20 @@ export default function PackScreen() {
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 380, damping: 24 }}
-                  className="relative aspect-square w-full [@media(max-height:620px)]:aspect-auto [@media(max-height:620px)]:h-16"
+                  className="relative h-14 flex-1"
                 >
-                  <div className="absolute inset-0 overflow-hidden rounded-[18px] border border-[#f2dfc4] shadow-[0_3px_8px_rgba(187,134,84,0.18)]">
+                  <div className="absolute inset-0 overflow-hidden rounded-[14px] border-2 border-[#e4c89c] shadow-[0_3px_0_rgba(143,101,54,0.14)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.photo} alt={item.label} className="absolute inset-0 h-full w-full object-cover" />
-                    <p className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-[#fff8ee]/90 px-1 py-1 font-hand text-[10px] leading-none text-[#6b5238]">
-                      {busy && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full bg-[#9cba66]" />}
+                    <p className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-paper/90 px-1 py-[3px] font-hand text-[10px] leading-none text-ink">
+                      {busy && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full bg-leaf" />}
                       <span className="truncate">{item.label}</span>
                     </p>
                   </div>
                   <button
                     onClick={() => removePhoto(item.id)}
                     aria-label="移除"
-                    className="absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full bg-[#9c7a55]/90 text-[#fffaf2] shadow transition active:translate-y-0.5"
+                    className="absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full bg-[#8c684a] text-paper shadow transition active:translate-y-0.5"
                   >
                     <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
                       <path d="M6 6l12 12M18 6 6 18" />
@@ -482,70 +412,50 @@ export default function PackScreen() {
               );
             })}
           </div>
-        </section>
 
-        {/* one-line explainer — drops out first on short screens */}
-        <p className="flex shrink-0 items-center justify-center gap-1.5 px-2 text-center text-[11px] leading-tight text-[#bd9468] [@media(max-height:620px)]:hidden">
-          <Heart className="h-3 w-3 shrink-0 text-[#ef8a80]" />
-          拍到的东西都会变成我旅行的线索～
-        </p>
-
-        {/* 写下一句心愿 — wish note with the capy peeking over the edge */}
-        <section className={`relative shrink-0 px-4 pb-3 pt-3 ${CARD}`}>
-          <CapyPeek className="pointer-events-none absolute -top-[27px] right-3 h-[42px] w-[70px]" />
-          <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#fbeeda] text-[#bd9468]">
-              <Speech className="h-4 w-4" />
-            </span>
-            <h2 className="font-hand text-[15px] font-bold leading-none" style={{ color: INK }}>
-              写下一句心愿
-            </h2>
-          </div>
-          <div className="relative mt-2 rounded-[16px] border border-[#f2dfc4] bg-[#fffaf2] px-3 pb-5 pt-2 [@media(max-height:620px)]:pb-4">
+          {/* wish note — single compact line */}
+          <div className="mt-2 flex items-center gap-2 rounded-[16px] border-2 border-[#ead6b2] bg-cream-soft px-3 py-1.5">
+            <Speech className="h-4 w-4 shrink-0 text-[#8c684a]" />
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value.slice(0, 50))}
               maxLength={50}
-              placeholder="比如：今天想去有风的地方看看。"
-              rows={2}
-              className="w-full resize-none bg-transparent font-hand text-[14px] leading-[22px] outline-none placeholder:text-[#cfae85]"
-              style={{ color: INK }}
+              placeholder="留一句话，我带在路上看。"
+              rows={1}
+              className="min-w-0 flex-1 resize-none bg-transparent py-1 font-hand text-[14px] leading-[20px] text-ink outline-none placeholder:text-ink-soft/55"
             />
-            <span className="absolute bottom-1.5 right-2.5 text-[10px] tabular-nums text-[#cfae85]">
-              {message.length}/50
-            </span>
+            <span className="shrink-0 text-[10px] tabular-nums text-ink-soft/70">{message.length}/50</span>
           </div>
-          <div className="[@media(max-height:760px)]:hidden">
-            <p className="mt-2 text-[11px] leading-none text-[#b08a5e]">试试看这些句子</p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {MESSAGE_IDEAS.map((idea) => (
-                <button
-                  key={idea}
-                  onClick={() => setMessage(idea)}
-                  className="rounded-full border border-[#f0d9bb] bg-[#fdf4e6] px-3 py-1.5 font-hand text-[12px] leading-none text-[#7a5c40] shadow-[0_2px_5px_rgba(187,134,84,0.1)] transition active:scale-95"
-                >
-                  {idea}
-                </button>
-              ))}
-            </div>
+
+          {/* idea chips — one scrollable line; drops out on short screens */}
+          <div className="no-scrollbar -mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 [@media(max-height:700px)]:hidden">
+            {MESSAGE_IDEAS.map((idea) => (
+              <button
+                key={idea}
+                onClick={() => setMessage(idea)}
+                className="ui-wood-surface ui-wood-press shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 font-hand text-[12px] leading-none text-ink-soft"
+              >
+                {idea}
+              </button>
+            ))}
           </div>
         </section>
       </div>
 
-      {/* ── CTA — one soft salmon button, floating on the wash ─────────────── */}
+      {/* ── CTA — coral sticker on the shared bottom panel ─────────────────── */}
       <div
-        className="relative z-20 shrink-0 px-4 pt-1.5"
+        className="game-bottom-panel relative z-20 shrink-0 px-4 pt-3"
         style={{ paddingBottom: "max(14px, env(safe-area-inset-bottom))" }}
       >
-        <button
+        <PrimaryButton
+          size="sm"
           onClick={() => prepareBag(photos, message)}
           disabled={!hasClue}
-          className="relative flex h-[54px] w-full items-center justify-center gap-2 rounded-[22px] bg-gradient-to-b from-[#f29c86] to-[#e87f6b] font-hand text-[18px] font-bold text-[#fffaf4] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.4),0_8px_18px_rgba(222,120,98,0.38)] transition active:translate-y-0.5 active:shadow-[inset_0_1.5px_0_rgba(255,255,255,0.4),0_3px_8px_rgba(222,120,98,0.3)] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0"
+          className="flex items-center justify-center gap-2"
         >
-          <Parcel className="h-5 w-5" />
+          <Icon name="package" className="h-6 w-6" />
           放到门口
-          <Twinkle className="absolute bottom-2 right-3.5 h-3.5 w-3.5 text-[#ffd9a8]" />
-        </button>
+        </PrimaryButton>
       </div>
         </>
       )}

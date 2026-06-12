@@ -390,20 +390,22 @@ export default function HomeScreen() {
           // SkyWeather). Drop this one prop to fall back to the zero-risk,
           // ContactShadows-only sunny look if a phone shows context loss.
           sun
-          // mobile-tuned post-processing (AO + filmic grade + bloom + SMAA) — the
-          // "Abeto" polish. Half-res AO + dpr 1; auto-sheds on the first context
-          // loss before the spiral-breaker ever trips, so it's safe on phones.
-          postfx
-          dpr={[1, 1]}
+          // post-fx is gone (single forward pass), so retina phones can afford
+          // a bit of real resolution again — sharpness is cheap 质感. Drop back
+          // to [1, 1] if any device shows context loss.
+          dpr={[1, 1.5]}
           cameraPosition={[6, 7, 12]}
           target={[-0.6, 0.7, -0.8]}
           zoom={52}
           enableZoom
-          minZoom={24}
-          maxZoom={110}
-          minPolar={0.7}
-          maxPolar={1.3}
-          bendStrength={0}
+          // zoom kept in a tame window: never so far out the island floats tiny,
+          // never so close the diorama breaks into bare geometry
+          minZoom={34}
+          maxZoom={84}
+          // pitch: slightly wider than before (more overhead / more level both
+          // allowed) but still clamped so you can't go under the island or flat
+          minPolar={0.58}
+          maxPolar={1.38}
         >
           {/* visual diorama (throwaway art) — taps on the backpack / postcard
               rack route to those screens, so the scene is the navigation.
