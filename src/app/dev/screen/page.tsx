@@ -226,6 +226,36 @@ export default function DevScreen() {
     } else if (params.get("fresh") === "1") {
       useGameStore.setState({ hasOnboarded: false, screen: "connect" });
     }
+    // Home-note / pack-gate previews: ?packed=1 (bag packed today), ?letter=1
+    // (a postcard waiting), ?away=1 (pet out traveling), ?stale=1 (Agent quiet),
+    // ?empty=1 (no records — empty-state cards).
+    if (params.get("packed") === "1") {
+      useGameStore.setState({
+        packedBag: {
+          items: [],
+          message: "今天想去有风的地方看看。",
+          packedAt: Date.now() - 3_600_000,
+        },
+        companionState: "ready",
+      });
+    }
+    if (params.get("letter") === "1") {
+      useGameStore.setState({ pendingPostcardId: "pc-0" });
+    }
+    if (params.get("away") === "1") {
+      useGameStore.setState({ companionState: "traveling" });
+    }
+    if (params.get("stale") === "1") {
+      useGameStore.setState({ events: [], lastActionDay: null });
+    }
+    if (params.get("empty") === "1") {
+      useGameStore.setState({
+        postcards: [],
+        cardDex: [],
+        battleRecords: [],
+        events: [],
+      });
+    }
     // ?r=battle previews a battle outcome on the result screen.
     if (new URLSearchParams(window.location.search).get("r") === "battle") {
       useGameStore.setState({

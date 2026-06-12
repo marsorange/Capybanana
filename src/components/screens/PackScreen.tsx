@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 import { tagsFromHint } from "@/game/itemTags";
 import type { PackedItem } from "@/game/types";
-import { uid } from "@/game/util";
+import { dayKey8, uid } from "@/game/util";
 import { useGameStore } from "@/state/gameStore";
 import { extractElement } from "../ui/photoExtract";
 
@@ -112,8 +112,22 @@ const CapyPeek = ({ className }: IP) => (
 
 export default function PackScreen() {
   const existing = useGameStore((s) => s.packedBag);
+  const events = useGameStore((s) => s.events);
+  const companionState = useGameStore((s) => s.companionState);
   const prepareBag = useGameStore((s) => s.prepareBag);
   const goTo = useGameStore((s) => s.goTo);
+
+  // 打包是一次性的：门口还放着包就不能再改（直到被出门消耗、或满 24h 过期被
+  // 收走）；包被今天的行动消耗掉了也不行——每天只打包一次，看当天的 packed
+  // 事件。"今天"按进屏那一刻取一次就够；服务端 /api/web/pack 有同样的兜底。
+  const away = companionState === "traveling";
+  const [today] = useState(() => dayKey8(Date.now()));
+  const packedEventToday = events.some((e) => {
+    if (e.type !== "packed") return false;
+    const ms = Date.parse(e.at);
+    return Number.isFinite(ms) && dayKey8(ms) === today;
+  });
+  const gated = away || !!existing || packedEventToday;
 
   const [photos, setPhotos] = useState<PackedItem[]>(
     () => existing?.items.filter((i) => i.kind === "photo") ?? [],
@@ -130,6 +144,7 @@ export default function PackScreen() {
   const [facing, setFacing] = useState<"environment" | "user">("environment");
 
   useEffect(() => {
+    if (gated) return; // already-packed / away view — never wake the camera
     let cancelled = false;
     (async () => {
       try {
@@ -160,7 +175,7 @@ export default function PackScreen() {
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-  }, [facing]);
+  }, [facing, gated]);
 
   // 拍完即调用 /api/web/recognize 把“这是什么”填进 label/keyword；失败/超时都保留取色启发式
   // （label 一开始就是启发式词，识别成功只是悄悄替换它，所以格子永远有名字、不会卡在“识别中”）。
@@ -277,6 +292,55 @@ export default function PackScreen() {
         <div className="h-11 w-11 shrink-0" aria-hidden />
       </header>
 
+      {gated ? (
+        /* ── 已经打包过 / 它在旅行 — a quiet recap instead of the camera form ── */
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-center gap-3 px-4 pb-8">
+          <div className={`relative px-5 pb-6 pt-7 text-center ${CARD}`}>
+            <LeafTuft className="pointer-events-none absolute -bottom-1.5 -left-2.5 h-6 w-11" />
+            <LeafTuft className="pointer-events-none absolute -bottom-1.5 -right-2.5 h-6 w-11 -scale-x-100" />
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#fbeeda] text-[#bd9468]">
+              <Parcel className="h-7 w-7" />
+            </span>
+            <p className="mt-3 font-hand text-[18px] font-bold leading-none" style={{ color: INK }}>
+              {away ? "我还在外面呢" : existing ? "包裹已经放在门口啦" : "今天已经打包过啦"}
+            </p>
+            <p className="mt-2 text-[12px] leading-relaxed" style={{ color: INK_SOFT }}>
+              {away
+                ? "等我回家，再给我装新的小东西吧。"
+                : existing
+                  ? "我会带着它出门的，先不拆开换东西啦。"
+                  : "一天备一个就够啦，明天再来给我装新的。"}
+            </p>
+            {!away && existing && existing.items.some((i) => i.kind === "photo" && i.photo) && (
+              <div className="mt-4 flex justify-center gap-2">
+                {existing.items
+                  .filter((i) => i.kind === "photo" && i.photo)
+                  .map((i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={i.id}
+                      src={i.photo}
+                      alt={i.label}
+                      className="h-14 w-14 rounded-[14px] border border-[#f2dfc4] object-cover shadow-[0_3px_8px_rgba(187,134,84,0.18)]"
+                    />
+                  ))}
+              </div>
+            )}
+            {!away && existing?.message && (
+              <p className="mt-3 font-hand text-[13px] leading-snug text-[#7a5c40]">
+                「{existing.message}」
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => goTo("home")}
+            className="flex h-[50px] w-full items-center justify-center rounded-[22px] border border-[#f2dfc4] bg-[#fdf4e6] font-hand text-[16px] font-bold text-[#8a6a4c] shadow-[0_4px_10px_rgba(187,134,84,0.14)] transition active:translate-y-0.5"
+          >
+            回小屋
+          </button>
+        </div>
+      ) : (
+        <>
       {/* ── single adaptive column: the viewfinder FLEXES to absorb whatever
           height the screen has; the idea-chips and hint line drop out on short
           screens so everything always fits without scrolling (overflow-y-auto
@@ -483,6 +547,8 @@ export default function PackScreen() {
           <Twinkle className="absolute bottom-2 right-3.5 h-3.5 w-3.5 text-[#ffd9a8]" />
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 }

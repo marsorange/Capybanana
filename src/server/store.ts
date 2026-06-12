@@ -862,6 +862,29 @@ export async function resolveBind(token: string): Promise<BindResolution> {
   };
 }
 
+/**
+ * Atomically claim today as the pet's one main-action day (travel/battle/stay).
+ * The app-level `actedToday` check reads a snapshot, so two near-simultaneous
+ * /api/agent/day calls could both pass it and the later savePet would overwrite
+ * the first decision (the upsert is last-write-wins). This conditional UPDATE
+ * is the tiebreaker: exactly one caller flips last_action_day to `day`; the
+ * loser gets `false` and must refuse WITHOUT saving its stale snapshot.
+ */
+export async function claimActionDay(
+  petId: string,
+  day: string,
+): Promise<boolean> {
+  const sql = sqlDb();
+  const rows = await sql<{ id: string }[]>`
+    update pets
+    set last_action_day = ${day}::date
+    where id = ${petId}::uuid
+      and (last_action_day is null or last_action_day < ${day}::date)
+    returning id
+  `;
+  return rows.length > 0;
+}
+
 export async function savePet(petId: string, save: CloudSave): Promise<void> {
   if (!save.companion) return;
 

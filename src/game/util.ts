@@ -1,5 +1,9 @@
 // Small shared helpers (random + ids).
 
+/** UTC+8 calendar day — same "天" the server's dayKey uses ("YYYY-MM-DD"). */
+export const dayKey8 = (ms: number): string =>
+  new Date(ms + 8 * 3_600_000).toISOString().slice(0, 10);
+
 export const uid = (prefix = "id"): string =>
   `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 

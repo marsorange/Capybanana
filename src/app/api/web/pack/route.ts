@@ -7,7 +7,7 @@ import { ALL_ITEM_TAGS } from "@/game/itemTags";
 import type { ItemTag, LuggageItem, PackedItem } from "@/game/types";
 import { uid } from "@/game/util";
 import { jsonError, petAction } from "@/server/api";
-import { packBag } from "@/server/engine";
+import { dayKey, packBag } from "@/server/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +64,20 @@ function toPackedItems(raw: unknown): PackedItem[] {
 export const POST = petAction((save, { body, now }) => {
   if (save.companionState === "traveling")
     return jsonError("它正在旅行，等它回来再收拾包裹", 409);
+
+  // Packing is one-shot: a bag waiting at the door can't be re-opened (it
+  // stays until consumed by the day's action or cleared by the 24h expiry),
+  // and once today's bag was consumed there's no second pack the same (UTC+8)
+  // day. (PackScreen gates this in the UI too — this is the backstop.)
+  if (save.packedBag) return jsonError("门口已经放着一个包裹啦", 409);
+  const today = dayKey(now);
+  const packedToday = save.events.some((e) => {
+    if (e.type !== "packed") return false;
+    const ms = Date.parse(e.at);
+    return Number.isFinite(ms) && dayKey(ms) === today;
+  });
+  if (packedToday)
+    return jsonError("今天已经打包过啦，明天再给它备新的吧", 409);
 
   const items = toPackedItems(body.items);
   const message =

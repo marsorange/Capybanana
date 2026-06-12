@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ACCESSORIES, PERSONALITIES } from "@/game/labels";
 import { cardId, countCollected, TOTAL_CARDS } from "@/game/gacha";
 import type { Postcard } from "@/game/types";
+import type { AgentEvent } from "@/server/types";
 import { useGameStore } from "@/state/gameStore";
 import { cn } from "../ui/cn";
 import Icon, { type IconName } from "../ui/Icon";
@@ -26,31 +27,22 @@ const CARD_TILT = ["-rotate-[0.7deg]", "rotate-[0.6deg]", "rotate-[0.4deg]", "-r
 
 // 日记 entry dressing per event type. Texts come from the server already in the
 // pet's first-person voice; here we only pick an icon + a tiny type word.
+// This map is ALSO the diary filter: anything not listed (packing, bag cleanup,
+// legacy types) is owner-side noise and stays out of the diary.
 const EVENT_META: Record<string, { icon: IconName; word: string }> = {
   created: { icon: "home", word: "来到小岛" },
-  packed: { icon: "package", word: "收到包裹" },
   departed: { icon: "map", word: "出门" },
   returned: { icon: "home", word: "回家" },
   postcard: { icon: "postmail", word: "寄了信" },
   checkin: { icon: "handbook", word: "它来看我" },
   battle: { icon: "map", word: "切磋" },
-  bagExpired: { icon: "package", word: "收拾包裹" },
-};
-const EVENT_FALLBACK: { icon: IconName; word: string } = { icon: "plant", word: "小事" };
-
-// The Agent's stress chip inside a checkin diary entry (mirrors the home note).
-const DIARY_STRESS: Record<string, { label: string; cls: string }> = {
-  light: { label: "它很轻松", cls: "border-leaf/45 bg-leaf/12 text-leaf" },
-  normal: { label: "它还不错", cls: "border-[#cdab6e]/60 bg-cream-soft text-ink-soft" },
-  tired: { label: "它有点累", cls: "border-[#e0973f]/50 bg-[#fdf3da] text-[#b9791f]" },
-  exhausted: { label: "它累坏了", cls: "border-accent/45 bg-accent/10 text-accent" },
 };
 
-function fmtDiaryAt(iso: string): string {
+function fmtDiaryTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getMonth() + 1}.${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 const RESULT_META: Record<string, { label: string; tone: string }> = {
@@ -78,13 +70,17 @@ function opponentLook(personality?: string, accessory?: string): string | null {
 }
 
 function Empty({ icon, text }: { icon: IconName; text: string }) {
+  // Vertically centered in the scroll area — hung at the top, the card used to
+  // sit right above the backdrop's capybara and read like a broken half-card.
   return (
-    <Panel className="flex flex-col items-center gap-3.5 px-5 py-12 text-center" sketch={false}>
-      <span className="ui-icon-well grid h-16 w-16 place-items-center rounded-full">
-        <Icon name={icon} className="h-10 w-10 drop-shadow-[0_3px_2px_rgba(126,83,38,0.16)]" />
-      </span>
-      <p className="max-w-[230px] text-sm leading-relaxed text-ink-soft/80">{text}</p>
-    </Panel>
+    <div className="flex h-full flex-col justify-center pb-14">
+      <Panel className="flex flex-col items-center gap-3.5 px-5 py-10 text-center" sketch={false}>
+        <span className="ui-icon-well grid h-16 w-16 place-items-center rounded-full">
+          <Icon name={icon} className="h-10 w-10 drop-shadow-[0_3px_2px_rgba(126,83,38,0.16)]" />
+        </span>
+        <p className="max-w-[230px] text-sm leading-relaxed text-ink-soft/80">{text}</p>
+      </Panel>
+    </div>
   );
 }
 
@@ -99,8 +95,32 @@ export default function AlbumScreen() {
 
   const [tab, setTab] = useState<Tab>("cards");
 
-  // Diary reads newest-first (the log itself is append-ordered).
-  const diary = useMemo(() => [...events].reverse(), [events]);
+  // Diary, trimmed for reading: newest-first, owner-side noise filtered out
+  // (only EVENT_META types stay), at most one check-in per day (the Agent may
+  // ping several times; the latest tells the day), grouped into one page per
+  // calendar day so date/time chrome isn't repeated on every line.
+  const diaryDays = useMemo(() => {
+    const days: { day: string; label: string; entries: AgentEvent[] }[] = [];
+    const checkinDays = new Set<string>();
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (!EVENT_META[e.type]) continue;
+      const d = new Date(e.at);
+      if (Number.isNaN(d.getTime())) continue;
+      const day = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (e.type === "checkin") {
+        if (checkinDays.has(day)) continue; // newest-first scan keeps the latest
+        checkinDays.add(day);
+      }
+      let bucket = days[days.length - 1];
+      if (!bucket || bucket.day !== day) {
+        bucket = { day, label: `${d.getMonth() + 1}月${d.getDate()}日`, entries: [] };
+        days.push(bucket);
+      }
+      bucket.entries.push(e);
+    }
+    return days;
+  }, [events]);
   const collected = useMemo(() => countCollected(cardDex), [cardDex]);
   // 手账 rule: each (destination × rarity) card appears ONCE. The FIRST-received
   // instance keeps the slot, so its date reads as "the day I collected it";
@@ -139,7 +159,7 @@ export default function AlbumScreen() {
       {/* tabs */}
       <TabBar tabs={TABS} active={tab} onChange={setTab} className="relative z-10 mx-5 mt-3" />
 
-      <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-5 py-4">
+      <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-5 pb-9 pt-4">
         {tab === "cards" &&
           (postcards.length === 0 || !hero ? (
             <Empty icon="postmail" text="我还没往家寄明信片呢。等我出趟远门，把远方寄回来给你。" />
@@ -241,60 +261,43 @@ export default function AlbumScreen() {
           ))}
 
         {tab === "diary" &&
-          (diary.length === 0 ? (
+          (diaryDays.length === 0 ? (
             <Empty icon="handbook" text="这本日记还空着。等我开始过日子，每一天都会记在这里。" />
           ) : (
             <div className="space-y-3">
-              <Panel className="px-4 py-3" sketch={false}>
-                <p className="font-hand text-[16px] leading-tight text-ink">
-                  我的小日子，都记在这本子上。
-                </p>
-                <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-                  谁来看过我、我去了哪儿、带回了什么——给 Agent 看，也给你看。
-                </p>
-              </Panel>
-              <ul className="space-y-2.5">
-                {diary.map((e) => {
-                  const meta = EVENT_META[e.type] ?? EVENT_FALLBACK;
-                  const stress = e.type === "checkin" && e.stress ? DIARY_STRESS[e.stress] : null;
-                  return (
-                    <li key={e.seq}>
-                      <Panel sketch={false} className="px-4 py-3">
-                        <div className="flex items-start gap-3">
-                          <span className="ui-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-full">
-                            <Icon name={meta.icon} className="h-6 w-6 drop-shadow-[0_2px_2px_rgba(126,83,38,0.14)]" />
-                          </span>
+              {diaryDays.map((d) => (
+                <Panel key={d.day} sketch={false} className="px-4 py-3">
+                  <p className="font-hand text-[13px] font-bold leading-none text-ink-soft/75">
+                    {d.label}
+                  </p>
+                  <ul className="mt-2.5 space-y-3">
+                    {d.entries.map((e) => {
+                      const meta = EVENT_META[e.type];
+                      return (
+                        <li key={e.seq} className="flex items-start gap-2.5">
+                          <Icon
+                            name={meta.icon}
+                            className="mt-px h-5 w-5 shrink-0 drop-shadow-[0_1px_1px_rgba(126,83,38,0.12)]"
+                          />
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="flex min-w-0 items-center gap-1.5">
-                                <span className="shrink-0 font-hand text-[13px] font-bold leading-none text-ink">
-                                  {meta.word}
-                                </span>
-                                {stress && (
-                                  <span
-                                    className={cn(
-                                      "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] leading-none",
-                                      stress.cls,
-                                    )}
-                                  >
-                                    {stress.label}
-                                  </span>
-                                )}
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="font-hand text-[13px] font-bold leading-none text-ink">
+                                {meta.word}
                               </span>
-                              <span className="shrink-0 text-[10px] tabular-nums text-ink-soft/60">
-                                {fmtDiaryAt(e.at)}
+                              <span className="shrink-0 text-[10px] tabular-nums text-ink-soft/55">
+                                {fmtDiaryTime(e.at)}
                               </span>
                             </div>
-                            <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
+                            <p className="mt-1 text-[12.5px] leading-relaxed text-ink-soft">
                               {e.text}
                             </p>
                           </div>
-                        </div>
-                      </Panel>
-                    </li>
-                  );
-                })}
-              </ul>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </Panel>
+              ))}
             </div>
           ))}
 

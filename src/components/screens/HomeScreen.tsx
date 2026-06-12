@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { companionStats } from "@/game/companionLevel";
 import { TRAIT_LINES } from "@/game/resolveDay";
-import { pick } from "@/game/util";
+import { dayKey8, pick } from "@/game/util";
 import { useGameStore } from "@/state/gameStore";
 import HomeModel from "../scenes3d/home/HomeModel";
 import HomeFloor from "../scenes3d/home/HomeFloor";
@@ -139,84 +139,65 @@ function EntryBar({ goTo }: { goTo: (s: "home" | "pack" | "album") => void }) {
   );
 }
 
-/** Floating paper toast — a soft, cozy hint (e.g. the doorway bag went stale).
-    Auto-dismisses after a few seconds; "重新打包" hops straight to packing. */
-function NoticeToast({
+/** One-line floating note pill, docked just above the bottom tab dock — the
+    low-distraction replacement for the old mid-screen paper cards. It never
+    covers the diorama's center: one quiet line in the pet's voice, the action
+    word in coral, an optional tiny ✕. `autoHideMs` lets transient hints (the
+    stale-bag notice) tuck themselves away. */
+function NotePill({
+  icon,
   text,
-  onPack,
+  actionLabel,
+  onAct,
   onClose,
+  autoHideMs,
 }: {
+  icon: IconName;
   text: string;
-  onPack: () => void;
-  onClose: () => void;
+  actionLabel?: string;
+  onAct?: () => void;
+  onClose?: () => void;
+  autoHideMs?: number;
 }) {
   useEffect(() => {
-    const id = setTimeout(onClose, 9000);
+    if (!autoHideMs || !onClose) return;
+    const id = setTimeout(onClose, autoHideMs);
     return () => clearTimeout(id);
-  }, [onClose]);
+  }, [autoHideMs, onClose]);
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
+      exit={{ opacity: 0, y: 8 }}
       transition={{ duration: 0.32, ease: "easeOut" }}
-      className="pointer-events-auto absolute inset-x-4 top-[88px] z-20"
+      className="pointer-events-none absolute inset-x-0 bottom-[118px] z-20 flex justify-center px-8"
     >
-      <div className="sketch tex-grain flex items-start gap-3 rounded-[24px] border-2 border-[#e2c596] bg-paper/95 px-4 py-3 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_5px_0_rgba(143,101,54,0.16),0_16px_28px_-18px_rgba(58,46,42,0.48)]">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[17px] bg-[#f6edd8] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <Icon name="package" className="h-9 w-9" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-hand text-[15px] leading-snug text-ink">{text}</p>
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              onClick={onPack}
-              className="rounded-[15px] border-2 border-accent/35 bg-accent/10 px-3.5 py-1.5 font-hand text-[13px] font-semibold text-accent transition active:translate-y-0.5"
-            >
-              重新打包
-            </button>
-            <button
-              onClick={onClose}
-              className="rounded-[15px] px-3.5 py-1.5 font-hand text-[13px] text-ink-soft transition active:translate-y-0.5"
-            >
-              知道啦
-            </button>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/** A letter is waiting by the door (pendingPostcardId is set). Derived from the
-    synced save — it survives refresh and reappears until the owner opens it, so
-    the 拆信 ceremony can't be lost to a dismissed toast. Replaces the old
-    hard-jump to the postcard screen: coming home to find a letter beats being
-    teleported onto it. */
-function ArrivalNote({ name, onOpen }: { name: string; onOpen: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.42, ease: "easeOut" }}
-      className="pointer-events-none absolute inset-x-0 top-[84px] z-20 flex justify-center px-6"
-    >
-      <div className="sketch tex-grain pointer-events-auto w-full max-w-[300px] rounded-[24px] border-2 border-[#e2c596] bg-paper/95 px-4 py-3.5 text-center shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_5px_0_rgba(143,101,54,0.16),0_16px_28px_-18px_rgba(58,46,42,0.48)]">
-        <div className="flex items-center justify-center gap-2">
-          <Icon name="postmail" className="h-6 w-6 drop-shadow-[0_2px_2px_rgba(126,83,38,0.18)]" />
-          <p className="font-hand text-[16px] font-bold leading-none text-ink">
-            门口有一封信
-          </p>
-        </div>
-        <p className="mt-2 font-hand text-[13px] leading-snug text-ink-soft/85">
-          {name}：「我把远方装进了信封，等你拆。」
-        </p>
+      <div className="pointer-events-auto flex min-w-0 max-w-[330px] items-center rounded-full border border-[#e2c596]/80 bg-paper/90 p-1 shadow-[0_3px_12px_rgba(98,74,46,0.16)] backdrop-blur-[2px]">
         <button
-          onClick={onOpen}
-          className="mt-2.5 w-full rounded-[15px] border-2 border-accent/35 bg-accent/10 px-3.5 py-2 font-hand text-[14px] font-semibold text-accent transition active:translate-y-0.5"
+          onClick={onAct ?? onClose}
+          className="flex min-w-0 items-center gap-1.5 py-1 pl-2 pr-1.5 text-left"
         >
-          拆信
+          <Icon name={icon} className="h-4 w-4 shrink-0 drop-shadow-[0_1px_1px_rgba(126,83,38,0.14)]" />
+          <span className="min-w-0 truncate font-hand text-[12.5px] leading-none text-ink-soft">
+            {text}
+          </span>
+          {actionLabel && (
+            <span className="shrink-0 font-hand text-[12.5px] font-bold leading-none text-accent">
+              {actionLabel}
+            </span>
+          )}
         </button>
+        {onClose && onAct && (
+          <button
+            onClick={onClose}
+            aria-label="收起"
+            className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-ink-soft/55 transition active:translate-y-0.5"
+          >
+            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        )}
       </div>
     </motion.div>
   );
@@ -227,20 +208,9 @@ function ArrivalNote({ name, onOpen }: { name: string; onOpen: () => void }) {
 const AGENT_EVENT_TYPES = new Set(["checkin", "departed", "battle", "created"]);
 const AGENT_STALE_MS = 36 * 3_600_000; // 1.5 days of silence → gentle nudge
 
-/** UTC+8 calendar day (matches the server's dayKey). */
-function dayKey8(ms: number): string {
-  return new Date(ms + 8 * 3_600_000).toISOString().slice(0, 10);
-}
-
-// The Agent's self-reported day, as a colored chip word on the stress note.
-const STRESS_WORD: Record<string, { label: string; cls: string }> = {
-  light: { label: "很轻松", cls: "border-leaf/45 bg-leaf/12 text-leaf" },
-  normal: { label: "还不错", cls: "border-[#cdab6e]/60 bg-cream-soft text-ink-soft" },
-  tired: { label: "有点累", cls: "border-[#e0973f]/50 bg-[#fdf3da] text-[#b9791f]" },
-  exhausted: { label: "累坏了", cls: "border-accent/45 bg-accent/10 text-accent" },
-};
-
-// …and as something the pet itself might say when tapped (the coziest channel).
+// The Agent's day, as something the pet itself says when tapped — the day's
+// check-in surfaces here and in the album 日记, not as a home overlay (the old
+// StressNote card covered the diorama and read as clutter).
 const STRESS_PET_LINES: Record<string, string> = {
   light: "照看我的人今天哼着歌来过，我也跟着哼了两句。",
   normal: "照看我的人今天还不错，我就放心啦。",
@@ -257,42 +227,6 @@ const PERSONALITY_PET_LINES: Record<string, string[]> = {
   brave: ["今天我去了岛边最远的那块石头哦。", "有我在，什么都不用怕。"],
   dreamy: ["我刚才差点睡着，梦的开头有你。", "你看那朵云，像不像一只很大的我？"],
 };
-
-/** Today's check-in, retold by the pet — a quiet one-liner (旅行青蛙 style: no
-    header, no buttons; it just sits there, tap anywhere to tuck it away). */
-function StressNote({
-  text,
-  stress,
-  onClose,
-}: {
-  text: string;
-  stress?: string;
-  onClose: () => void;
-}) {
-  const word = STRESS_WORD[stress ?? "normal"] ?? STRESS_WORD.normal;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.42, ease: "easeOut" }}
-      className="pointer-events-none absolute inset-x-0 top-[84px] z-20 flex justify-center px-6"
-    >
-      <button
-        onClick={onClose}
-        className="sketch tex-grain pointer-events-auto flex w-full max-w-[310px] items-start gap-2 rounded-[18px] border-2 border-[#e2c596] bg-paper/92 px-3 py-2 text-left shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.14)] transition active:translate-y-0.5"
-      >
-        <span
-          className={`mt-px shrink-0 rounded-full border px-1.5 py-0.5 font-hand text-[11px] font-semibold leading-none ${word.cls}`}
-        >
-          {word.label}
-        </span>
-        <span className="min-w-0 flex-1 font-hand text-[12.5px] leading-snug text-ink-soft">
-          {text}
-        </span>
-      </button>
-    </motion.div>
-  );
-}
 
 /** When the Agent last touched the pet, derived from the synced save: the
     latest agent-driven log entry, or the last main-action day (UTC+8). */
@@ -313,56 +247,10 @@ function lastAgentTouchMs(
   return t;
 }
 
-/** The Agent hasn't come by in a while — the pet says so itself, with a path to
-    the connect screen. Without this, an unscheduled Agent looks like a broken
-    game (pack → expire → pack), with no hint of the real cause. */
-function AgentNote({
-  daysQuiet,
-  onConnect,
-  onDismiss,
-}: {
-  daysQuiet: number;
-  onConnect: () => void;
-  onDismiss: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.42, ease: "easeOut" }}
-      className="pointer-events-none absolute inset-x-0 top-[84px] z-20 flex justify-center px-6"
-    >
-      <div className="sketch tex-grain pointer-events-auto w-full max-w-[300px] rounded-[24px] border-2 border-[#e2c596] bg-paper/95 px-4 py-3.5 text-center shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_5px_0_rgba(143,101,54,0.16),0_16px_28px_-18px_rgba(58,46,42,0.48)]">
-        <p className="font-hand text-[15px] font-bold leading-snug text-ink">
-          我的 Agent 好像{daysQuiet >= 1 ? ` ${daysQuiet} 天` : "好久"}没来看我了…
-        </p>
-        <p className="mt-1.5 font-hand text-[12px] leading-snug text-ink-soft/85">
-          要不要把连接口令再发给它一次？或者提醒它每天来一趟。
-        </p>
-        <div className="mt-2.5 flex items-center gap-2">
-          <button
-            onClick={onConnect}
-            className="flex-1 rounded-[15px] border-2 border-accent/35 bg-accent/10 px-3 py-1.5 font-hand text-[13px] font-semibold text-accent transition active:translate-y-0.5"
-          >
-            查看连接
-          </button>
-          <button
-            onClick={onDismiss}
-            className="rounded-[15px] px-3 py-1.5 font-hand text-[13px] text-ink-soft transition active:translate-y-0.5"
-          >
-            再等等
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/** The "while away" home overlay. Replaces the empty house's lonely silence with
-    a warm paper note: how long it's been gone (never when it returns) + a soft,
-    rotating 思念 line that differs each visit, so coming back to an empty home
-    feels like missing someone rather than a blank screen. Pure 2D — the 3D scene
-    just goes quiet (the pet is gone from it). */
+/** The "while away" note — same bottom-pill spot as NotePill, two quiet lines:
+    how long it's been gone (never when it returns) + a rotating 思念 line per
+    visit. Compact on purpose: the empty house itself carries the mood, the
+    note just whispers over it. */
 function AwayNote({ name, startedAt }: { name: string; startedAt?: number }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -375,26 +263,19 @@ function AwayNote({ name, startedAt }: { name: string; startedAt?: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.42, ease: "easeOut" }}
-      className="pointer-events-none absolute inset-x-0 top-[84px] z-20 flex justify-center px-6"
+      className="pointer-events-none absolute inset-x-0 bottom-[118px] z-20 flex justify-center px-8"
     >
-      <div className="sketch tex-grain w-full max-w-[300px] rounded-[24px] border-2 border-[#e2c596] bg-paper/95 px-4 py-3.5 text-center shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_5px_0_rgba(143,101,54,0.16),0_16px_28px_-18px_rgba(58,46,42,0.48)]">
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-lg">🎒</span>
-          <p className="font-hand text-[16px] font-bold leading-none text-ink">
-            {name} 还在外面
-          </p>
-        </div>
-        {startedAt != null && (
-          <p className="mt-1.5 font-hand text-[12px] text-ink-soft">
-            {awayElapsed(startedAt, now)}
-          </p>
-        )}
-        <p className="mt-2.5 font-hand text-[13px] leading-snug text-ink-soft/85">
-          {line}
+      <div className="max-w-[300px] rounded-[18px] border border-[#e2c596]/80 bg-paper/88 px-4 py-2.5 text-center shadow-[0_3px_12px_rgba(98,74,46,0.14)] backdrop-blur-[2px]">
+        <p className="font-hand text-[13px] font-bold leading-none text-ink">
+          {name} 还在外面
+          {startedAt != null && (
+            <span className="font-normal text-ink-soft"> · {awayElapsed(startedAt, now)}</span>
+          )}
         </p>
+        <p className="mt-1.5 font-hand text-[12px] leading-snug text-ink-soft/85">{line}</p>
       </div>
     </motion.div>
   );
@@ -417,11 +298,8 @@ export default function HomeScreen() {
   const events = useGameStore((s) => s.events);
   const lastActionDay = useGameStore((s) => s.lastActionDay);
   const traits = useGameStore((s) => s.capyState.traits);
-  // "再等等" hides the Agent nudge for this visit only — it returns next time.
+  // "收起" hides the Agent nudge for this visit only — it returns next time.
   const [agentNoteDismissed, setAgentNoteDismissed] = useState(false);
-  // The stress note is per-visit too: dismissing it keeps the home calm until
-  // the next visit (or the Agent's next check-in pulls in fresh text).
-  const [stressNoteDismissed, setStressNoteDismissed] = useState(false);
 
   // On reaching home (and whenever the bag changes), check if the prepared bag
   // has gone stale (>24h). If so, the store prompts and clears it server-side.
@@ -594,41 +472,43 @@ export default function HomeScreen() {
 
       {away && <AwayNote name={companion.name} startedAt={activeTrip?.startedAt} />}
 
-      {/* one paper note at a time, by priority: the bag-expiry toast (same
-          spot) wins, then a waiting letter, then today's Agent check-in, then
-          the "Agent hasn't come by" nudge (the last two are mutually exclusive
-          by construction — a today-checkin means the Agent isn't stale) */}
-      {!away && !notice && pendingPostcardId && (
-        <ArrivalNote name={companion.name} onOpen={() => openPostcard(pendingPostcardId)} />
-      )}
-      {!away && !notice && !pendingPostcardId && todayCheckin && !stressNoteDismissed && (
-        <StressNote
-          text={todayCheckin.text}
-          stress={todayCheckin.stress}
-          onClose={() => setStressNoteDismissed(true)}
-        />
-      )}
-      {!away && !notice && !pendingPostcardId && !todayCheckin && agentStale && !agentNoteDismissed && (
-        <AgentNote
-          daysQuiet={agentQuietDays}
-          onConnect={() => goTo("connect")}
-          onDismiss={() => setAgentNoteDismissed(true)}
-        />
-      )}
-
+      {/* one quiet pill at a time, by priority: the stale-bag hint wins, then a
+          waiting letter, then the "Agent hasn't come by" nudge. The Agent's
+          daily check-in no longer gets an overlay — it lives in the pet's
+          tap-lines and the album 日记 instead. */}
       <AnimatePresence>
-        {notice && (
-          <NoticeToast
+        {!away && notice && (
+          <NotePill
             key="home-notice"
+            icon="package"
             text={notice}
-            onPack={() => {
+            actionLabel="重新打包"
+            onAct={() => {
               clearNotice();
               goTo("pack");
             }}
             onClose={clearNotice}
+            autoHideMs={10000}
           />
         )}
       </AnimatePresence>
+      {!away && !notice && pendingPostcardId && (
+        <NotePill
+          icon="postmail"
+          text="门口有一封信"
+          actionLabel="拆信"
+          onAct={() => openPostcard(pendingPostcardId)}
+        />
+      )}
+      {!away && !notice && !pendingPostcardId && !todayCheckin && agentStale && !agentNoteDismissed && (
+        <NotePill
+          icon="handbook"
+          text={`Agent 好像 ${agentQuietDays} 天没来看我了`}
+          actionLabel="查看连接"
+          onAct={() => goTo("connect")}
+          onClose={() => setAgentNoteDismissed(true)}
+        />
+      )}
 
       <EntryBar goTo={goTo} />
     </div>

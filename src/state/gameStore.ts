@@ -340,7 +340,7 @@ export const useGameStore = create<GameState>()(
         if (!s.cloud || !s.packedBag) return;
         if (Date.now() - s.packedBag.packedAt < BAG_TTL_MS) return;
         set({
-          notice: "门口的包裹放了一天，有点凉了，我先收起来啦。要不要再给我备一个？",
+          notice: "包裹放了一天，我先收起来啦",
         });
         cloud
           .unpack(s.cloud.bindToken)

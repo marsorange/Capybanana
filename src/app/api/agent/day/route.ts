@@ -7,6 +7,7 @@
 import { authed, commit, commitError, jsonError } from "@/server/api";
 import {
   dayBlockedReason,
+  dayKey,
   decideDay,
   snapshotOf,
   startBattle,
@@ -16,7 +17,12 @@ import {
   type DayDecision,
 } from "@/server/engine";
 import { makeNpcOpponent } from "@/server/llm/battleJudge";
-import { findBattleOpponent, recordBattle, savePet } from "@/server/store";
+import {
+  claimActionDay,
+  findBattleOpponent,
+  recordBattle,
+  savePet,
+} from "@/server/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +56,12 @@ export async function POST(req: Request): Promise<Response> {
 
   const blocked = dayBlockedReason(save, now, action);
   if (blocked) return commitError(a.user.petId, save, blocked);
+
+  // The snapshot check above can't see a parallel request — atomically claim
+  // the day in the DB so only the FIRST decision lands. The loser must NOT
+  // commit its (stale) save: that would last-write-wins-overwrite the winner.
+  if (!(await claimActionDay(a.user.petId, dayKey(now))))
+    return jsonError("今天它已经过完啦——一天陪它一次就好，明天再来吧", 409);
 
   const note = typeof body.note === "string" ? body.note : undefined;
 
