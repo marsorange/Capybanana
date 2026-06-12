@@ -3,6 +3,7 @@
 import { chromium } from "playwright";
 
 const SIZES = [
+  [430, 932],
   [390, 844],
   [375, 667],
   [320, 568],

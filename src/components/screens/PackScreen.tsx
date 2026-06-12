@@ -20,11 +20,12 @@ const MAX = 3;
 const CARD =
   "tex-grain rounded-[24px] border-2 border-[#e4c89c] bg-paper/95 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.14),0_14px_26px_-18px_rgba(58,46,42,0.42)]";
 
-// Owner→pet message ideas (tap to fill).
+// Owner→pet message ideas — short chip label, tapping fills the full sentence
+// (full sentences as chips wrap to 3 lines on 390px and crush the viewfinder).
 const MESSAGE_IDEAS = [
-  "今天想去有风的地方看看。",
-  "如果累了，就在家慢慢休息。",
-  "带着这个，找一个安静的小角落吧。",
+  { label: "有风的地方", full: "今天想去有风的地方看看。" },
+  { label: "在家休息", full: "如果累了，就在家慢慢休息。" },
+  { label: "安静的角落", full: "带着这个，找一个安静的小角落吧。" },
 ];
 
 // ── inline SVG bits the PNG icon set doesn't cover ───────────────────────────
@@ -281,9 +282,11 @@ export default function PackScreen() {
           the tray below stays one compact card so the camera gets the screen.
           overflow-y-auto is only the extreme-squeeze fallback ───────────────── */}
       <div className="no-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 pb-2 pt-2.5">
-        {/* viewfinder card — camera window + grid + shutter + status chip */}
+        {/* viewfinder card — camera window + grid + shutter + status chip.
+            flex-1 makes it the hero, but max-h caps it (roughly square window)
+            so tall screens don't turn it into a full-page mirror. */}
         <div
-          className={`relative min-h-[220px] w-full flex-1 p-2 [@media(max-height:620px)]:min-h-[180px] ${CARD}`}
+          className={`relative min-h-[220px] w-full flex-1 p-2 max-h-[min(52dvh,420px)] [@media(max-height:700px)]:min-h-[180px] [@media(max-height:620px)]:min-h-[130px]! ${CARD}`}
         >
           <div className="relative h-full w-full overflow-hidden rounded-[17px] bg-[#352c22]">
             <video
@@ -356,16 +359,16 @@ export default function PackScreen() {
           </button>
         </div>
 
-        {/* tray — slots + wish in ONE compact card, capy peeking over the edge */}
-        <section className={`relative shrink-0 px-3 pb-3 pt-2.5 ${CARD}`}>
+        {/* 给我带上的小东西 — three roomy tap-to-shoot slots, capy peeking over */}
+        <section className={`relative shrink-0 px-3.5 pb-3.5 pt-3 ${CARD}`}>
           <CapyPeek className="pointer-events-none absolute -top-[27px] right-4 h-[42px] w-[70px]" />
-          <div className="flex items-center justify-between px-1">
+          <div className="flex items-center justify-between px-0.5">
             <h2 className="font-hand text-[15px] font-bold leading-none text-ink">给我带上的小东西</h2>
-            <span className="text-[12px] font-bold tabular-nums leading-none text-ink-soft">
+            <span className="text-[13px] font-bold tabular-nums leading-none text-ink-soft">
               {photos.length}/{MAX}
             </span>
           </div>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2.5 grid grid-cols-3 gap-2.5">
             {[0, 1, 2].map((i) => {
               const item = photos[i];
               const busy = item ? busyIds.includes(item.id) : false;
@@ -376,10 +379,10 @@ export default function PackScreen() {
                     onClick={capture}
                     disabled={camPhase !== "live"}
                     aria-label="给我拍一样东西"
-                    className="flex h-14 flex-1 items-center justify-center gap-1 rounded-[14px] border-2 border-dashed border-[#d9b982] bg-cream-soft/80 transition active:scale-95 disabled:opacity-55 disabled:active:scale-100"
+                    className="flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[18px] border-2 border-dashed border-[#d9b982] bg-cream-soft/70 transition active:scale-95 disabled:opacity-55 disabled:active:scale-100 [@media(max-height:700px)]:aspect-auto [@media(max-height:700px)]:h-16 [@media(max-height:700px)]:flex-row [@media(max-height:700px)]:gap-1 [@media(max-height:620px)]:h-12!"
                   >
-                    <span className="text-[20px] font-light leading-none text-[#c2a06f]">+</span>
-                    <span className="font-hand text-[11px] leading-none text-ink-soft">拍一样</span>
+                    <span className="text-[26px] font-light leading-none text-[#c2a06f]">+</span>
+                    <span className="font-hand text-[11px] leading-none text-ink-soft">拍照添加</span>
                   </button>
                 );
               }
@@ -389,12 +392,12 @@ export default function PackScreen() {
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 380, damping: 24 }}
-                  className="relative h-14 flex-1"
+                  className="relative aspect-square w-full [@media(max-height:700px)]:aspect-auto [@media(max-height:700px)]:h-16 [@media(max-height:620px)]:h-12!"
                 >
-                  <div className="absolute inset-0 overflow-hidden rounded-[14px] border-2 border-[#e4c89c] shadow-[0_3px_0_rgba(143,101,54,0.14)]">
+                  <div className="absolute inset-0 overflow-hidden rounded-[18px] border-2 border-[#e4c89c] shadow-[0_3px_0_rgba(143,101,54,0.14)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.photo} alt={item.label} className="absolute inset-0 h-full w-full object-cover" />
-                    <p className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-paper/90 px-1 py-[3px] font-hand text-[10px] leading-none text-ink">
+                    <p className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-paper/90 px-1 py-1 font-hand text-[10px] leading-none text-ink">
                       {busy && <span className="h-1.5 w-1.5 shrink-0 animate-breathe rounded-full bg-leaf" />}
                       <span className="truncate">{item.label}</span>
                     </p>
@@ -412,30 +415,40 @@ export default function PackScreen() {
               );
             })}
           </div>
+        </section>
 
-          {/* wish note — single compact line */}
-          <div className="mt-2 flex items-center gap-2 rounded-[16px] border-2 border-[#ead6b2] bg-cream-soft px-3 py-1.5">
-            <Speech className="h-4 w-4 shrink-0 text-[#8c684a]" />
+        {/* 写下一句心愿 — roomy note card with tap-to-fill idea chips */}
+        <section className={`relative shrink-0 px-3.5 pb-3 pt-3 ${CARD}`}>
+          <div className="flex items-center gap-2 [@media(max-height:620px)]:hidden">
+            <span className="ui-icon-well h-7 w-7 shrink-0 rounded-full">
+              <Speech className="h-4 w-4 text-[#8c684a]" />
+            </span>
+            <h2 className="font-hand text-[15px] font-bold leading-none text-ink">写下一句心愿</h2>
+            <span className="ml-auto text-[10px] leading-none text-ink-soft/70 [@media(max-height:780px)]:hidden">
+              点一句放进去
+            </span>
+          </div>
+          <div className="relative mt-2 rounded-[16px] border-2 border-[#ead6b2] bg-cream-soft px-3 pb-5 pt-2 [@media(max-height:620px)]:mt-0">
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value.slice(0, 50))}
               maxLength={50}
               placeholder="留一句话，我带在路上看。"
-              rows={1}
-              className="min-w-0 flex-1 resize-none bg-transparent py-1 font-hand text-[14px] leading-[20px] text-ink outline-none placeholder:text-ink-soft/55"
+              rows={2}
+              className="w-full resize-none bg-transparent font-hand text-[14px] leading-[22px] text-ink outline-none placeholder:text-ink-soft/55"
             />
-            <span className="shrink-0 text-[10px] tabular-nums text-ink-soft/70">{message.length}/50</span>
+            <span className="absolute bottom-1.5 right-2.5 text-[10px] tabular-nums text-ink-soft/60">
+              {message.length}/50
+            </span>
           </div>
-
-          {/* idea chips — one scrollable line; drops out on short screens */}
-          <div className="no-scrollbar -mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 [@media(max-height:700px)]:hidden">
+          <div className="mt-2 flex flex-wrap gap-1.5 [@media(max-height:780px)]:hidden">
             {MESSAGE_IDEAS.map((idea) => (
               <button
-                key={idea}
-                onClick={() => setMessage(idea)}
-                className="ui-wood-surface ui-wood-press shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 font-hand text-[12px] leading-none text-ink-soft"
+                key={idea.label}
+                onClick={() => setMessage(idea.full)}
+                className="ui-wood-surface ui-wood-press rounded-full px-2.5 py-1.5 font-hand text-[11px] leading-none text-ink-soft"
               >
-                {idea}
+                {idea.label}
               </button>
             ))}
           </div>
