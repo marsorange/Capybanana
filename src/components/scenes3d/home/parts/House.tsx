@@ -10,13 +10,18 @@ import Backpack from "./Backpack";
 import { commandWalk } from "../interaction/commandBus";
 import {
   BED,
+  BOOKSHELF,
   CX,
   CZ,
   D,
+  DINING_STOOL,
+  DINING_TABLE,
   EAVE,
   FLOOR_H,
+  KITCHEN_RUN,
   LOFT_LANDING,
   LOFT_MAIN,
+  LOFT_NIGHTSTAND,
   PACK,
   PACK_BENCH,
   POSTCARD,
@@ -753,8 +758,9 @@ export default function House({
       </mesh>
       {/* ===== KITCHEN along the left wall — base cabinets + countertop, a sink,
             a little stove with a pot, an upper cabinet + an open shelf (the
-            reference's cozy ground-floor kitchen) ===== */}
-      <group position={[-4.18, 0, -1.05]}>
+            reference's cozy ground-floor kitchen). Anchored in layout.ts so the
+            walker's obstacle footprint matches. ===== */}
+      <group position={[KITCHEN_RUN.x, 0, KITCHEN_RUN.z]}>
         {/* base cabinet run + countertop */}
         <RB args={[0.52, 0.68, 1.5]} pos={[0, 0.34, 0]} color={WOOD} radius={0.04} />
         <Box args={[0.58, 0.08, 1.56]} pos={[0, 0.71, 0]} color="#d8c39c" />
@@ -806,7 +812,7 @@ export default function House({
 
       {/* a cozy little dining spot — a chunky round table (teapot + cup) flanked
           by a pair of stools */}
-      <group position={[-1.7, 0, -0.6]}>
+      <group position={DINING_TABLE}>
         <mesh position={[0, 0.47, 0]}>
           <cylinderGeometry args={[0.4, 0.4, 0.08, 16]} />
           {m(WOOD_LT)}
@@ -833,8 +839,8 @@ export default function House({
           {m(CREAM)}
         </mesh>
       </group>
-      {/* a single stool by the table */}
-      <group position={[-1.7, 0, 0.18]}>
+      {/* a single stool by the table (the pet hops on for tea — STOOL_SIT) */}
+      <group position={DINING_STOOL}>
         <mesh position={[0, 0.31, 0]}>
           <cylinderGeometry args={[0.16, 0.16, 0.06, 12]} />
           {m("#cdb892")}
@@ -850,7 +856,7 @@ export default function House({
       </group>
       {/* a grounded open BOOKSHELF cabinet (books + a plant on top) — replaces
           the loose floor plant, gives the ground floor a real piece of furniture */}
-      <group position={[-1.45, 0, -1.35]}>
+      <group position={[BOOKSHELF.x, 0, BOOKSHELF.z]}>
         <Box args={[0.9, 0.9, 0.05]} pos={[0, 0.47, -0.16]} color={WOOD} />
         <Box args={[0.06, 0.9, 0.4]} pos={[-0.42, 0.47, 0]} color={WOOD} />
         <Box args={[0.06, 0.9, 0.4]} pos={[0.42, 0.47, 0]} color={WOOD} />
@@ -896,7 +902,7 @@ export default function House({
           <RB args={[0.42, 0.2, 0.34]} pos={[-0.34, 0.66, 0.3]} color="#e7b85c" radius={0.05} />
         </group>
         {/* nightstand + lamp */}
-        <group position={[-4.3, 0, -3.0]}>
+        <group position={LOFT_NIGHTSTAND}>
           <RB args={[0.5, 0.5, 0.5]} pos={[0, 0.26, 0]} color={WOOD} radius={0.05} />
           <mesh position={[0, 0.58, 0]}>
             <cylinderGeometry args={[0.04, 0.05, 0.18, 8]} />

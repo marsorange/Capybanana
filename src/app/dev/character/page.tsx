@@ -10,8 +10,18 @@ import { useState } from "react";
 import { CHARACTERS } from "@/game/characters";
 import { ACCESSORIES, COMPANION_TYPES } from "@/game/labels";
 import type { Accessory, CompanionType } from "@/game/types";
-import CharacterModel from "@/components/scenes3d/character/CharacterModel";
+import CharacterModel, {
+  type CharacterMotion,
+} from "@/components/scenes3d/character/CharacterModel";
 import SceneCanvas from "@/components/scenes3d/SceneCanvas";
+
+const MOTIONS: { value: CharacterMotion; label: string }[] = [
+  { value: "idle", label: "🧍 待机" },
+  { value: "walk", label: "🚶 走路" },
+  { value: "wave", label: "👋 招手" },
+  { value: "sit", label: "🪑 坐下" },
+  { value: "sleep", label: "💤 睡觉" },
+];
 
 function Pedestal() {
   return (
@@ -38,6 +48,7 @@ export default function CharacterPreviewPage() {
   const [accessory, setAccessory] = useState<Accessory>("scarf");
   const [color, setColor] = useState("#c8893b");
   const [spin, setSpin] = useState(true);
+  const [motion, setMotion] = useState<CharacterMotion>("idle");
   // Bump to force a fresh entrance animation / re-roll of seeded features.
   const [seedN, setSeedN] = useState(0);
 
@@ -54,6 +65,7 @@ export default function CharacterPreviewPage() {
             color={color}
             accessory={accessory}
             seed={seed}
+            motion={motion}
           />
         </SceneCanvas>
         <div className="pointer-events-none absolute left-4 top-4 text-xs text-ink-soft">
@@ -82,6 +94,18 @@ export default function CharacterPreviewPage() {
               </Chip>
             );
           })}
+        </Row>
+
+        <Row label="动作">
+          {MOTIONS.map((mo) => (
+            <Chip
+              key={mo.value}
+              active={motion === mo.value}
+              onClick={() => setMotion(mo.value)}
+            >
+              {mo.label}
+            </Chip>
+          ))}
         </Row>
 
         <Row label="配饰">

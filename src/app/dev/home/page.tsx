@@ -9,18 +9,30 @@ import HomeFloor from "@/components/scenes3d/home/HomeFloor";
 import InteractionLayer from "@/components/scenes3d/home/interaction/InteractionLayer";
 import RoamingCompanion from "@/components/scenes3d/RoamingCompanion";
 // Dev nav probe: exposes `window.__petPos` (live pet position) + `window.__navTo`
-// (drive a floor-tap by world coords) so Playwright traces can assert navigation
-// numerically — used to verify the obstacle footprints + stair routing.
+// (drive a floor-tap by world coords) + `window.__cmd` (drive a marker-style walk
+// command, incl. activity/perch payloads) so Playwright traces can assert
+// navigation numerically — used to verify obstacle footprints, stair routing and
+// the furniture perch interactions.
 import { useFrame, useThree } from "@react-three/fiber";
+import { commandWalk } from "@/components/scenes3d/home/interaction/commandBus";
 import { setNavTarget } from "@/components/scenes3d/home/interaction/navBus";
 
 function DevProbe() {
   const scene = useThree((s) => s.scene);
-  useFrame(() => {
+  useFrame((state) => {
     const pet = scene.getObjectByName("pet-root");
     const w = window as unknown as Record<string, unknown>;
-    if (pet) w.__petPos = pet.position.toArray();
+    if (pet) {
+      w.__petPos = pet.position.toArray();
+      // CSS-pixel screen position of the pet, for screenshot clipping
+      const v = pet.position.clone().project(state.camera);
+      w.__petScreen = [
+        ((v.x + 1) / 2) * state.size.width,
+        ((1 - v.y) / 2) * state.size.height,
+      ];
+    }
     w.__navTo = setNavTarget;
+    w.__cmd = commandWalk;
   });
   return null;
 }

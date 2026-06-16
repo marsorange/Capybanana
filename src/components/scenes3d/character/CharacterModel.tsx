@@ -3,7 +3,7 @@
 import { RoundedBox, useAnimations, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import gsap from "gsap";
-import { useEffect, useMemo, useRef } from "react";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { clone as skeletonClone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
@@ -22,7 +22,32 @@ import {
   GLB_PIPELINE_ENABLED,
 } from "./companionModels";
 
-type CharacterMotion = "idle" | "walk" | "wave";
+export type CharacterMotion = "idle" | "walk" | "wave" | "sit" | "sleep";
+
+// Procedural pose overlays for motions the rig has no clip for: a wrapper group
+// is damped toward these targets, on top of whatever clip is playing. `sit`
+// leans the body back on its haunches; `sleep` lays it over on its side (the y
+// lift keeps the lower flank from sinking through the floor/mattress).
+const POSE_TARGETS: Record<CharacterMotion, { rx: number; rz: number; y: number }> = {
+  idle: { rx: 0, rz: 0, y: 0 },
+  walk: { rx: 0, rz: 0, y: 0 },
+  wave: { rx: 0, rz: 0, y: 0 },
+  sit: { rx: -0.8, rz: 0, y: 0.1 },
+  sleep: { rx: 0, rz: 1.3, y: 0.4 },
+};
+
+// Damp a pose wrapper toward the motion's target transform each frame.
+function usePoseOverlay(ref: RefObject<THREE.Group | null>, motion: CharacterMotion) {
+  useFrame((_, dt) => {
+    const g = ref.current;
+    if (!g) return;
+    const t = POSE_TARGETS[motion] ?? POSE_TARGETS.idle;
+    const k = 1 - Math.exp(-dt * 5);
+    g.rotation.x += (t.rx - g.rotation.x) * k;
+    g.rotation.z += (t.rz - g.rotation.z) * k;
+    g.position.y += (t.y - g.position.y) * k;
+  });
+}
 
 // The protagonist's single 3D model. It resolves `type` to one of the six
 // roster characters and draws it. Today every species shares this one low-poly
@@ -287,9 +312,19 @@ function GltfCharacter({
       Object.values(actions)[0];
     // capybara pacing: play the clips lazily — slow breathing at rest, an
     // unhurried amble matched to the walker's low SPEED — scaled by this pet's
-    // own tempo so no two pets move in lockstep.
+    // own tempo so no two pets move in lockstep. sit/sleep have no clip of
+    // their own: the pose overlay does the shape, the idle clip just breathes
+    // (barely, when asleep).
     const pace =
-      (motion === "walk" ? 0.75 : motion === "wave" ? 0.9 : 0.65) * look.pace;
+      (motion === "walk"
+        ? 0.75
+        : motion === "wave"
+          ? 0.9
+          : motion === "sleep"
+            ? 0.22
+            : motion === "sit"
+              ? 0.45
+              : 0.65) * look.pace;
     action?.reset().setEffectiveTimeScale(pace).fadeIn(0.3).play();
     return () => {
       action?.fadeOut(0.3);
@@ -313,6 +348,10 @@ function GltfCharacter({
     }
   });
 
+  // sit/sleep pose overlay (separate from `bob`, which the no-clip fallback owns)
+  const poseG = useRef<THREE.Group>(null);
+  usePoseOverlay(poseG, motion);
+
   useEffect(() => {
     if (entrance.current) {
       gsap.fromTo(
@@ -335,9 +374,11 @@ function GltfCharacter({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "auto")}
       >
-        <group ref={bob}>
-          <group scale={fit.scale} position={fit.position}>
-            <primitive object={model} />
+        <group ref={poseG}>
+          <group ref={bob}>
+            <group scale={fit.scale} position={fit.position}>
+              <primitive object={model} />
+            </group>
           </group>
         </group>
       </group>
@@ -357,6 +398,7 @@ function ProceduralCharacter({
   const species = normalizeSpecies(type);
   const entrance = useRef<THREE.Group>(null);
   const root = useRef<THREE.Group>(null);
+  const poseG = useRef<THREE.Group>(null);
   const head = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Group>(null);
   const rightArm = useRef<THREE.Group>(null);
@@ -440,9 +482,12 @@ function ProceduralCharacter({
       blinking.current -= dt;
       ey = 0.12;
     }
+    if (motion === "sleep") ey = 0.1; // eyes stay shut while napping
     if (leftEye.current) leftEye.current.scale.y = EYE_SCALE_Y * ey;
     if (rightEye.current) rightEye.current.scale.y = EYE_SCALE_Y * ey;
   });
+
+  usePoseOverlay(poseG, motion);
 
   return (
     <group ref={entrance}>
@@ -451,6 +496,7 @@ function ProceduralCharacter({
         <circleGeometry args={[0.6, 24]} />
         <meshBasicMaterial color="#3a2e2a" transparent opacity={0.16} />
       </mesh>
+      <group ref={poseG}>
       <group
         ref={root}
         onPointerDown={onPointerDown}
@@ -788,6 +834,7 @@ function ProceduralCharacter({
             </mesh>
           </>
         )}
+      </group>
       </group>
     </group>
   );

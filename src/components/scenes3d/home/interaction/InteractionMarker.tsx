@@ -11,6 +11,7 @@ const ICON_BY_LABEL: Record<string, IconName> = {
   休息: "sleep",
   打包: "package",
   明信片: "postmail",
+  长椅: "garden",
 };
 
 interface Props {

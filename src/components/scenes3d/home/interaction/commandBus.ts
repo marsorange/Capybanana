@@ -1,4 +1,4 @@
-import type { Activity, Vec3 } from "../layout";
+import type { Activity, Perch, Vec3 } from "../layout";
 
 // Lets an in-scene tap send the companion walking to a spot, then either fire an
 // action (open a screen) and/or perform an activity (farm/sleep/clean…) there.
@@ -10,7 +10,14 @@ export interface WalkCommand {
   activity?: Activity; // played on arrival
   say?: string; // speech bubble shown on arrival
   dwell?: number; // seconds to perform the activity before resuming roaming
+  perch?: Perch; // hop onto furniture (bed/bench/stool) for the activity
+  emote?: string; // floating emoji shown while performing the activity
 }
+
+export type WalkOpts = Pick<
+  WalkCommand,
+  "activity" | "say" | "dwell" | "perch" | "emote"
+>;
 
 export const commandBus: { pending: WalkCommand | null } = { pending: null };
 
@@ -19,7 +26,7 @@ export function commandWalk(
   target: Vec3,
   floor: 0 | 1,
   onArrive?: () => void,
-  opts?: { activity?: Activity; say?: string; dwell?: number },
+  opts?: WalkOpts,
 ) {
   commandBus.pending = { target, floor, onArrive, ...opts };
 }
