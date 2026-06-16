@@ -8,7 +8,7 @@ import {
 } from "./destinations";
 import { photoItemsOf, presetsOf } from "./packing";
 import type { Companion, DestinationTheme, Postcard, Trip } from "./types";
-import { pick, uid } from "./util";
+import { pick } from "./util";
 
 function matchRule(text: string, theme: DestinationTheme) {
   return KEYWORD_RULES.find(
@@ -74,7 +74,12 @@ export function generatePostcard(companion: Companion, trip: Trip): Postcard {
   const reason = [reasonMain, itemsPhrase].filter(Boolean).join("，") + "。";
 
   return {
-    id: uid("pc"),
+    // Deterministic per trip (not a random uid): a trip mails at most one
+    // postcard, so keying the id off trip.id means two requests that race to
+    // settle the same return produce the SAME legacy_id. syncPostcards' `on
+    // conflict (legacy_id) do update` then dedupes them instead of inserting a
+    // second row that collides on the postcards.trip_id unique constraint (→500).
+    id: `pc_${trip.id}`,
     tripId: trip.id,
     companionId: companion.id,
     // Placeholder; the engine rolls the rarity at resolution and overrides both
