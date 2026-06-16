@@ -1,9 +1,21 @@
 "use client";
 
+import { useState } from "react";
+
 import { getDestination } from "@/game/destinations";
 import { cn } from "./cn";
 
 const VB = "0 0 320 200";
+const IMAGE_THEMES = new Set([
+  "seaside",
+  "forest",
+  "flowerfield",
+  "town",
+  "snow",
+  "mountain",
+  "starfield",
+  "desert",
+]);
 
 function lighten(hex: string, amt = 0.35): string {
   const n = parseInt(hex.slice(1), 16);
@@ -277,6 +289,24 @@ export default function PostcardArt({
   className?: string;
   rounded?: boolean;
 }) {
+  const imgRarity = rarity === "R" || rarity === "SR" ? rarity : "N";
+  const imageSrc = IMAGE_THEMES.has(theme) ? `/art/postcards/${theme}-${imgRarity}.webp` : null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+  if (imageSrc && failedSrc !== imageSrc) {
+    return (
+      <img
+        src={imageSrc}
+        alt={getDestination(theme).label}
+        className={cn("block h-full w-full object-cover", rounded && "rounded-[10px]", className)}
+        draggable={false}
+        decoding="async"
+        loading="lazy"
+        onError={() => setFailedSrc(imageSrc)}
+      />
+    );
+  }
+
   return (
     <svg
       viewBox={VB}
