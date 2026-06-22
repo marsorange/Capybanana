@@ -5,9 +5,24 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ReactNode } from "react";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { dom, useTr } from "@/i18n";
 import { PrimaryButton } from "../ui/kit";
 import SkyWeather, { type Weather } from "./SkyWeather";
 import { zoomBus } from "./zoomBus";
+
+// The WebGL context-loss "circuit broke" fallback card (bilingual).
+const DEAD_S = dom(
+  {
+    title: "小岛歇了一会儿",
+    body: "画面有点忙不过来，点一下让它重新载入。",
+    reload: "重新载入",
+  },
+  {
+    title: "The island took a little break",
+    body: "The view got a bit overwhelmed — tap to reload it.",
+    reload: "Reload",
+  },
+);
 
 // The render pipeline is deliberately PLAIN (2026-06-12 rework): toon materials
 // (materials.ts) + a strong directional key + weak ambient fill, MSAA on the
@@ -182,6 +197,7 @@ export default function SceneCanvas({
   const [instanceKey, setInstanceKey] = useState(0);
   const [dead, setDead] = useState(false);
   const lossTimes = useRef<number[]>([]);
+  const deadT = useTr(DEAD_S);
 
   const handleContextLoss = useCallback(() => {
     const now = typeof performance !== "undefined" ? performance.now() : 0;
@@ -199,8 +215,8 @@ export default function SceneCanvas({
         className={`flex h-full w-full flex-col items-center justify-center gap-3 px-8 text-center ${className ?? ""}`}
       >
         <div className="text-5xl">🪫</div>
-        <p className="font-hand text-xl text-ink">小岛歇了一会儿</p>
-        <p className="text-sm text-ink-soft">画面有点忙不过来，点一下让它重新载入。</p>
+        <p className="font-hand text-xl text-ink">{deadT.title}</p>
+        <p className="text-sm text-ink-soft">{deadT.body}</p>
         <div className="w-44">
           <PrimaryButton
             size="sm"
@@ -209,7 +225,7 @@ export default function SceneCanvas({
               setInstanceKey((k) => k + 1);
             }}
           >
-            重新载入
+            {deadT.reload}
           </PrimaryButton>
         </div>
       </div>

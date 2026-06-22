@@ -72,7 +72,11 @@ export async function POST(req: Request): Promise<Response> {
     const pooled = await findBattleOpponent(a.user.petId, a.user.id);
     const opponent: BattleOpponent = pooled
       ? { snapshot: pooled.snapshot, isNpc: false, defenderPetId: pooled.petId }
-      : { snapshot: makeNpcOpponent(self), isNpc: true, defenderPetId: null };
+      : {
+          snapshot: makeNpcOpponent(self, save.locale ?? "zh"),
+          isNpc: true,
+          defenderPetId: null,
+        };
 
     const out = await startBattle(save, { note }, now, opponent);
     await savePet(a.user.petId, out.save);

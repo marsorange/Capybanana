@@ -90,7 +90,7 @@ export default function CharacterPreviewPage() {
                   }
                 }}
               >
-                {t.emoji} {t.label}
+                {t.emoji} {t.label.zh}
               </Chip>
             );
           })}
@@ -115,7 +115,7 @@ export default function CharacterPreviewPage() {
               active={accessory === a.value}
               onClick={() => setAccessory(a.value)}
             >
-              {a.emoji} {a.label}
+              {a.emoji} {a.label.zh}
             </Chip>
           ))}
         </Row>

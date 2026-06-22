@@ -7,16 +7,10 @@ import * as THREE from "three";
 import type { Vec3 } from "../layout";
 import Icon, { type IconName } from "../../../ui/Icon";
 
-const ICON_BY_LABEL: Record<string, IconName> = {
-  休息: "sleep",
-  打包: "package",
-  明信片: "postmail",
-  长椅: "garden",
-};
-
 interface Props {
   pos: Vec3;
-  label: string;
+  label: string; // localized display text
+  icon: IconName;
   color?: string;
   onClick?: () => void;
   /** greyed-out + inert (e.g. while the pet is away travelling) */
@@ -31,6 +25,7 @@ interface Props {
 export default function InteractionMarker({
   pos,
   label,
+  icon,
   color = "#e8b85c",
   onClick,
   disabled = false,
@@ -75,7 +70,7 @@ export default function InteractionMarker({
         >
           <span className="ui-action-badge absolute left-[-5px] top-1/2 grid h-[49px] w-[49px] -translate-y-1/2 place-items-center rounded-full">
             <Icon
-              name={ICON_BY_LABEL[label] ?? "home"}
+              name={icon}
               className="h-[34px] w-[34px] drop-shadow-[0_3px_2px_rgba(126,83,38,0.16)]"
             />
           </span>

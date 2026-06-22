@@ -3,11 +3,18 @@
 import { useEffect, useState } from "react";
 
 import { getMusicPref, setMusicEnabled } from "@/lib/ambientMusic";
+import { dom, useTr } from "@/i18n";
+
+const S = dom(
+  { musicOn: "开启背景音乐", musicOff: "关闭背景音乐" },
+  { musicOn: "Turn music on", musicOff: "Turn music off" },
+);
 
 // Small round toggle for the background music. Browsers won't let audio start
 // without a user gesture, so when a saved "on" preference exists we wait for the
 // first tap anywhere to quietly resume it.
 export default function MusicToggle() {
+  const t = useTr(S);
   const [on, setOn] = useState(() => getMusicPref());
 
   useEffect(() => {
@@ -28,7 +35,7 @@ export default function MusicToggle() {
   return (
     <button
       onClick={toggle}
-      aria-label={on ? "关闭背景音乐" : "开启背景音乐"}
+      aria-label={on ? t.musicOff : t.musicOn}
       aria-pressed={on}
       className="ui-wood-surface ui-wood-press pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink"
     >

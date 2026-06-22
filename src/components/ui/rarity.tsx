@@ -1,11 +1,12 @@
 // Shared rarity styling for the postcard gacha — frames, badges, glow. Pure
 // presentation (the roll itself lives in src/game/gacha.ts). Tuned to the cozy
 // 原木 palette: N stays plain, R cool silver-blue, SR warm gold (the top tier).
+import { useLocale, type Bi, type Locale } from "@/i18n";
 import type { Rarity } from "@/game/types";
 import { cn } from "./cn";
 
 export interface RarityStyle {
-  label: string; // 普通 / 稀有 / 史诗
+  label: Bi<string>; // 普通 Common / 稀有 Rare / 史诗 Epic
   badge: string; // glyph in the corner chip
   ring: string; // border color (hex)
   glow: string; // reveal glow (rgba)
@@ -14,21 +15,21 @@ export interface RarityStyle {
 
 export const RARITY_META: Record<Rarity, RarityStyle> = {
   N: {
-    label: "普通",
+    label: { zh: "普通", en: "Common" },
     badge: "",
     ring: "#cdb389",
     glow: "rgba(189,138,82,0)",
     chip: "border-[#cdb389]/55 bg-cream-soft text-ink-soft",
   },
   R: {
-    label: "稀有",
+    label: { zh: "稀有", en: "Rare" },
     badge: "●",
     ring: "#7fb0d8",
     glow: "rgba(90,150,210,0.38)",
     chip: "border-[#7fb0d8] bg-[#eaf2fb] text-[#3f72a8]",
   },
   SR: {
-    label: "史诗",
+    label: { zh: "史诗", en: "Epic" },
     badge: "★",
     ring: "#e6b34d",
     glow: "rgba(230,170,70,0.55)",
@@ -45,7 +46,15 @@ export function rarityMeta(rarity: Rarity | string | null | undefined): RaritySt
 
 export const isRareRarity = (r: Rarity): boolean => r === "SR";
 
-/** A compact rarity chip, e.g. "★ 史诗". */
+/** Resolve a rarity's display label for a locale (non-hook). */
+export function rarityLabel(
+  rarity: Rarity | string | null | undefined,
+  locale: Locale,
+): string {
+  return rarityMeta(rarity as Rarity).label[locale];
+}
+
+/** A compact rarity chip, e.g. "★ 史诗" / "★ Epic". */
 export function RarityBadge({
   rarity,
   className,
@@ -54,6 +63,7 @@ export function RarityBadge({
   className?: string;
 }) {
   const m = rarityMeta(rarity);
+  const locale = useLocale();
   return (
     <span
       className={cn(
@@ -63,7 +73,7 @@ export function RarityBadge({
       )}
     >
       {m.badge && <span aria-hidden>{m.badge}</span>}
-      {m.label}
+      {m.label[locale]}
     </span>
   );
 }

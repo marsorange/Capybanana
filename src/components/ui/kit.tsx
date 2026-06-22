@@ -5,6 +5,7 @@
 // The hand-drawn wobble comes from the global #rough SVG filter (PortraitFrame).
 import { motion } from "framer-motion";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useT } from "@/i18n";
 import { cn } from "./cn";
 
 // Shared warm-border tokens, for reference. NB: Tailwind scans source for
@@ -30,17 +31,18 @@ export function Panel({
 
 export function BackButton({
   onClick,
-  label = "返回",
+  label,
   compact = false,
 }: {
   onClick: () => void;
   label?: string;
   compact?: boolean;
 }) {
+  const c = useT("common");
   return (
     <button
       onClick={onClick}
-      aria-label={label}
+      aria-label={label ?? c.back}
       className={cn(
         "ui-wood-surface ui-wood-press grid shrink-0 place-items-center rounded-full text-ink",
         compact ? "h-10 w-10" : "h-12 w-12",

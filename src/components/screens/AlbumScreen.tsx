@@ -7,6 +7,7 @@ import { cardId, countCollected, TOTAL_CARDS } from "@/game/gacha";
 import type { Postcard } from "@/game/types";
 import type { AgentEvent } from "@/server/types";
 import { useGameStore } from "@/state/gameStore";
+import { dom, useLocale, useTr, type Locale } from "@/i18n";
 import { cn } from "../ui/cn";
 import Icon, { type IconName } from "../ui/Icon";
 import PostcardArt from "../ui/PostcardArt";
@@ -16,11 +17,75 @@ import ScreenArtwork from "../ui/ScreenArtwork";
 
 type Tab = "cards" | "diary" | "battles";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "cards", label: "明信片" },
-  { id: "diary", label: "日记" },
-  { id: "battles", label: "切磋" },
-];
+const S = dom(
+  {
+    tabCards: "明信片",
+    tabDiary: "日记",
+    tabBattles: "切磋",
+    headerEyebrow: "慢慢攒下的远方",
+    titleCards: "明信片手账",
+    titleDiary: "小岛日记",
+    titleBattles: "切磋记录",
+    myPostcards: "我的明信片",
+    cardsEmpty: "我还没往家寄明信片呢。等我出趟远门，把远方寄回来给你。",
+    cardsFootnote: "没集到的还藏在路上。多陪我出门，就更容易遇到。",
+    diaryEmpty: "这本日记还空着。等我开始过日子，每一天都会记在这里。",
+    battlesEmpty: "还没跟谁切磋过。等我有精神的日子，去会会岛上的小伙伴。",
+    metCreated: "来到小岛",
+    metDeparted: "出门",
+    metReturned: "回家",
+    metPostcard: "寄了信",
+    metCheckin: "它来看我",
+    metBattle: "切磋",
+    resultWin: "胜",
+    resultLose: "负",
+    resultDraw: "平",
+    opponentNpc: "（路过的小家伙）",
+    opponentOther: "（别人家的小伙伴）",
+    metOpponent: (name: string) => `我遇见了 ${name}`,
+    look: (pers: string | null, acc: string | null) =>
+      `它${pers ? `是${pers}的性子` : ""}${pers && acc ? "，" : ""}${acc ? `戴着${acc}` : ""}。`,
+    diaryDayLabel: (m: number, day: number) => `${m}月${day}日`,
+    injury: (n: number) => `擦破了一点 ${n}`,
+    noInjury: "我没事",
+  },
+  {
+    tabCards: "Postcards",
+    tabDiary: "Diary",
+    tabBattles: "Sparring",
+    headerEyebrow: "Far-off places, saved up slowly",
+    titleCards: "Postcard Journal",
+    titleDiary: "Island Diary",
+    titleBattles: "Sparring Log",
+    myPostcards: "My Postcards",
+    cardsEmpty: "I haven't mailed a postcard home yet. Once I head somewhere far, I'll send a piece of it back to you.",
+    cardsFootnote: "The ones I'm missing are still out there. Come wander with me and they'll turn up.",
+    diaryEmpty: "This diary is still empty. Once I settle into my days, each one will be written here.",
+    battlesEmpty: "Haven't sparred with anyone yet. On a peppy day, I'll go meet the friends around the island.",
+    metCreated: "Arrived on the island",
+    metDeparted: "Set off",
+    metReturned: "Came home",
+    metPostcard: "Mailed a letter",
+    metCheckin: "You checked on me",
+    metBattle: "Sparring",
+    resultWin: "Win",
+    resultLose: "Loss",
+    resultDraw: "Draw",
+    opponentNpc: " (a passing little one)",
+    opponentOther: " (someone else's companion)",
+    metOpponent: (name: string) => `I met ${name}`,
+    look: (pers: string | null, acc: string | null) => {
+      const bits: string[] = [];
+      if (pers) bits.push(`a ${pers.toLowerCase()} sort`);
+      if (acc) bits.push(`wearing ${acc.toLowerCase()}`);
+      return bits.length ? `They were ${bits.join(", ")}.` : "";
+    },
+    diaryDayLabel: (m: number, day: number) =>
+      `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1]} ${day}`,
+    injury: (n: number) => `Got scuffed up a little: ${n}`,
+    noInjury: "I'm fine",
+  },
+);
 
 // Polaroid jitter so the 手账 grid reads as photos in a journal, not a UI table.
 const CARD_TILT = ["-rotate-[0.7deg]", "rotate-[0.6deg]", "rotate-[0.4deg]", "-rotate-[0.5deg]"];
@@ -29,13 +94,19 @@ const CARD_TILT = ["-rotate-[0.7deg]", "rotate-[0.6deg]", "rotate-[0.4deg]", "-r
 // pet's first-person voice; here we only pick an icon + a tiny type word.
 // This map is ALSO the diary filter: anything not listed (packing, bag cleanup,
 // legacy types) is owner-side noise and stays out of the diary.
-const EVENT_META: Record<string, { icon: IconName; word: string }> = {
-  created: { icon: "home", word: "来到小岛" },
-  departed: { icon: "map", word: "出门" },
-  returned: { icon: "home", word: "回家" },
-  postcard: { icon: "postmail", word: "寄了信" },
-  checkin: { icon: "handbook", word: "它来看我" },
-  battle: { icon: "map", word: "切磋" },
+const EVENT_ICON: Record<string, IconName> = {
+  created: "home",
+  departed: "map",
+  returned: "home",
+  postcard: "postmail",
+  checkin: "handbook",
+  battle: "map",
+};
+
+const RESULT_TONE: Record<string, string> = {
+  win: "border-leaf/45 bg-leaf/12",
+  lose: "border-accent/45 bg-accent/10",
+  draw: "border-[#bd8a52]/35 bg-cream-soft",
 };
 
 function fmtDiaryTime(iso: string): string {
@@ -45,28 +116,10 @@ function fmtDiaryTime(iso: string): string {
   return `${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const RESULT_META: Record<string, { label: string; tone: string }> = {
-  win: { label: "胜", tone: "border-leaf/45 bg-leaf/12" },
-  lose: { label: "负", tone: "border-accent/45 bg-accent/10" },
-  draw: { label: "平", tone: "border-[#bd8a52]/35 bg-cream-soft" },
-};
-
 function fmtDate(iso: string): string {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
-}
-
-// One short line on how the opponent LOOKED — another owner raised that pet to
-// be different from yours, and the record should let you feel it.
-function opponentLook(personality?: string, accessory?: string): string | null {
-  const pers = PERSONALITIES.find((p) => p.value === personality)?.label;
-  const acc =
-    accessory && accessory !== "none"
-      ? ACCESSORIES.find((a) => a.value === accessory)?.label
-      : undefined;
-  if (!pers && !acc) return null;
-  return `它${pers ? `是${pers}的性子` : ""}${pers && acc ? "，" : ""}${acc ? `戴着${acc}` : ""}。`;
 }
 
 function Empty({ icon, text }: { icon: IconName; text: string }) {
@@ -93,6 +146,37 @@ export default function AlbumScreen() {
   const openPostcard = useGameStore((s) => s.openPostcard);
   const goTo = useGameStore((s) => s.goTo);
 
+  const t = useTr(S);
+  const locale = useLocale();
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "cards", label: t.tabCards },
+    { id: "diary", label: t.tabDiary },
+    { id: "battles", label: t.tabBattles },
+  ];
+
+  const eventWord: Record<string, string> = {
+    created: t.metCreated,
+    departed: t.metDeparted,
+    returned: t.metReturned,
+    postcard: t.metPostcard,
+    checkin: t.metCheckin,
+    battle: t.metBattle,
+  };
+
+  // One short line on how the opponent LOOKED — another owner raised that pet to
+  // be different from yours, and the record should let you feel it.
+  const opponentLook = (personality?: string, accessory?: string): string | null => {
+    const pers =
+      PERSONALITIES.find((p) => p.value === personality)?.label[locale] ?? null;
+    const acc =
+      accessory && accessory !== "none"
+        ? ACCESSORIES.find((a) => a.value === accessory)?.label[locale] ?? null
+        : null;
+    if (!pers && !acc) return null;
+    return t.look(pers, acc) || null;
+  };
+
   const [tab, setTab] = useState<Tab>("cards");
 
   // Diary, trimmed for reading: newest-first, owner-side noise filtered out
@@ -104,7 +188,7 @@ export default function AlbumScreen() {
     const checkinDays = new Set<string>();
     for (let i = events.length - 1; i >= 0; i--) {
       const e = events[i];
-      if (!EVENT_META[e.type]) continue;
+      if (!EVENT_ICON[e.type]) continue;
       const d = new Date(e.at);
       if (Number.isNaN(d.getTime())) continue;
       const day = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -114,13 +198,14 @@ export default function AlbumScreen() {
       }
       let bucket = days[days.length - 1];
       if (!bucket || bucket.day !== day) {
-        bucket = { day, label: `${d.getMonth() + 1}月${d.getDate()}日`, entries: [] };
+        bucket = { day, label: t.diaryDayLabel(d.getMonth() + 1, d.getDate()), entries: [] };
         days.push(bucket);
       }
       bucket.entries.push(e);
     }
     return days;
-  }, [events]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, locale]);
   const collected = useMemo(() => countCollected(cardDex), [cardDex]);
   // 手账 rule: each (destination × rarity) card appears ONCE. The FIRST-received
   // instance keeps the slot, so its date reads as "the day I collected it";
@@ -151,8 +236,8 @@ export default function AlbumScreen() {
 
       <ScreenHeader
         onBack={() => goTo("home")}
-        eyebrow="慢慢攒下的远方"
-        title={tab === "cards" ? "明信片手账" : tab === "diary" ? "小岛日记" : "切磋记录"}
+        eyebrow={t.headerEyebrow}
+        title={tab === "cards" ? t.titleCards : tab === "diary" ? t.titleDiary : t.titleBattles}
         right={<Icon name="postmail" className="h-7 w-7 drop-shadow-[0_3px_2px_rgba(126,83,38,0.18)]" />}
       />
 
@@ -162,7 +247,7 @@ export default function AlbumScreen() {
       <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-5 pb-9 pt-4">
         {tab === "cards" &&
           (postcards.length === 0 || !hero ? (
-            <Empty icon="postmail" text="我还没往家寄明信片呢。等我出趟远门，把远方寄回来给你。" />
+            <Empty icon="postmail" text={t.cardsEmpty} />
           ) : (
             <div className="space-y-4 pt-1">
               {/* 最新的一张 — featured big polaroid */}
@@ -206,7 +291,7 @@ export default function AlbumScreen() {
               {/* the collection — each card once, first-received keeps the slot */}
               <div className="flex items-baseline justify-between px-1">
                 <span className="font-hand text-[16px] font-bold leading-none text-ink">
-                  我的明信片
+                  {t.myPostcards}
                 </span>
                 <span className="font-hand text-[14px] leading-none text-ink-soft">
                   <span className="text-accent">{collected}</span> / {TOTAL_CARDS}
@@ -255,14 +340,14 @@ export default function AlbumScreen() {
                 })}
               </div>
               <p className="px-1 text-center text-[11px] leading-relaxed text-ink-soft/65">
-                没集到的还藏在路上。多陪我出门，就更容易遇到。
+                {t.cardsFootnote}
               </p>
             </div>
           ))}
 
         {tab === "diary" &&
           (diaryDays.length === 0 ? (
-            <Empty icon="handbook" text="这本日记还空着。等我开始过日子，每一天都会记在这里。" />
+            <Empty icon="handbook" text={t.diaryEmpty} />
           ) : (
             <div className="space-y-3">
               {diaryDays.map((d) => (
@@ -272,17 +357,16 @@ export default function AlbumScreen() {
                   </p>
                   <ul className="mt-2.5 space-y-3">
                     {d.entries.map((e) => {
-                      const meta = EVENT_META[e.type];
                       return (
                         <li key={e.seq} className="flex items-start gap-2.5">
                           <Icon
-                            name={meta.icon}
+                            name={EVENT_ICON[e.type]}
                             className="mt-px h-5 w-5 shrink-0 drop-shadow-[0_1px_1px_rgba(126,83,38,0.12)]"
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-baseline justify-between gap-2">
                               <span className="font-hand text-[13px] font-bold leading-none text-ink">
-                                {meta.word}
+                                {eventWord[e.type]}
                               </span>
                               <span className="shrink-0 text-[10px] tabular-nums text-ink-soft/55">
                                 {fmtDiaryTime(e.at)}
@@ -303,11 +387,13 @@ export default function AlbumScreen() {
 
         {tab === "battles" &&
           (battles.length === 0 ? (
-            <Empty icon="map" text="还没跟谁切磋过。等我有精神的日子，去会会岛上的小伙伴。" />
+            <Empty icon="map" text={t.battlesEmpty} />
           ) : (
             <ul className="space-y-2.5">
               {battles.map((b) => {
-                const meta = RESULT_META[b.result] ?? RESULT_META.draw;
+                const tone = RESULT_TONE[b.result] ?? RESULT_TONE.draw;
+                const resultLabel =
+                  b.result === "win" ? t.resultWin : b.result === "lose" ? t.resultLose : t.resultDraw;
                 const look = opponentLook(b.opponentPersonality, b.opponentAccessory);
                 return (
                   <li key={b.id}>
@@ -324,8 +410,8 @@ export default function AlbumScreen() {
                               />
                             )}
                             <span className="min-w-0 truncate">
-                              我遇见了 {b.opponentName}
-                              {b.isNpc ? "（路过的小家伙）" : "（别人家的小伙伴）"}
+                              {t.metOpponent(b.opponentName)}
+                              {b.isNpc ? t.opponentNpc : t.opponentOther}
                             </span>
                           </span>
                           {look && (
@@ -335,16 +421,16 @@ export default function AlbumScreen() {
                         <span
                           className={cn(
                             "shrink-0 rounded-full border-2 px-2.5 py-0.5 font-hand text-[13px] text-ink",
-                            meta.tone,
+                            tone,
                           )}
                         >
-                          {meta.label}
+                          {resultLabel}
                         </span>
                       </div>
                       <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{b.story}</p>
                       <p className="mt-1.5 flex justify-between text-[11px] text-ink-soft/80">
                         <span>
-                          {b.injury > 0 ? `擦破了一点 ${b.injury}` : "我没事"}
+                          {b.injury > 0 ? t.injury(b.injury) : t.noInjury}
                           {b.spoils ? ` · ${b.spoils}` : ""}
                         </span>
                         <span>{fmtDate(b.createdAt)}</span>

@@ -69,7 +69,7 @@ function invalidTokenSkill(base: string): string {
 
 function createPetSkill(base: string, token: string): string {
   const typeList = COMPANION_TYPES.map(
-    (t) => `\`${t.type}\`(${t.label})`,
+    (t) => `\`${t.type}\`(${t.label.zh})`,
   ).join(" | ");
   return `# Capybanana · 接入第 1 步：先为主人生成宠物
 
@@ -119,7 +119,7 @@ function personalizedSkill(
   const persona = PERSONALITY_CN[pet.personality] ?? pet.personality;
   return `# Capybanana · 你是 ${pet.name} 的岛外向导
 
-你（AI Agent）已经和一只名叫 **${pet.name}** 的小家伙绑定了。它是一只${persona}的「${TYPE_LABELS[normalizeSpecies(pet.type)]}」。
+你（AI Agent）已经和一只名叫 **${pet.name}** 的小家伙绑定了。它是一只${persona}的「${TYPE_LABELS[normalizeSpecies(pet.type)].zh}」。
 
 它住在一座安静的小岛上。主人的工作节奏、你（Agent）每天累不累、和每天打包的线索，都会像天气一样吹到岛上。
 

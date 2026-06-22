@@ -2,15 +2,41 @@
 
 import { motion } from "framer-motion";
 
+import { dom, useTr } from "@/i18n";
 import { useGameStore } from "@/state/gameStore";
 import CharacterModel from "../scenes3d/character/CharacterModel";
 import SceneCanvas from "../scenes3d/SceneCanvas";
 import Icon, { type IconName } from "../ui/Icon";
 import { Panel, PrimaryButton } from "../ui/kit";
 
+const S = dom(
+  {
+    captionHome: "今天没出门，窝了一天",
+    captionYard: "在岛上四处晃了晃",
+    captionTravel: "我回来啦",
+    captionRest: "好好睡了一天",
+    captionBattle: "切磋了一场",
+    back: "回小屋",
+    sectionStory: "跟你说说今天",
+    souvenir: "我带回来一样小东西",
+    finish: "收好，回小屋",
+  },
+  {
+    captionHome: "Stayed in and cozied up all day",
+    captionYard: "Wandered around the island",
+    captionTravel: "I'm home!",
+    captionRest: "Slept the whole day away",
+    captionBattle: "Had a friendly match",
+    back: "Back home",
+    sectionStory: "Here's how my day went",
+    souvenir: "I brought back a little something",
+    finish: "All set — back home",
+  },
+);
+
 type KindTheme = {
   icon: IconName;
-  caption: string;
+  caption: keyof typeof S.zh;
   glow: string;
   pedestal: string;
   accent: string;
@@ -20,11 +46,11 @@ type KindTheme = {
 // pale so the page stays light. Loosely keyed (with a fallback below) so it
 // survives any OutcomeKind tweak.
 const KIND_THEME: Record<string, KindTheme> = {
-  home: { icon: "home", caption: "今天没出门，窝了一天", glow: "#ffe6b8", pedestal: "#f1e2c0", accent: "#e9a23b" },
-  yard: { icon: "garden", caption: "在岛上四处晃了晃", glow: "#d8eebb", pedestal: "#dce8c6", accent: "#8aa978" },
-  travel: { icon: "postmail", caption: "我回来啦", glow: "#c5e7e3", pedestal: "#d3e7e2", accent: "#6fa8c9" },
-  rest: { icon: "sleep", caption: "好好睡了一天", glow: "#e7d8f1", pedestal: "#e7dcef", accent: "#b59ed0" },
-  battle: { icon: "map", caption: "切磋了一场", glow: "#f4d9d8", pedestal: "#eed7d6", accent: "#d95f59" },
+  home: { icon: "home", caption: "captionHome", glow: "#ffe6b8", pedestal: "#f1e2c0", accent: "#e9a23b" },
+  yard: { icon: "garden", caption: "captionYard", glow: "#d8eebb", pedestal: "#dce8c6", accent: "#8aa978" },
+  travel: { icon: "postmail", caption: "captionTravel", glow: "#c5e7e3", pedestal: "#d3e7e2", accent: "#6fa8c9" },
+  rest: { icon: "sleep", caption: "captionRest", glow: "#e7d8f1", pedestal: "#e7dcef", accent: "#b59ed0" },
+  battle: { icon: "map", caption: "captionBattle", glow: "#f4d9d8", pedestal: "#eed7d6", accent: "#d95f59" },
 };
 
 function Pedestal({ color }: { color: string }) {
@@ -40,12 +66,13 @@ export default function ResultScreen() {
   const companion = useGameStore((s) => s.companion)!;
   const result = useGameStore((s) => s.lastResult);
   const goTo = useGameStore((s) => s.goTo);
+  const t = useTr(S);
 
   if (!result) {
     return (
       <div className="screen-bg flex h-full flex-col items-center justify-center gap-4 px-6">
         <PrimaryButton className="w-auto px-8" onClick={() => goTo("home")}>
-          回小屋
+          {t.back}
         </PrimaryButton>
       </div>
     );
@@ -80,7 +107,7 @@ export default function ResultScreen() {
           className="pointer-events-none absolute inset-x-5 top-5 z-10"
         >
           <Panel className="px-4 py-3 text-center">
-            <p className="text-sm text-ink-soft">{theme.caption}</p>
+            <p className="text-sm text-ink-soft">{t[theme.caption]}</p>
             <h1 className="mt-1 font-hand text-2xl leading-tight text-ink">{result.title}</h1>
           </Panel>
         </motion.div>
@@ -101,7 +128,7 @@ export default function ResultScreen() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
             <Panel className="px-5 py-4">
               <p className="mb-1.5 text-[11px] font-medium" style={{ color: theme.accent }}>
-                跟你说说今天
+                {t.sectionStory}
               </p>
               <p className="text-[15px] leading-relaxed text-ink">{result.story}</p>
             </Panel>
@@ -120,7 +147,7 @@ export default function ResultScreen() {
                   </span>
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium" style={{ color: theme.accent }}>
-                      我带回来一样小东西
+                      {t.souvenir}
                     </p>
                     <p className="mt-0.5 font-hand text-[17px] leading-snug text-ink">
                       {result.souvenir}
@@ -137,7 +164,7 @@ export default function ResultScreen() {
           className="game-bottom-panel shrink-0 px-5 pt-3"
           style={{ paddingBottom: "max(18px, env(safe-area-inset-bottom))" }}
         >
-          <PrimaryButton size="sm" onClick={() => goTo("home")}>收好，回小屋</PrimaryButton>
+          <PrimaryButton size="sm" onClick={() => goTo("home")}>{t.finish}</PrimaryButton>
         </div>
       </div>
     </div>

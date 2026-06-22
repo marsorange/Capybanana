@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { motion } from "framer-motion";
 
+import { dom, useTr } from "@/i18n";
 import { tagsFromHint } from "@/game/itemTags";
 import type { PackedItem } from "@/game/types";
 import { dayKey8, uid } from "@/game/util";
@@ -14,19 +15,84 @@ import { extractElement } from "../ui/photoExtract";
 
 const MAX = 3;
 
+const S = dom(
+  {
+    eyebrow: "拍到的都会变成我旅行的线索",
+    title: "今日包裹",
+    // gated recap view
+    awayTitle: "我还在外面呢",
+    existingTitle: "包裹已经放在门口啦",
+    packedTitle: "今天已经打包过啦",
+    awayBody: "等我回家，再给我装新的小东西吧。",
+    existingBody: "我会带着它出门的，先不拆开换东西啦。",
+    packedBody: "一天备一个就够啦，明天再来给我装新的。",
+    backHome: "回小屋",
+    // viewfinder placeholders
+    camStarting: "我在等镜头醒来…",
+    camError: "这里拿不到相机。\n先给我留一句话也可以。",
+    // status pill
+    pillFull: "都收下啦，背包装满了",
+    pillSome: (n: number) => `收到 ${n} 样啦，还能再装`,
+    pillEmpty: "拍下想让我带走的小东西",
+    // aria labels
+    ariaSwitch: "切换镜头",
+    ariaShoot: "给我拍一样东西",
+    ariaRemove: "移除",
+    // tray card
+    trayTitle: "给我带上的小东西",
+    addPhoto: "拍照添加",
+    defaultLabel: "你拍的东西",
+    // wish card
+    wishTitle: "写下一句心愿",
+    wishHint: "点一句放进去",
+    wishPlaceholder: "留一句话，我带在路上看。",
+    // CTA
+    putAtDoor: "放到门口",
+    // Owner→pet message ideas — short chip label, tapping fills the full sentence.
+    messageIdeas: [
+      { label: "有风的地方", full: "今天想去有风的地方看看。" },
+      { label: "在家休息", full: "如果累了，就在家慢慢休息。" },
+      { label: "安静的角落", full: "带着这个，找一个安静的小角落吧。" },
+    ],
+  },
+  {
+    eyebrow: "Whatever you snap becomes a clue for my trip",
+    title: "Today's bag",
+    awayTitle: "I'm still out there",
+    existingTitle: "The bag's already by the door",
+    packedTitle: "Already packed for today",
+    awayBody: "Once I'm home, you can tuck new little things in for me.",
+    existingBody: "I'll carry it out with me — let's not unpack and swap now.",
+    packedBody: "One bag a day is plenty. Come fill a new one tomorrow.",
+    backHome: "Back to the cottage",
+    camStarting: "Waiting for the camera to wake up…",
+    camError: "Can't reach a camera here.\nLeaving me a note works too.",
+    pillFull: "All tucked in — the bag is full",
+    pillSome: (n: number) => `Got ${n} so far, room for more`,
+    pillEmpty: "Snap the little things you want me to take",
+    ariaSwitch: "Switch camera",
+    ariaShoot: "Take a photo for me",
+    ariaRemove: "Remove",
+    trayTitle: "Little things for me to take",
+    addPhoto: "Tap to snap",
+    defaultLabel: "what you snapped",
+    wishTitle: "Write me a little wish",
+    wishHint: "tap one to drop it in",
+    wishPlaceholder: "Leave a note — I'll read it on the way.",
+    putAtDoor: "Set by the door",
+    messageIdeas: [
+      { label: "Somewhere windy", full: "Today I'd love to go somewhere windy." },
+      { label: "Rest at home", full: "If you're tired, just rest cozily at home." },
+      { label: "A quiet nook", full: "Take this and find a quiet little nook." },
+    ],
+  },
+);
+
 // Same paper card as PostcardScreen / kit Panel — this screen shares the global
 // storybook material system. (Future background art slots in as <ScreenArtwork>
 // right under the root, same as the postcard screen.)
 const CARD =
   "tex-grain rounded-[24px] border-2 border-[#e4c89c] bg-paper/95 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.82),0_4px_0_rgba(143,101,54,0.14),0_14px_26px_-18px_rgba(58,46,42,0.42)]";
-
-// Owner→pet message ideas — short chip label, tapping fills the full sentence
-// (full sentences as chips wrap to 3 lines on 390px and crush the viewfinder).
-const MESSAGE_IDEAS = [
-  { label: "有风的地方", full: "今天想去有风的地方看看。" },
-  { label: "在家休息", full: "如果累了，就在家慢慢休息。" },
-  { label: "安静的角落", full: "带着这个，找一个安静的小角落吧。" },
-];
 
 // ── inline SVG bits the PNG icon set doesn't cover ───────────────────────────
 type IP = { className?: string };
@@ -67,6 +133,7 @@ const CapyPeek = ({ className }: IP) => (
 );
 
 export default function PackScreen() {
+  const t = useTr(S);
   const existing = useGameStore((s) => s.packedBag);
   const events = useGameStore((s) => s.events);
   const companionState = useGameStore((s) => s.companionState);
@@ -189,7 +256,7 @@ export default function PackScreen() {
       id,
       kind: "photo",
       photo,
-      label: ex.hint || "你拍的东西",
+      label: ex.hint || t.defaultLabel,
       hint: ex.hint,
       keyword: ex.keyword,
       color: ex.color,
@@ -216,10 +283,10 @@ export default function PackScreen() {
   // The pill under the viewfinder carries the running state, so the CTA stays
   // one clean line and the footer never changes height.
   const pillText = full
-    ? "都收下啦，背包装满了"
+    ? t.pillFull
     : photos.length > 0
-      ? `收到 ${photos.length} 样啦，还能再装`
-      : "拍下想让我带走的小东西";
+      ? t.pillSome(photos.length)
+      : t.pillEmpty;
 
   return (
     <div className="screen-bg relative flex h-full flex-col overflow-hidden">
@@ -229,8 +296,8 @@ export default function PackScreen() {
       <ScreenHeader
         compact
         onBack={() => goTo("home")}
-        eyebrow="拍到的都会变成我旅行的线索"
-        title="今日包裹"
+        eyebrow={t.eyebrow}
+        title={t.title}
         right={<Icon name="package" className="h-7 w-7 drop-shadow-[0_3px_2px_rgba(126,83,38,0.18)]" />}
       />
 
@@ -242,14 +309,10 @@ export default function PackScreen() {
               <Icon name="package" className="h-9 w-9" />
             </span>
             <p className="mt-3 font-hand text-[18px] font-bold leading-none text-ink">
-              {away ? "我还在外面呢" : existing ? "包裹已经放在门口啦" : "今天已经打包过啦"}
+              {away ? t.awayTitle : existing ? t.existingTitle : t.packedTitle}
             </p>
             <p className="mt-2 text-[12px] leading-relaxed text-ink-soft">
-              {away
-                ? "等我回家，再给我装新的小东西吧。"
-                : existing
-                  ? "我会带着它出门的，先不拆开换东西啦。"
-                  : "一天备一个就够啦，明天再来给我装新的。"}
+              {away ? t.awayBody : existing ? t.existingBody : t.packedBody}
             </p>
             {!away && existing && existing.items.some((i) => i.kind === "photo" && i.photo) && (
               <div className="mt-4 flex justify-center gap-2">
@@ -273,7 +336,7 @@ export default function PackScreen() {
             )}
           </div>
           <SecondaryButton size="sm" onClick={() => goTo("home")}>
-            回小屋
+            {t.backHome}
           </SecondaryButton>
         </div>
       ) : (
@@ -302,9 +365,7 @@ export default function PackScreen() {
                 <div>
                   <Icon name="photo" className="mx-auto mb-2 h-9 w-9 opacity-80" />
                   <p className="whitespace-pre-line font-hand text-[14px] leading-relaxed text-ink-soft">
-                    {camPhase === "starting"
-                      ? "我在等镜头醒来…"
-                      : "这里拿不到相机。\n先给我留一句话也可以。"}
+                    {camPhase === "starting" ? t.camStarting : t.camError}
                   </p>
                 </div>
               </div>
@@ -323,7 +384,7 @@ export default function PackScreen() {
                 <div className="pointer-events-none absolute bottom-3.5 right-3.5 h-6 w-6 rounded-br-[9px] border-b-2 border-r-2 border-white/80" />
                 <button
                   onClick={switchCamera}
-                  aria-label="切换镜头"
+                  aria-label={t.ariaSwitch}
                   className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-[#241f1a]/40 text-white backdrop-blur-sm transition active:scale-95"
                 >
                   <Switch className="h-4.5 w-4.5" />
@@ -350,7 +411,7 @@ export default function PackScreen() {
           <button
             onClick={capture}
             disabled={camPhase !== "live" || full}
-            aria-label="给我拍一样东西"
+            aria-label={t.ariaShoot}
             className="absolute bottom-5 left-1/2 z-20 grid h-[68px] w-[68px] -translate-x-1/2 place-items-center rounded-full border-2 border-[#d9b982] bg-paper p-[5px] shadow-[inset_0_2px_0_rgba(255,255,255,0.9),0_5px_0_rgba(143,101,54,0.3),0_16px_26px_-14px_rgba(58,46,42,0.55)] transition active:scale-95 disabled:opacity-45 disabled:active:scale-100"
           >
             <span className="grid h-full w-full place-items-center rounded-full border-2 border-[#e4c89c] bg-cream-soft">
@@ -363,7 +424,7 @@ export default function PackScreen() {
         <section className={`relative shrink-0 px-3.5 pb-3.5 pt-3 ${CARD}`}>
           <CapyPeek className="pointer-events-none absolute -top-[27px] right-4 h-[42px] w-[70px]" />
           <div className="flex items-center justify-between px-0.5">
-            <h2 className="font-hand text-[15px] font-bold leading-none text-ink">给我带上的小东西</h2>
+            <h2 className="font-hand text-[15px] font-bold leading-none text-ink">{t.trayTitle}</h2>
             <span className="text-[13px] font-bold tabular-nums leading-none text-ink-soft">
               {photos.length}/{MAX}
             </span>
@@ -378,11 +439,11 @@ export default function PackScreen() {
                     key={i}
                     onClick={capture}
                     disabled={camPhase !== "live"}
-                    aria-label="给我拍一样东西"
+                    aria-label={t.ariaShoot}
                     className="flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[18px] border-2 border-dashed border-[#d9b982] bg-cream-soft/70 transition active:scale-95 disabled:opacity-55 disabled:active:scale-100 [@media(max-height:700px)]:aspect-auto [@media(max-height:700px)]:h-16 [@media(max-height:700px)]:flex-row [@media(max-height:700px)]:gap-1 [@media(max-height:620px)]:h-12!"
                   >
                     <span className="text-[26px] font-light leading-none text-[#c2a06f]">+</span>
-                    <span className="font-hand text-[11px] leading-none text-ink-soft">拍照添加</span>
+                    <span className="font-hand text-[11px] leading-none text-ink-soft">{t.addPhoto}</span>
                   </button>
                 );
               }
@@ -404,7 +465,7 @@ export default function PackScreen() {
                   </div>
                   <button
                     onClick={() => removePhoto(item.id)}
-                    aria-label="移除"
+                    aria-label={t.ariaRemove}
                     className="absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full bg-[#8c684a] text-paper shadow transition active:translate-y-0.5"
                   >
                     <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
@@ -423,9 +484,9 @@ export default function PackScreen() {
             <span className="ui-icon-well h-7 w-7 shrink-0 rounded-full">
               <Speech className="h-4 w-4 text-[#8c684a]" />
             </span>
-            <h2 className="font-hand text-[15px] font-bold leading-none text-ink">写下一句心愿</h2>
+            <h2 className="font-hand text-[15px] font-bold leading-none text-ink">{t.wishTitle}</h2>
             <span className="ml-auto text-[10px] leading-none text-ink-soft/70 [@media(max-height:780px)]:hidden">
-              点一句放进去
+              {t.wishHint}
             </span>
           </div>
           <div className="relative mt-2 rounded-[16px] border-2 border-[#ead6b2] bg-cream-soft px-3 pb-5 pt-2 [@media(max-height:620px)]:mt-0">
@@ -433,7 +494,7 @@ export default function PackScreen() {
               value={message}
               onChange={(e) => setMessage(e.target.value.slice(0, 50))}
               maxLength={50}
-              placeholder="留一句话，我带在路上看。"
+              placeholder={t.wishPlaceholder}
               rows={2}
               className="w-full resize-none bg-transparent font-hand text-[14px] leading-[22px] text-ink outline-none placeholder:text-ink-soft/55"
             />
@@ -442,7 +503,7 @@ export default function PackScreen() {
             </span>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5 [@media(max-height:780px)]:hidden">
-            {MESSAGE_IDEAS.map((idea) => (
+            {t.messageIdeas.map((idea) => (
               <button
                 key={idea.label}
                 onClick={() => setMessage(idea.full)}
@@ -467,7 +528,7 @@ export default function PackScreen() {
           className="flex items-center justify-center gap-2"
         >
           <Icon name="package" className="h-6 w-6" />
-          放到门口
+          {t.putAtDoor}
         </PrimaryButton>
       </div>
         </>

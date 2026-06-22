@@ -47,6 +47,8 @@ function sanitizePostcards(postcards: Postcard[]): Postcard[] {
   return changed ? next : postcards;
 }
 
+export type Locale = "zh" | "en";
+
 export type Screen =
   | "login"
   | "connect"
@@ -70,6 +72,10 @@ export interface CloudAuth {
 
 interface GameState {
   hasHydrated: boolean;
+  // UI language. Defaults to zh; auto-detected from the browser on first load
+  // (see GameRoot) until the owner explicitly picks one via the toggle.
+  locale: Locale;
+  localeChosen: boolean;
   companion: Companion | null;
   capyState: CapyState;
   companionState: CompanionState;
@@ -107,6 +113,7 @@ interface GameState {
   cloudError: string | null;
 
   setHasHydrated: (v: boolean) => void;
+  setLocale: (locale: Locale, explicit?: boolean) => void;
   goTo: (screen: Screen) => void;
   prepareBag: (
     items: PackedItem[],
@@ -156,6 +163,8 @@ export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       hasHydrated: false,
+      locale: "zh",
+      localeChosen: false,
       ...emptyLocalState(),
       screen: "login",
       hasOnboarded: false,
@@ -167,12 +176,36 @@ export const useGameStore = create<GameState>()(
 
       setHasHydrated: (v) => set({ hasHydrated: v }),
 
+      // explicit=true marks a deliberate owner choice (toggle), which pins the
+      // language; the browser auto-detect on first load passes explicit=false so
+      // it never overrides a returning owner's pick.
+      setLocale: (locale, explicit = true) => {
+        const s = get();
+        if (s.locale === locale && (!explicit || s.localeChosen)) return;
+        set({ locale, localeChosen: s.localeChosen || explicit });
+        // Push to the cloud so server-generated text (postcards/events) follows
+        // the owner's language. Fire-and-forget; a failure just means the next
+        // generation stays in the previously-saved language. Only on a real
+        // choice (not the silent first-load auto-detect).
+        if (explicit && s.cloud) {
+          void cloud
+            .setLocale(s.cloud.bindToken, locale)
+            .catch(() => {});
+        }
+      },
+
       goTo: (screen) => set({ screen }),
 
       prepareBag: (items, message, gesture) => {
         const s = get();
         if (!s.cloud) {
-          set({ screen: "login", cloudError: "先找到我，再给我准备包裹吧。" });
+          set({
+            screen: "login",
+            cloudError:
+              s.locale === "en"
+                ? "Find me first, then pack a bag for me."
+                : "先找到我，再给我准备包裹吧。",
+          });
           return;
         }
 
@@ -340,7 +373,10 @@ export const useGameStore = create<GameState>()(
         if (!s.cloud || !s.packedBag) return;
         if (Date.now() - s.packedBag.packedAt < BAG_TTL_MS) return;
         set({
-          notice: "包裹放了一天，我先收起来啦",
+          notice:
+            s.locale === "en"
+              ? "The bag sat a whole day, so I put it away."
+              : "包裹放了一天，我先收起来啦",
         });
         cloud
           .unpack(s.cloud.bindToken)
@@ -437,6 +473,8 @@ export const useGameStore = create<GameState>()(
         lastActionDay: s.lastActionDay,
         screen: s.screen,
         hasOnboarded: s.hasOnboarded,
+        locale: s.locale,
+        localeChosen: s.localeChosen,
         selectedPostcardId: s.selectedPostcardId,
         pendingPostcardId: s.pendingPostcardId,
         cloud: s.cloud,

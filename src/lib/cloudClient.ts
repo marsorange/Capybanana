@@ -5,6 +5,13 @@
 // called from here.
 import type { Gesture, PackedItem } from "@/game/types";
 import type { CloudSave } from "@/server/types";
+import { useGameStore } from "@/state/gameStore";
+
+// Bilingual generic-failure messages. Read the live locale lazily (this module
+// and the store import each other; accessing getState() at call time avoids the
+// init cycle). Server-provided `error` strings already arrive in the owner's
+// language (generated with save.locale).
+const en = () => useGameStore.getState().locale === "en";
 
 export interface LoginResult {
   user: { id: string; email: string | null };
@@ -56,7 +63,9 @@ async function call<T>(
   } catch (e) {
     const name = (e as DOMException).name;
     if (name === "TimeoutError" || name === "AbortError") {
-      const err = new Error("请求超时了，稍后会自动再试");
+      const err = new Error(
+        en() ? "The request timed out — it'll retry shortly." : "请求超时了，稍后会自动再试",
+      );
       (err as Error & { status?: number }).status = 0;
       throw err;
     }
@@ -64,7 +73,10 @@ async function call<T>(
   }
   const data = await res.json().catch(() => ({}) as Record<string, unknown>);
   if (!res.ok || data?.ok === false) {
-    const err = new Error((data?.error as string) || `请求失败（${res.status}）`);
+    const err = new Error(
+      (data?.error as string) ||
+        (en() ? `Request failed (${res.status})` : `请求失败（${res.status}）`),
+    );
     (err as Error & { status?: number }).status = res.status;
     throw err;
   }
@@ -106,4 +118,7 @@ export const cloud = {
   // Mint a fresh Agent bind link (revokes the old one → old Agent disconnects).
   regenerateAgentLink: (token: string) =>
     call<{ ok: true; connectUrl: string }>("POST", "/api/auth/agent-link", token),
+  // Persist the owner's UI language so server-generated text follows it.
+  setLocale: (token: string, locale: "zh" | "en") =>
+    call<{ ok: true; rev: number }>("POST", "/api/web/locale", token, { locale }),
 };

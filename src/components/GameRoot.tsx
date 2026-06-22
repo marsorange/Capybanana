@@ -129,6 +129,16 @@ export default function GameRoot() {
     void useGameStore.persist.rehydrate();
   }, [hasHydrated]);
 
+  // First-load language auto-detect: pick EN for non-Chinese browsers. Only runs
+  // until the owner explicitly toggles (localeChosen pins their choice).
+  useEffect(() => {
+    if (!hasHydrated) return;
+    const st = useGameStore.getState();
+    if (st.localeChosen) return;
+    const lang = (navigator.language || "").toLowerCase();
+    st.setLocale(lang.startsWith("zh") ? "zh" : "en", false);
+  }, [hasHydrated]);
+
   // Bridge a Supabase (Google) session into a bound account when one appears.
   useSupabaseAuthBridge();
   useAmbientMusicStartup();

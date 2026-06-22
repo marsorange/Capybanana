@@ -8,14 +8,83 @@ import {
   PERSONALITIES,
   PRIMARY_COLORS,
 } from "@/game/labels";
+import { TRAIT_LABELS } from "@/game/resolveDay";
 import { companionStats } from "@/game/companionLevel";
 import type { CapyState } from "@/game/types";
 import { useGameStore } from "@/state/gameStore";
+import { dom, useTr, useLocale } from "@/i18n";
 import CapyAvatar from "../ui/CapyAvatar";
 import { cn } from "../ui/cn";
 import Icon, { type IconName } from "../ui/Icon";
 import { Chip, Panel, ProgressBar, ScreenHeader } from "../ui/kit";
 import ScreenArtwork from "../ui/ScreenArtwork";
+import LanguageToggle from "../ui/LanguageToggle";
+
+// ── co-located bilingual strings ─────────────────────────────────────────────
+const S = dom(
+  {
+    eyebrow: "慢慢长大的样子",
+    titleSuffix: "的成长",
+    adoptedSuffix: "来到你身边",
+    companionDays: (cur: number, total: number) => `陪伴 ${cur} / ${total} 天`,
+    moodToday: "今天心情",
+    moodHurtWord: "在养伤",
+    moodHurtLine: "蹭破了一点皮，趴一趴就好了。",
+    moodHappyWord: "很开心",
+    moodHappyLine: "阳光真好，感觉能去任何地方。",
+    moodOkWord: "还不错",
+    moodOkLine: "窝在老地方，心里挺安稳的。",
+    moodLowWord: "有点蔫",
+    moodLowLine: "想多躺一会儿，你来陪陪我呀。",
+    growthRecord: "成长记录",
+    statPostcards: "明信片",
+    statSouvenirs: "小东西",
+    statBattles: "切磋",
+    souvenirsTitle: "带回来的小东西",
+    souvenirsCount: (n: number) => `${n} 件`,
+    latest: "最新",
+    souvenirsMore: (n: number) => `还有 ${n} 件，都收在我的小盒子里。`,
+    growthMarks: "成长印记",
+    noTraits: "难忘的日子会留下新的印记，慢慢来。",
+    badges: "成就徽章",
+    badgeIsland: "来到岛上",
+    badgeFirstLetter: "第一封信",
+    badgeFirstBattle: "初次切磋",
+    onTheWay: "还在路上",
+    logout: "退出登录",
+  },
+  {
+    eyebrow: "Growing up, day by day",
+    titleSuffix: "'s journey",
+    adoptedSuffix: "came to you",
+    companionDays: (cur: number, total: number) => `Together ${cur} / ${total} days`,
+    moodToday: "How I feel today",
+    moodHurtWord: "Healing up",
+    moodHurtLine: "Just a little scrape — a good rest will fix it.",
+    moodHappyWord: "So happy",
+    moodHappyLine: "The sun's lovely. I feel like I could go anywhere.",
+    moodOkWord: "Pretty good",
+    moodOkLine: "Curled up in my usual spot, feeling settled.",
+    moodLowWord: "A bit blue",
+    moodLowLine: "I'd like to lie down a while — come keep me company?",
+    growthRecord: "Growth",
+    statPostcards: "Postcards",
+    statSouvenirs: "Trinkets",
+    statBattles: "Matches",
+    souvenirsTitle: "Little things I brought home",
+    souvenirsCount: (n: number) => `${n}`,
+    latest: "New",
+    souvenirsMore: (n: number) => `And ${n} more, all tucked in my little box.`,
+    growthMarks: "Growth marks",
+    noTraits: "Memorable days leave new marks. Little by little.",
+    badges: "Badges",
+    badgeIsland: "Arrived on the island",
+    badgeFirstLetter: "First letter",
+    badgeFirstBattle: "First match",
+    onTheWay: "On the way",
+    logout: "Log out",
+  },
+);
 
 function fmtDate(iso: string): string | null {
   const d = new Date(iso);
@@ -36,14 +105,11 @@ function SectionTitle({ children }: { children: string }) {
 
 type MoodKind = "happy" | "ok" | "low" | "hurt";
 
-function moodOf(capy: CapyState): { kind: MoodKind; word: string; line: string } {
-  if (capy.injury > 0)
-    return { kind: "hurt", word: "在养伤", line: "蹭破了一点皮，趴一趴就好了。" };
-  if (capy.mood >= 70)
-    return { kind: "happy", word: "很开心", line: "阳光真好，感觉能去任何地方。" };
-  if (capy.mood >= 45)
-    return { kind: "ok", word: "还不错", line: "窝在老地方，心里挺安稳的。" };
-  return { kind: "low", word: "有点蔫", line: "想多躺一会儿，你来陪陪我呀。" };
+function moodKindOf(capy: CapyState): MoodKind {
+  if (capy.injury > 0) return "hurt";
+  if (capy.mood >= 70) return "happy";
+  if (capy.mood >= 45) return "ok";
+  return "low";
 }
 
 function MoodFace({ kind, className }: { kind: MoodKind; className?: string }) {
@@ -95,11 +161,13 @@ function MedalTile({
   label,
   date,
   earned,
+  pendingLabel,
 }: {
   icon: IconName;
   label: string;
   date: string | null;
   earned: boolean;
+  pendingLabel: string;
 }) {
   return (
     <div className={cn("flex flex-col items-center gap-1.5 text-center", !earned && "opacity-45")}>
@@ -117,7 +185,7 @@ function MedalTile({
       </span>
       <p className="font-hand text-[13px] leading-none text-ink">{label}</p>
       <p className="text-[10px] leading-none tabular-nums text-ink-soft/70">
-        {earned && date ? date : "还在路上"}
+        {earned && date ? date : pendingLabel}
       </p>
     </div>
   );
@@ -136,14 +204,24 @@ export default function ProfileScreen() {
   const bound = useGameStore((s) => !!s.cloud);
   const email = useGameStore((s) => s.cloud?.email ?? null);
 
+  const t = useTr(S);
+  const locale = useLocale();
+
   const typeInfo = COMPANION_TYPES.find((t) => t.type === companion.type);
   const persInfo = PERSONALITIES.find((p) => p.value === companion.personality);
   const accInfo = ACCESSORIES.find((a) => a.value === companion.accessory);
   const colorName = PRIMARY_COLORS.find(
     (c) => c.hex.toLowerCase() === companion.primaryColor.toLowerCase(),
-  )?.name;
+  )?.name[locale];
   const stats = useMemo(() => companionStats(companionDays), [companionDays]);
-  const mood = moodOf(capy);
+  const moodKind = moodKindOf(capy);
+  const MOOD_TEXT: Record<MoodKind, { word: string; line: string }> = {
+    hurt: { word: t.moodHurtWord, line: t.moodHurtLine },
+    happy: { word: t.moodHappyWord, line: t.moodHappyLine },
+    ok: { word: t.moodOkWord, line: t.moodOkLine },
+    low: { word: t.moodLowWord, line: t.moodLowLine },
+  };
+  const mood = MOOD_TEXT[moodKind];
 
   const adoptedAt = useMemo(() => fmtDate(companion.createdAt), [companion.createdAt]);
   const firstPostcardAt = useMemo(() => {
@@ -169,8 +247,8 @@ export default function ProfileScreen() {
       {/* fixed top bar — always visible */}
       <ScreenHeader
         onBack={() => goTo("home")}
-        eyebrow="慢慢长大的样子"
-        title={`${companion.name} 的成长`}
+        eyebrow={t.eyebrow}
+        title={`${companion.name} ${t.titleSuffix}`}
         right={<Icon name="handbook" className="h-7 w-7 drop-shadow-[0_3px_2px_rgba(126,83,38,0.18)]" />}
         className="z-20 shrink-0 pb-1"
       />
@@ -189,9 +267,9 @@ export default function ProfileScreen() {
               </h1>
               {typeInfo && (
                 <p className="mt-0.5 text-[11px] text-ink-soft">
-                  {typeInfo.label}
+                  {typeInfo.label[locale]}
                   {colorName ? ` · ${colorName}` : ""}
-                  {adoptedAt ? ` · ${adoptedAt} 来到你身边` : ""}
+                  {adoptedAt ? ` · ${adoptedAt} ${t.adoptedSuffix}` : ""}
                 </p>
               )}
               <div className="mt-2 flex items-center justify-between gap-2">
@@ -199,7 +277,7 @@ export default function ProfileScreen() {
                   Lv.{stats.level}
                 </span>
                 <span className="text-[11px] tabular-nums text-ink-soft">
-                  陪伴 {stats.days} / {stats.days + stats.daysToNext} 天
+                  {t.companionDays(stats.days, stats.days + stats.daysToNext)}
                 </span>
               </div>
               <ProgressBar value={stats.progress} animateIn className="mt-1.5" />
@@ -209,9 +287,9 @@ export default function ProfileScreen() {
 
         {/* 今天心情 — qualitative only, the numbers stay the Agent's secret */}
         <Panel className="relative overflow-hidden px-4 py-3.5" sketch={false}>
-          <SectionTitle>今天心情</SectionTitle>
+          <SectionTitle>{t.moodToday}</SectionTitle>
           <div className="mt-2.5 flex items-center gap-3 pr-14">
-            <MoodFace kind={mood.kind} className="h-11 w-11 shrink-0" />
+            <MoodFace kind={moodKind} className="h-11 w-11 shrink-0" />
             <div className="min-w-0">
               <p className="font-hand text-[18px] leading-none text-ink">{mood.word}</p>
               <p className="mt-1.5 text-[12px] leading-snug text-ink-soft">{mood.line}</p>
@@ -225,14 +303,14 @@ export default function ProfileScreen() {
 
         {/* 成长记录 — three plain numbers with hairline dividers */}
         <Panel className="px-4 py-3.5" sketch={false}>
-          <SectionTitle>成长记录</SectionTitle>
+          <SectionTitle>{t.growthRecord}</SectionTitle>
           <div className="mt-2.5 grid grid-cols-3 divide-x divide-[#e4c89c]/80">
             {[
               // 明信片 counts the COLLECTION (unique cards) — the album dedupes
               // the same way, so the two numbers always agree.
-              { value: cardDex.length, label: "明信片" },
-              { value: souvenirs.length, label: "小东西" },
-              { value: battles.length, label: "切磋" },
+              { value: cardDex.length, label: t.statPostcards },
+              { value: souvenirs.length, label: t.statSouvenirs },
+              { value: battles.length, label: t.statBattles },
             ].map((it) => (
               <div key={it.label} className="py-1 text-center">
                 <p className="font-hand text-[22px] leading-none text-ink">{it.value}</p>
@@ -246,9 +324,9 @@ export default function ProfileScreen() {
         {souvenirs.length > 0 && (
           <Panel className="px-4 py-3.5" sketch={false}>
             <div className="flex items-baseline justify-between">
-              <SectionTitle>带回来的小东西</SectionTitle>
+              <SectionTitle>{t.souvenirsTitle}</SectionTitle>
               <span className="text-[10px] tabular-nums text-ink-soft/60">
-                {souvenirs.length} 件
+                {t.souvenirsCount(souvenirs.length)}
               </span>
             </div>
             <ul className="mt-2.5 space-y-1.5">
@@ -261,7 +339,7 @@ export default function ProfileScreen() {
                   <span className="min-w-0 truncate font-hand text-[14px] text-ink">{sv}</span>
                   {i === 0 && (
                     <span className="ml-auto shrink-0 rounded-full bg-accent/12 px-2 py-0.5 text-[10px] leading-none text-accent">
-                      最新
+                      {t.latest}
                     </span>
                   )}
                 </li>
@@ -269,7 +347,7 @@ export default function ProfileScreen() {
             </ul>
             {souvenirs.length > 6 && (
               <p className="mt-2 text-[11px] leading-none text-ink-soft/65">
-                还有 {souvenirs.length - 6} 件，都收在我的小盒子里。
+                {t.souvenirsMore(souvenirs.length - 6)}
               </p>
             )}
           </Panel>
@@ -277,30 +355,32 @@ export default function ProfileScreen() {
 
         {/* 成长印记 — personality / accessory / earned traits */}
         <Panel className="px-4 py-3.5" sketch={false}>
-          <SectionTitle>成长印记</SectionTitle>
+          <SectionTitle>{t.growthMarks}</SectionTitle>
           <div className="mt-2.5 flex flex-wrap gap-2">
-            {persInfo && <Chip>{persInfo.label}</Chip>}
-            {accInfo && companion.accessory !== "none" && <Chip>{accInfo.label}</Chip>}
-            {capy.traits.map((t) => (
-              <Chip key={t} tone="leaf">
-                {t}
+            {persInfo && <Chip>{persInfo.label[locale]}</Chip>}
+            {accInfo && companion.accessory !== "none" && (
+              <Chip>{accInfo.label[locale]}</Chip>
+            )}
+            {capy.traits.map((trait) => (
+              <Chip key={trait} tone="leaf">
+                {TRAIT_LABELS[trait]?.[locale] ?? trait}
               </Chip>
             ))}
           </div>
           {capy.traits.length === 0 && (
             <p className="mt-2 text-[11px] leading-snug text-ink-soft/75">
-              难忘的日子会留下新的印记，慢慢来。
+              {t.noTraits}
             </p>
           )}
         </Panel>
 
         {/* 成就徽章 — derived from the save itself, no separate system */}
         <Panel className="px-4 py-3.5" sketch={false}>
-          <SectionTitle>成就徽章</SectionTitle>
+          <SectionTitle>{t.badges}</SectionTitle>
           <div className="mt-3 grid grid-cols-3 gap-2">
-            <MedalTile icon="home" label="来到岛上" date={adoptedAt} earned={adoptedAt != null} />
-            <MedalTile icon="postmail" label="第一封信" date={firstPostcardAt} earned={firstPostcardAt != null} />
-            <MedalTile icon="map" label="初次切磋" date={firstBattleAt} earned={firstBattleAt != null} />
+            <MedalTile icon="home" label={t.badgeIsland} date={adoptedAt} earned={adoptedAt != null} pendingLabel={t.onTheWay} />
+            <MedalTile icon="postmail" label={t.badgeFirstLetter} date={firstPostcardAt} earned={firstPostcardAt != null} pendingLabel={t.onTheWay} />
+            <MedalTile icon="map" label={t.badgeFirstBattle} date={firstBattleAt} earned={firstBattleAt != null} pendingLabel={t.onTheWay} />
           </div>
         </Panel>
       </div>
@@ -309,6 +389,9 @@ export default function ProfileScreen() {
         className="game-bottom-panel relative z-10 shrink-0 space-y-2 px-5 pt-3"
         style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
       >
+        <div className="flex items-center justify-center pt-0.5">
+          <LanguageToggle compact />
+        </div>
         {bound && (
           <div className="flex items-center justify-center gap-2 pt-0.5 text-[11px] text-ink-soft/70">
             {email && <span className="truncate">{email}</span>}
@@ -317,7 +400,7 @@ export default function ProfileScreen() {
               onClick={() => logout()}
               className="ui-wood-press shrink-0 rounded-full border border-[#d9b982]/65 bg-paper/70 px-2.5 py-1 transition hover:text-accent"
             >
-              退出登录
+              {t.logout}
             </button>
           </div>
         )}

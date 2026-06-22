@@ -5,10 +5,36 @@ import { motion } from "framer-motion";
 
 import { useGameStore } from "@/state/gameStore";
 import { isSupabaseConfigured, signInWithGoogle } from "@/lib/supabaseClient";
+import { dom, useTr } from "@/i18n";
 import ScreenArtwork from "../ui/ScreenArtwork";
+import LanguageToggle from "../ui/LanguageToggle";
 import { SecondaryButton } from "../ui/kit";
 
+const S = dom(
+  {
+    waiting: "我在小岛上等你",
+    opening: "正在推开小岛的门…",
+    google: "用 Google 找到我",
+    devEntering: "进岛中…",
+    devEnter: "本地进岛",
+    cloudFootnote: "我的小屋、来信和慢慢长大的样子，都会替你收着",
+    devFootnote: "当前是本地开发入口",
+    notConfigured: "小岛入口暂未配置完成，请稍后再试。",
+  },
+  {
+    waiting: "I'm waiting for you on the island",
+    opening: "Pushing open the island gate…",
+    google: "Find me with Google",
+    devEntering: "Heading in…",
+    devEnter: "Enter locally",
+    cloudFootnote: "Your cottage, the letters, and all my growing-up are safe with me",
+    devFootnote: "This is the local dev entrance",
+    notConfigured: "The island gate isn't set up yet — please try again later.",
+  },
+);
+
 export default function LoginScreen() {
+  const t = useTr(S);
   const cloudBusy = useGameStore((s) => s.cloudBusy);
   const cloudError = useGameStore((s) => s.cloudError);
   const loginWithDevIdentity = useGameStore((s) => s.loginWithDevIdentity);
@@ -65,9 +91,11 @@ export default function LoginScreen() {
             Capybanana
           </h1>
           <div className="ui-wood-surface mx-auto mt-3 w-fit rounded-full px-4 py-1.5 font-hand text-sm font-semibold text-[#5f442d]">
-            我在小岛上等你
+            {t.waiting}
           </div>
         </motion.div>
+
+        <LanguageToggle compact className="absolute right-5 top-5 z-20" />
 
         {/* spacer pushes the sign-in to the bottom edge */}
         <div className="flex-1" />
@@ -84,7 +112,7 @@ export default function LoginScreen() {
             className="ui-wood-surface ui-wood-press flex w-full items-center justify-center gap-3 rounded-[24px] px-4 py-4 font-hand text-base font-bold text-[#5f442d] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:translate-y-0"
           >
             <GoogleMark className="h-5 w-5" />
-            {busy ? "正在推开小岛的门…" : "用 Google 找到我"}
+            {busy ? t.opening : t.google}
           </button>
 
           {devAuthEnabled && (
@@ -100,7 +128,7 @@ export default function LoginScreen() {
                 disabled={busy}
                 size="sm"
               >
-                {busy ? "进岛中…" : "本地进岛"}
+                {busy ? t.devEntering : t.devEnter}
               </SecondaryButton>
             </div>
           )}
@@ -114,10 +142,10 @@ export default function LoginScreen() {
           <p className="mx-auto flex w-fit max-w-full items-center justify-center gap-1.5 rounded-full bg-paper/72 px-3 py-1.5 text-center text-[11px] leading-relaxed text-ink-soft shadow-[0_4px_14px_-10px_rgba(58,46,42,0.55)] backdrop-blur-sm">
             <LockMark className="h-3 w-3 shrink-0" />
             {isSupabaseConfigured
-              ? "我的小屋、来信和慢慢长大的样子，都会替你收着"
+              ? t.cloudFootnote
               : devAuthEnabled
-                ? "当前是本地开发入口"
-                : "小岛入口暂未配置完成，请稍后再试。"}
+                ? t.devFootnote
+                : t.notConfigured}
           </p>
         </motion.div>
       </div>

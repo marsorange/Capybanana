@@ -3,15 +3,59 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 
-import { getDestination } from "@/game/destinations";
+import { destinationLabel } from "@/game/destinations";
 import type { Postcard } from "@/game/types";
+import { dom, useLocale, useTr } from "@/i18n";
 import { useGameStore } from "@/state/gameStore";
 import { cn } from "../ui/cn";
 import Icon from "../ui/Icon";
 import PostcardArt from "../ui/PostcardArt";
-import { isRareRarity, rarityMeta, RarityBadge } from "../ui/rarity";
+import { isRareRarity, rarityLabel, rarityMeta, RarityBadge } from "../ui/rarity";
 import { PrimaryButton, ScreenHeader, SecondaryButton } from "../ui/kit";
 import ScreenArtwork from "../ui/ScreenArtwork";
+
+const S = dom(
+  {
+    postcardFrom: "postcard from",
+    backEyebrow: "今天的一点小事",
+    reasonLabel: "我为什么去了那儿",
+    toLabel: "to",
+    toName: "你",
+    fromLabel: "from",
+    epicTitle: (rarity: string) => `${rarity}明信片！`,
+    sentTitle: "我给你寄信啦",
+    rareSub: "这张，我等了好久才遇上。",
+    normalSub: "把远方的一小段，寄给你。",
+    headerEyebrow: "来自远方的一小段",
+    headerTitle: "读一张明信片",
+    flipToScenery: "翻到风景面",
+    flipToLetter: "翻到信件面",
+    collect: "收进相册 · 回小屋",
+    backToAlbum: "回到相册",
+    emptyText: "我还没寄过明信片。",
+    backHome: "回小屋",
+  },
+  {
+    postcardFrom: "postcard from",
+    backEyebrow: "A little something from today",
+    reasonLabel: "Why I went there",
+    toLabel: "to",
+    toName: "You",
+    fromLabel: "from",
+    epicTitle: (rarity: string) => `An ${rarity} postcard!`,
+    sentTitle: "I sent you a letter!",
+    rareSub: "I waited so long to find this one.",
+    normalSub: "A little piece of somewhere far away, just for you.",
+    headerEyebrow: "A little piece of somewhere far",
+    headerTitle: "Read a postcard",
+    flipToScenery: "Flip to the view",
+    flipToLetter: "Flip to the letter",
+    collect: "Keep it · head home",
+    backToAlbum: "Back to album",
+    emptyText: "I haven't sent any postcards yet.",
+    backHome: "Head home",
+  },
+);
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -75,7 +119,9 @@ const FlipHintIcon = ({ className }: { className?: string }) => (
 // Front = pure scenery. All chips/badges live in the caption strip below the
 // art so nothing covers the picture (especially on small phones).
 function Front({ card }: { card: Postcard }) {
-  const dest = getDestination(card.destinationTheme);
+  const t = useTr(S);
+  const locale = useLocale();
+  const destLabel = destinationLabel(card.destinationTheme, locale);
   return (
     <div className={CARD}>
       <div
@@ -87,13 +133,13 @@ function Front({ card }: { card: Postcard }) {
       <div className="flex h-[36%] flex-col justify-between px-2 pb-1.5 pt-2.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-ink-soft/65">postcard from</p>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-ink-soft/65">{t.postcardFrom}</p>
             <h2 className="mt-1 truncate font-hand text-2xl leading-tight text-ink">{card.locationName}</h2>
           </div>
           <RarityBadge rarity={card.rarity} className="mt-1 shrink-0" />
         </div>
         <div className="flex items-center justify-between border-t-2 border-dashed border-[#bd8a52]/30 pt-2 text-xs text-ink-soft">
-          <span>{dest.label}</span>
+          <span>{destLabel}</span>
           <span className="tabular-nums">{fmtDate(card.sentAt)}</span>
         </div>
       </div>
@@ -104,13 +150,14 @@ function Front({ card }: { card: Postcard }) {
 // Back = the letter. Stamp + postmark sit in the top-right corner like real
 // mail; the body is ruled letter paper that scrolls if the note runs long.
 function Back({ card, companionName }: { card: Postcard; companionName: string }) {
+  const t = useTr(S);
   const lines = card.message.split("\n").filter(Boolean);
   return (
     <div className={`${CARD} [transform:rotateY(180deg)] bg-[#fffdf6]`}>
       <div className="flex h-full flex-col p-2">
         <div className="flex items-start justify-between gap-3 border-b-2 border-dashed border-[#bd8a52]/30 pb-2">
           <div className="min-w-0 pt-1">
-            <p className="text-[11px] text-accent">今天的一点小事</p>
+            <p className="text-[11px] text-accent">{t.backEyebrow}</p>
             <h2 className="mt-0.5 font-hand text-xl leading-tight text-ink">{card.title}</h2>
           </div>
           <div className="relative shrink-0 pr-1 pt-0.5">
@@ -137,13 +184,13 @@ function Back({ card, companionName }: { card: Postcard; companionName: string }
 
         <div className="grid grid-cols-[1fr_42%] gap-3 border-t-2 border-dashed border-[#bd8a52]/30 pt-3">
           <div className="rounded-2xl border border-[#d9b982]/45 bg-cream-soft px-3 py-2">
-            <p className="mb-0.5 text-[11px] font-medium text-accent">我为什么去了那儿</p>
+            <p className="mb-0.5 text-[11px] font-medium text-accent">{t.reasonLabel}</p>
             <p className="text-[12px] leading-snug text-ink-soft">{card.reason}</p>
           </div>
           <div className="ui-wood-surface rounded-2xl px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-ink-soft/70">to</p>
-            <p className="font-hand text-lg leading-tight text-ink">你</p>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-ink-soft/70">from</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-ink-soft/70">{t.toLabel}</p>
+            <p className="font-hand text-lg leading-tight text-ink">{t.toName}</p>
+            <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-ink-soft/70">{t.fromLabel}</p>
             <p className="truncate font-hand text-[15px] text-ink-soft">{companionName}</p>
           </div>
         </div>
@@ -153,6 +200,8 @@ function Back({ card, companionName }: { card: Postcard; companionName: string }
 }
 
 export default function PostcardScreen() {
+  const t = useTr(S);
+  const locale = useLocale();
   const companion = useGameStore((s) => s.companion)!;
   const postcards = useGameStore((s) => s.postcards);
   const selectedId = useGameStore((s) => s.selectedPostcardId);
@@ -176,9 +225,9 @@ export default function PostcardScreen() {
         <div className="ui-wood-surface relative z-10 grid h-20 w-20 place-items-center rounded-[26px]">
           <Icon name="postmail" className="h-12 w-12" />
         </div>
-        <p className="relative z-10 font-hand text-[16px] text-ink-soft">我还没寄过明信片。</p>
+        <p className="relative z-10 font-hand text-[16px] text-ink-soft">{t.emptyText}</p>
         <PrimaryButton size="sm" className="relative z-10 w-auto px-10" onClick={() => goTo("home")}>
-          回小屋
+          {t.backHome}
         </PrimaryButton>
       </div>
     );
@@ -196,17 +245,17 @@ export default function PostcardScreen() {
       {isFresh ? (
         <div className="relative z-10 px-5 pt-5 text-center">
           <h1 className="font-hand text-2xl text-ink">
-            {rare ? `${rarityMeta(card.rarity).label}明信片！` : "我给你寄信啦"}
+            {rare ? t.epicTitle(rarityLabel(card.rarity, locale)) : t.sentTitle}
           </h1>
           <p className="mt-0.5 text-sm text-ink-soft">
-            {rare ? "这张，我等了好久才遇上。" : "把远方的一小段，寄给你。"}
+            {rare ? t.rareSub : t.normalSub}
           </p>
         </div>
       ) : (
         <ScreenHeader
           onBack={() => goTo("album")}
-          eyebrow="来自远方的一小段"
-          title="读一张明信片"
+          eyebrow={t.headerEyebrow}
+          title={t.headerTitle}
           right={<Icon name="postmail" className="h-7 w-7 drop-shadow-[0_3px_2px_rgba(126,83,38,0.18)]" />}
         />
       )}
@@ -258,7 +307,7 @@ export default function PostcardScreen() {
         className="ui-wood-surface ui-wood-press mx-auto mb-2 flex w-fit items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs text-ink-soft"
       >
         <FlipHintIcon className="h-3.5 w-3.5 text-[#8c684a]" />
-        翻到{flipped ? "风景面" : "信件面"}
+        {flipped ? t.flipToScenery : t.flipToLetter}
       </button>
 
       <div
@@ -266,9 +315,9 @@ export default function PostcardScreen() {
         style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
       >
         {isFresh ? (
-          <PrimaryButton size="sm" onClick={collectPostcard}>收进相册 · 回小屋</PrimaryButton>
+          <PrimaryButton size="sm" onClick={collectPostcard}>{t.collect}</PrimaryButton>
         ) : (
-          <SecondaryButton size="sm" onClick={() => goTo("album")}>回到相册</SecondaryButton>
+          <SecondaryButton size="sm" onClick={() => goTo("album")}>{t.backToAlbum}</SecondaryButton>
         )}
       </div>
     </div>

@@ -6,6 +6,7 @@
 // (pullsSinceRare). Kept to a transparent weight table. Each (destination ×
 // rarity) pair is one fixed collectible card; 8 destinations × 3 rarities =
 // 24-card 图鉴.
+import type { Locale } from "@/i18n/core";
 import { DESTINATIONS, LANDMARKS } from "./destinations";
 import type { DestinationTheme, Rarity } from "./types";
 import { weightedPick } from "./util";
@@ -91,7 +92,15 @@ export function countCollected(cardDex: string[]): number {
 }
 
 /** The canonical landmark shown for a card (same slot → same landmark). */
-export function landmarkForCard(theme: DestinationTheme, rarity: Rarity): string {
-  const list = LANDMARKS[theme];
-  return list?.[RARITY_INDEX[rarity]] ?? list?.[0] ?? "远方";
+export function landmarkForCard(
+  theme: DestinationTheme,
+  rarity: Rarity,
+  locale: Locale = "zh",
+): string {
+  const list = LANDMARKS[theme]?.[locale];
+  return (
+    list?.[RARITY_INDEX[rarity]] ??
+    list?.[0] ??
+    (locale === "en" ? "somewhere far away" : "远方")
+  );
 }

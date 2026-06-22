@@ -1,5 +1,12 @@
 "use client";
 
+import { dom, useTr } from "@/i18n";
+
+const S = dom(
+  { mapLabel: "旅行手账地图" },
+  { mapLabel: "Travel journal map" },
+);
+
 const W = 300;
 const H = 170;
 const STEPS = 48;
@@ -23,6 +30,7 @@ function buildPath(): string {
 const PATH = buildPath();
 
 export default function JournalMap({ progress }: { progress: number }) {
+  const t = useTr(S);
   const p = Math.max(0, Math.min(1, progress));
   const here = pointAt(p);
   const start = pointAt(0);
@@ -52,7 +60,7 @@ export default function JournalMap({ progress }: { progress: number }) {
       viewBox={`0 0 ${W} ${H}`}
       className="h-auto w-full"
       role="img"
-      aria-label="旅行手账地图"
+      aria-label={t.mapLabel}
     >
       {/* dashed full route */}
       <path

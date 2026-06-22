@@ -4,6 +4,7 @@
 // preview) collapses to it. `CompanionType` stays a wider union (see types.ts)
 // only so legacy saves / agent-supplied strings still type-check; everything is
 // funneled back to the capybara through `normalizeSpecies`.
+import type { Bi } from "@/i18n/core";
 import type { Accessory, CompanionType } from "./types";
 
 export interface CharacterDef {
@@ -11,10 +12,10 @@ export interface CharacterDef {
   species: CompanionType;
   /** Brand name (matches the reference art filename). */
   name: string;
-  /** Cute Chinese display label used across the UI. */
-  label: string;
+  /** Cute display label used across the UI (bilingual). */
+  label: Bi<string>;
   emoji: string;
-  blurb: string;
+  blurb: Bi<string>;
   /** Body color sampled from the reference art. */
   defaultColor: string;
   /** Signature accessory from the reference art. */
@@ -28,9 +29,9 @@ export interface CharacterDef {
 export const CAPYBARA: CharacterDef = {
   species: "capybara",
   name: "Capybanana",
-  label: "卡皮巴拉",
+  label: { zh: "卡皮巴拉", en: "Capybara" },
   emoji: "🐹",
-  blurb: "憨厚爱发呆，戴贝雷帽",
+  blurb: { zh: "憨厚爱发呆，戴贝雷帽", en: "Mellow daydreamer in a beret" },
   defaultColor: "#C8893B",
   accessory: "scarf",
   earScale: 0.9,

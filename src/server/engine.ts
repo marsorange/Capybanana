@@ -1,5 +1,6 @@
 // Server-side game engine. The cloud save is authoritative; clients only pull
 // the folded result.
+import type { Locale } from "@/i18n/core";
 import { advanceLifecycle } from "@/game/clock";
 import { applyOutcome, clamp } from "@/game/applyOutcome";
 import { DEFAULT_CAPY } from "@/game/defaults";
@@ -33,6 +34,15 @@ import { composePostcard } from "./llm/postcard";
 import type { AgentEvent, CloudSave } from "./types";
 
 const QUIET_MODES = new Set<string>(["home", "yard", "rest"]);
+
+/** The owner's persisted UI language (server-generated text is written in it). */
+function loc(save: CloudSave): Locale {
+  return save.locale ?? "zh";
+}
+/** Pick zh/en by the save's locale — for player-facing event text. */
+function L(save: CloudSave, zh: string, en: string): string {
+  return loc(save) === "en" ? en : zh;
+}
 
 // Trip length by the distance the agent chose (real hours, scaled by
 // CAPY_TIME_SCALE). Near = a short hop; far = a long haul.
@@ -139,7 +149,7 @@ async function dressTravelPostcard(
     curiosity: save.capyState.curiosity,
     pullsSinceRare: save.pullsSinceRare,
   });
-  const landmark = landmarkForCard(pc.destinationTheme, rarity);
+  const landmark = landmarkForCard(pc.destinationTheme, rarity, loc(save));
 
   const llm = await composePostcard({
     companion: save.companion!,
@@ -152,6 +162,7 @@ async function dressTravelPostcard(
     landmark,
     rarity,
     distance: trip.distance ?? "near",
+    locale: loc(save),
   });
 
   pc.rarity = rarity;
@@ -163,7 +174,7 @@ async function dressTravelPostcard(
   }
   // Always sign off with the exact landmark so the body names the same place the
   // card front shows — true for both the LLM and the procedural fallback text.
-  pc.message = `${pc.message}\n\n—— 寄自${landmark}`;
+  pc.message = `${pc.message}\n\n${L(save, `—— 寄自${landmark}`, `— from ${landmark}`)}`;
   pc.sentAt = new Date(now).toISOString();
 }
 
@@ -214,13 +225,17 @@ function foldOutcome(
     };
     next = bump(next, now, {
       type: "postcard",
-      text: `我寄回了一张明信片：「${o.postcard.title}」。`,
+      text: L(
+        save,
+        `我寄回了一张明信片：「${o.postcard.title}」。`,
+        `I mailed you a postcard: "${o.postcard.title}".`,
+      ),
       postcardId: o.postcard.id,
     });
   } else {
     next = bump(next, now, {
       type: "returned",
-      text: `${o.title}。${o.story}`,
+      text: L(save, `${o.title}。${o.story}`, `${o.title}. ${o.story}`),
     });
   }
   return next;
@@ -279,7 +294,7 @@ export async function tickSave(save: CloudSave, now: number): Promise<CloudSave>
   if (out.started) {
     next = bump(next, now, {
       type: "departed",
-      text: "我背上今天的包裹，出门去了。",
+      text: L(save, "我背上今天的包裹，出门去了。", "I shouldered today's bag and headed out."),
     });
   }
 
@@ -311,7 +326,11 @@ export function clearBag(save: CloudSave, now: number): CloudSave {
   };
   return bump(next, now, {
     type: "bagExpired",
-    text: "门口的包裹放了一整天，我把不新鲜的东西悄悄收起来啦，别担心。",
+    text: L(
+      save,
+      "门口的包裹放了一整天，我把不新鲜的东西悄悄收起来啦，别担心。",
+      "The bag by the door sat all day, so I quietly put the stale things away — don't worry.",
+    ),
   });
 }
 
@@ -324,7 +343,7 @@ export function createPet(
   if (save.companion) return save;
   const companion: Companion = {
     id: uid("cmp"),
-    name: draft.name.trim() || "卡皮巴拉",
+    name: draft.name.trim() || L(save, "卡皮巴拉", "Capybara"),
     type: draft.type,
     primaryColor: draft.primaryColor,
     personality: draft.personality,
@@ -358,7 +377,11 @@ export function createPet(
   };
   return bump(base, now, {
     type: "created",
-    text: `我是${companion.name}，今天住进了小屋。以后请多关照。`,
+    text: L(
+      save,
+      `我是${companion.name}，今天住进了小屋。以后请多关照。`,
+      `I'm ${companion.name}, and I moved into the cottage today. Please take good care of me.`,
+    ),
   });
 }
 
@@ -388,32 +411,56 @@ export function packBag(
   return bump(base, now, {
     type: "packed",
     text: finalMessage
-      ? `我收好了今天的包裹，也把你的话藏进去：「${finalMessage}」。`
-      : "我收好了今天的包裹。",
+      ? L(
+          save,
+          `我收好了今天的包裹，也把你的话藏进去：「${finalMessage}」。`,
+          `I packed today's bag and tucked your words inside: "${finalMessage}".`,
+        )
+      : L(save, "我收好了今天的包裹。", "I packed today's bag."),
   });
 }
 
 // ---- Agent self check-in (压力上报) ------------------------------------------
 
 const STRESS_LEVELS = new Set(["light", "normal", "tired", "exhausted"]);
-const STRESS_CN: Record<string, string> = {
-  light: "今天挺轻松",
-  normal: "今天还好",
-  tired: "今天有点累",
-  exhausted: "今天累坏了",
+const STRESS_CN: Record<Locale, Record<string, string>> = {
+  zh: {
+    light: "今天挺轻松",
+    normal: "今天还好",
+    tired: "今天有点累",
+    exhausted: "今天累坏了",
+  },
+  en: {
+    light: "had an easy day",
+    normal: "had an okay day",
+    tired: "was a bit tired today",
+    exhausted: "was worn out today",
+  },
 };
 // Pet-voice telling of the Agent's day — this line is what the OWNER reads (the
 // home stress note + the album 日记), so it carries the pet's empathy, not a
 // status report.
-const STRESS_EVENT_TEXT: Record<string, (note: string | null) => string> = {
-  light: (n) =>
-    `照看我的人今天挺轻松，哼着歌来看了我一眼${n ? `，还说：「${n}」` : ""}。我也跟着哼了两句。`,
-  normal: (n) =>
-    `照看我的人今天还好，来摸了摸我的头${n ? `，说：「${n}」` : ""}。平平稳稳的一天。`,
-  tired: (n) =>
-    `照看我的人今天有点累${n ? `，它说：「${n}」` : ""}。我把下巴搁在它脚边，陪它坐了一会儿。`,
-  exhausted: (n) =>
-    `照看我的人今天累坏了${n ? `，它叹着气说：「${n}」` : ""}。我决定今晚趴得离它近一点。`,
+const STRESS_EVENT_TEXT: Record<Locale, Record<string, (note: string | null) => string>> = {
+  zh: {
+    light: (n) =>
+      `照看我的人今天挺轻松，哼着歌来看了我一眼${n ? `，还说：「${n}」` : ""}。我也跟着哼了两句。`,
+    normal: (n) =>
+      `照看我的人今天还好，来摸了摸我的头${n ? `，说：「${n}」` : ""}。平平稳稳的一天。`,
+    tired: (n) =>
+      `照看我的人今天有点累${n ? `，它说：「${n}」` : ""}。我把下巴搁在它脚边，陪它坐了一会儿。`,
+    exhausted: (n) =>
+      `照看我的人今天累坏了${n ? `，它叹着气说：「${n}」` : ""}。我决定今晚趴得离它近一点。`,
+  },
+  en: {
+    light: (n) =>
+      `The one who looks after me had an easy day and popped in humming${n ? `, and said: "${n}"` : ""}. I hummed along too.`,
+    normal: (n) =>
+      `The one who looks after me had an okay day and came to pat my head${n ? `, saying: "${n}"` : ""}. A nice steady day.`,
+    tired: (n) =>
+      `The one who looks after me was a bit tired today${n ? `, and said: "${n}"` : ""}. I rested my chin by their feet and sat with them a while.`,
+    exhausted: (n) =>
+      `The one who looks after me was worn out today${n ? `, sighing: "${n}"` : ""}. I decided to curl up a little closer tonight.`,
+  },
 };
 
 /**
@@ -431,9 +478,10 @@ export function checkin(
     opts.stress && STRESS_LEVELS.has(opts.stress) ? opts.stress : "normal";
   const note = opts.note?.trim().slice(0, 120) || null;
   const eff = STRESS_EFFECTS[level];
+  const lc = loc(save);
   const line = note
-    ? `照看我的人今天说：「${note}」`
-    : `照看我的人${STRESS_CN[level]}。`;
+    ? L(save, `照看我的人今天说：「${note}」`, `The one who looks after me said today: "${note}"`)
+    : L(save, `照看我的人${STRESS_CN.zh[level]}。`, `The one who looks after me ${STRESS_CN.en[level]}.`);
   const capy = {
     ...save.capyState,
     mood: clamp(save.capyState.mood + eff.mood),
@@ -445,7 +493,7 @@ export function checkin(
     now,
     {
       type: "checkin",
-      text: STRESS_EVENT_TEXT[level](note),
+      text: STRESS_EVENT_TEXT[lc][level](note),
       stress: level,
     },
   );
@@ -516,7 +564,11 @@ export function startTravel(
     now,
     {
       type: "departed",
-      text: `我背上包裹，出门去${distance === "far" ? "远方" : "附近"}了。`,
+      text: L(
+        save,
+        `我背上包裹，出门去${distance === "far" ? "远方" : "附近"}了。`,
+        `I shouldered my bag and set off ${distance === "far" ? "for somewhere far" : "nearby"}.`,
+      ),
     },
   );
 }
@@ -549,7 +601,7 @@ export function stayHome(
     durationMs: 0,
     returnsAt: now,
   };
-  const outcome = resolveDay(companion, save.capyState, trip);
+  const outcome = resolveDay(companion, save.capyState, trip, loc(save));
   // A rest day clears any forced-recovery window once it's served.
   const clearRest = intent === "rest" || intent === "quiet";
   const next = foldOutcome(
@@ -629,6 +681,7 @@ export async function startBattle(
     opponent: opponent.snapshot,
     opponentIsNpc: opponent.isNpc,
     stressNote: save.pendingStressNote,
+    locale: loc(save),
   });
 
   const ratingDelta = RATING_DELTA[verdict.result];
@@ -642,12 +695,22 @@ export async function startBattle(
     reason:
       opts.note?.slice(0, 80) ??
       (opponent.isNpc
-        ? "它找了个路过的小家伙切磋了一场。"
-        : `它和「${opponent.snapshot.name}」切磋了一场。`),
+        ? L(save, "它找了个路过的小家伙切磋了一场。", "It sparred with a little one passing by.")
+        : L(
+            save,
+            `它和「${opponent.snapshot.name}」切磋了一场。`,
+            `It sparred with "${opponent.snapshot.name}".`,
+          )),
     effects: { ...BATTLE_EFFECTS[verdict.result], injury: verdict.injury },
-    memory: `和「${opponent.snapshot.name}」切磋，${
-      verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了"
-    }。`,
+    memory: L(
+      save,
+      `和「${opponent.snapshot.name}」切磋，${
+        verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了"
+      }。`,
+      `Sparred with "${opponent.snapshot.name}" and ${
+        verdict.result === "win" ? "won" : verdict.result === "lose" ? "lost" : "tied"
+      }.`,
+    ),
     resolvedAt: new Date(now).toISOString(),
   };
 
@@ -701,11 +764,18 @@ export async function startBattle(
     companionDays: save.companionDays + 1, // an engaged day → +1 陪伴天数
     restUntilDay: forceRest ? nextDayKey(now) : save.restUntilDay,
   };
-  const word =
-    verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了";
+  const word = L(
+    save,
+    verdict.result === "win" ? "赢了" : verdict.result === "lose" ? "输了" : "打平了",
+    verdict.result === "win" ? "and won" : verdict.result === "lose" ? "and lost" : "and tied",
+  );
   next = bump(next, now, {
     type: "battle",
-    text: `我和「${opponent.snapshot.name}」切磋了一场，${word}！`,
+    text: L(
+      save,
+      `我和「${opponent.snapshot.name}」切磋了一场，${word}！`,
+      `I had a spar with "${opponent.snapshot.name}" ${word}!`,
+    ),
   });
 
   return {
@@ -732,6 +802,16 @@ export async function decideDay(
 ): Promise<CloudSave> {
   if (decision.action === "travel") return startTravel(save, decision, now);
   return stayHome(save, decision, now);
+}
+
+/**
+ * Record the owner's UI language so Agent-triggered, stored text (postcards,
+ * souvenirs, events) is generated in it. No rev bump / event — it's a quiet
+ * preference, not an activity. No-op when unchanged.
+ */
+export function setSaveLocale(save: CloudSave, locale: Locale): CloudSave {
+  if (save.locale === locale) return save;
+  return { ...save, locale };
 }
 
 /** Collect the waiting postcard into the album. */

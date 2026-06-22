@@ -1,0 +1,41 @@
+import { dom } from "../core";
+
+// Shared, cross-screen strings: buttons, generic labels, the language toggle.
+export const common = dom(
+  {
+    appName: "Capybanana",
+    tagline: "每天一分钟，陪它长大一点。",
+    back: "返回",
+    confirm: "确认",
+    cancel: "取消",
+    close: "关闭",
+    retry: "重试",
+    loading: "稍等…",
+    save: "保存",
+    done: "好了",
+    home: "小屋",
+    language: "语言",
+    langZh: "中文",
+    langEn: "EN",
+    errorTitle: "出了点小状况",
+    errorBody: "这一块没能显示出来。",
+  },
+  {
+    appName: "Capybanana",
+    tagline: "One minute a day. Watch it grow.",
+    back: "Back",
+    confirm: "Confirm",
+    cancel: "Cancel",
+    close: "Close",
+    retry: "Retry",
+    loading: "One sec…",
+    save: "Save",
+    done: "Done",
+    home: "Home",
+    language: "Language",
+    langZh: "中文",
+    langEn: "EN",
+    errorTitle: "Something hiccuped",
+    errorBody: "This part couldn't be shown.",
+  },
+);

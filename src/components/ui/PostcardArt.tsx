@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-import { getDestination } from "@/game/destinations";
+import { destinationLabel, getDestination } from "@/game/destinations";
+import { useLocale } from "@/i18n";
 import { cn } from "./cn";
 
 const VB = "0 0 320 200";
@@ -289,6 +290,8 @@ export default function PostcardArt({
   className?: string;
   rounded?: boolean;
 }) {
+  const locale = useLocale();
+  const label = destinationLabel(theme, locale);
   const imgRarity = rarity === "R" || rarity === "SR" ? rarity : "N";
   const imageSrc = IMAGE_THEMES.has(theme) ? `/art/postcards/${theme}-${imgRarity}.webp` : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -297,7 +300,7 @@ export default function PostcardArt({
     return (
       <img
         src={imageSrc}
-        alt={getDestination(theme).label}
+        alt={label}
         className={cn("block h-full w-full object-cover", rounded && "rounded-[10px]", className)}
         draggable={false}
         decoding="async"
@@ -313,7 +316,7 @@ export default function PostcardArt({
       preserveAspectRatio="xMidYMid slice"
       className={cn("block h-full w-full", rounded && "rounded-[10px]", className)}
       role="img"
-      aria-label={getDestination(theme).label}
+      aria-label={label}
     >
       <Scene theme={theme} />
       <RarityOverlay rarity={rarity} />

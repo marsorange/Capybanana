@@ -1,4 +1,5 @@
 // Server-side persistence shapes (stored in Supabase/Postgres).
+import type { Locale } from "@/i18n/core";
 import type {
   BattleRecord,
   CapyState,
@@ -74,4 +75,9 @@ export interface CloudSave {
   rev: number;
   updatedAt: string;
   events: AgentEvent[];
+  // The owner's UI language, persisted so server-generated, stored text
+  // (postcards, souvenirs, the activity log) is written in their language even
+  // when the Agent (which doesn't know the UI locale) triggers the generation.
+  // Defaults to "zh"; the web client pushes its choice up via /api/web/locale.
+  locale: Locale;
 }

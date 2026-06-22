@@ -4,6 +4,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Sql, TransactionSql } from "postgres";
 
+import type { Locale } from "@/i18n/core";
 import { DEFAULT_CAPY } from "@/game/defaults";
 import type {
   BattleRecord,
@@ -67,6 +68,7 @@ interface PetRow {
   companion_days: number;
   pulls_since_rare: number;
   active_trip_id: string | null;
+  locale: string | null;
   rev: number;
   created_at: Date | string;
   updated_at: Date | string;
@@ -165,7 +167,12 @@ export function emptySave(): CloudSave {
     rev: 0,
     updatedAt: new Date().toISOString(),
     events: [],
+    locale: "zh",
   };
+}
+
+function coerceLocale(v: string | null | undefined): Locale {
+  return v === "en" ? "en" : "zh";
 }
 
 function iso(value: Date | string | null | undefined): string {
@@ -439,6 +446,7 @@ async function loadSave(tx: Query, petId: string): Promise<CloudSave> {
     ).filter((id) => ALL_CARD_IDS.has(id)),
     rev: Number(pet.rev),
     updatedAt: iso(pet.updated_at),
+    locale: coerceLocale(pet.locale),
     events: activityRows
       .map(eventFromRow)
       .filter((e: AgentEvent | null): e is AgentEvent => !!e),
@@ -993,6 +1001,18 @@ export async function savePet(petId: string, save: CloudSave): Promise<void> {
       where id = ${petId}::uuid
     `;
   });
+
+  // Persist the owner's UI language best-effort, in its own statement so a
+  // pre-0008 database (no `locale` column) degrades to zh instead of failing the
+  // whole save. Once migration 0008 has run this simply records the language.
+  try {
+    await sql`
+      update pets set locale = ${save.locale ?? "zh"}
+      where id = ${petId}::uuid
+    `;
+  } catch {
+    // column may not exist until supabase/migrations/0008 has been applied
+  }
 }
 
 /** Load a pet's save by id (used by background postcard-image generation). */
