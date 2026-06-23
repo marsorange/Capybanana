@@ -343,7 +343,11 @@ export const useGameStore = create<GameState>()(
           const { connectUrl } = await cloud.regenerateAgentLink(
             s.cloud.bindToken,
           );
-          set({ connectUrl, cloudBusy: false });
+          // The freshly minted agent token is unused — reset the "Agent 已接入"
+          // signal to null right away so the connect screen flips back to
+          // "等待 Agent 接入" until the NEW Agent reads its link (a real re-bind
+          // confirmation, not the stale read of the now-revoked old token).
+          set({ connectUrl, cloudBusy: false, agentSeenAt: null });
         } catch (e) {
           const err = e as Error & { status?: number };
           if (err.status === 401) return get().logout();

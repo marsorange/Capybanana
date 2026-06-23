@@ -386,6 +386,44 @@ export function createPet(
 }
 
 /**
+ * A pet that's just been bound but hasn't lived a single day yet. Its identity
+ * (name / look) can still be (re)set by the agent's create call; once it takes
+ * its first action the appearance is locked (appearance is create-only by
+ * design). Used to let the agent name an auto-bound pet after the fact.
+ */
+export function isUnshapedPet(save: CloudSave): boolean {
+  return (
+    !!save.companion &&
+    save.companionDays === 0 &&
+    save.lastActionDay == null &&
+    save.companionState !== "traveling" &&
+    !save.activeTrip &&
+    save.postcards.length === 0 &&
+    save.battleRecords.length === 0
+  );
+}
+
+/**
+ * Finalize an auto-bound pet's identity (the agent's create call landing after
+ * the server already brought the pet to life on the first skill read). Rebuilds
+ * a fresh pet from the chosen draft and drops the placeholder "moved in"
+ * greeting so the diary shows a single line with the chosen name. Only valid
+ * while the pet is unshaped.
+ */
+export function shapeCompanion(
+  save: CloudSave,
+  draft: CompanionDraft,
+  now: number,
+): CloudSave {
+  const cleared: CloudSave = {
+    ...save,
+    companion: null,
+    events: save.events.filter((e) => e.type !== "created"),
+  };
+  return createPet(cleared, draft, now);
+}
+
+/**
  * Pack today's bag. The cloud pet is agent-driven: it does NOT leave on its own
  * — it waits in `ready` until the agent decides the day.
  */

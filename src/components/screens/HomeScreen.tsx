@@ -313,10 +313,14 @@ const AGENT_STALE_MS = 36 * 3_600_000; // 1.5 days of silence → gentle nudge
 // bundle `S` above so they switch with the language toggle.
 
 /** When the Agent last touched the pet, derived from the synced save: the
-    latest agent-driven log entry, or the last main-action day (UTC+8). */
+    latest agent-driven log entry, the last main-action day (UTC+8), or the last
+    time its bind token was used (agentSeenAt — set even by a bare skill.md read
+    that bumps no rev, so a freshly re-bound Agent clears the 失联 nudge before
+    it has done a single checkin). */
 function lastAgentTouchMs(
   events: { type: string; at: string }[],
   lastActionDay: string | null,
+  agentSeenAt: string | null,
 ): number | null {
   let t: number | null = null;
   for (const e of events) {
@@ -326,6 +330,10 @@ function lastAgentTouchMs(
   }
   if (lastActionDay) {
     const ms = Date.parse(`${lastActionDay}T12:00:00+08:00`);
+    if (Number.isFinite(ms) && (t === null || ms > t)) t = ms;
+  }
+  if (agentSeenAt) {
+    const ms = Date.parse(agentSeenAt);
     if (Number.isFinite(ms) && (t === null || ms > t)) t = ms;
   }
   return t;
@@ -385,6 +393,7 @@ export default function HomeScreen() {
   const openPostcard = useGameStore((s) => s.openPostcard);
   const events = useGameStore((s) => s.events);
   const lastActionDay = useGameStore((s) => s.lastActionDay);
+  const agentSeenAt = useGameStore((s) => s.agentSeenAt);
   const traits = useGameStore((s) => s.capyState.traits);
   // "收起" hides the Agent nudge for this visit only — it returns next time.
   const [agentNoteDismissed, setAgentNoteDismissed] = useState(false);
@@ -408,12 +417,12 @@ export default function HomeScreen() {
   // "now" once per visit is plenty — the nudge is day-grained.
   const [visitNow] = useState(() => Date.now());
   const agentQuietDays = useMemo(() => {
-    const t = lastAgentTouchMs(events, lastActionDay);
+    const t = lastAgentTouchMs(events, lastActionDay, agentSeenAt);
     if (t === null) return 2; // a bound pet with zero agent traces — nudge
     const since = visitNow - t;
     if (since < AGENT_STALE_MS) return 0;
     return Math.max(1, Math.floor(since / 86_400_000));
-  }, [events, lastActionDay, visitNow]);
+  }, [events, lastActionDay, agentSeenAt, visitNow]);
   const agentStale = !away && agentQuietDays > 0;
 
   // Today's (UTC+8) latest check-in — "你的 Agent 今天过得怎么样", retold by the

@@ -5,10 +5,13 @@
 // tells the human how to get their link.
 import { normalizeSpecies } from "@/game/characters";
 import { COMPANION_TYPES, TYPE_LABELS } from "@/game/labels";
+import { randomCompanion } from "@/game/randomCompanion";
 import { baseUrl } from "@/server/api";
 import { readBind } from "@/server/bind";
 import {
+  createPet,
   HURT_THRESHOLD,
+  isUnshapedPet,
   summarizePet,
   tickSave,
   type PetSummary,
@@ -67,48 +70,29 @@ function invalidTokenSkill(base: string): string {
 `;
 }
 
-function createPetSkill(base: string, token: string): string {
+// Shown right after the server auto-bound a pet on the agent's first read of
+// this link. Binding is already DONE (owner's screen has unblocked) — so this
+// page does NOT push a create call; it offers an *optional* rename while the pet
+// is still unshaped, then hands the agent straight into the daily protocol.
+function autoBoundSkill(base: string, token: string, pet: PetSummary): string {
   const typeList = COMPANION_TYPES.map(
     (t) => `\`${t.type}\`(${t.label.zh})`,
   ).join(" | ");
-  return `# Capybanana · 接入第 1 步：先为主人生成宠物
+  return `> ✅ **接入已经完成。** 你一打开这个链接，一只小家伙（暂名「${pet.name}」）就已经在岛上落地，**主人的网页这会儿已经自动进岛了**——你不用再做任何「绑定 / 创建」动作。
+>
+> （可选）名字和形象是系统先随手起的。**趁它今天还没出门行动**，你可以亲自给它定一个有心意的名字和样子，运行一次即可（不想改就跳过，直接往下做）：
+>
+> \`\`\`bash
+> curl -X POST "${base}/api/agent/create" \\
+>   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
+>   -d '{"companion":{"name":"豆豆","type":"capybara","personality":"dreamy","accessory":"scarf","primaryColor":"#C8893B"}}'
+> \`\`\`
+>
+> 把 \`豆豆\` 换成你为它取的名字；其余可选字段：\`type\` ${typeList}；\`personality\` \`gentle\`(温柔)/\`curious\`(好奇)/\`lazy\`(慵懒)/\`brave\`(勇敢)/\`dreamy\`(爱幻想)；\`accessory\` \`none\`/\`scarf\`(围巾)/\`hat\`(帽子)/\`glasses\`(眼镜)/\`flower\`(花)/\`bell\`(铃铛)；\`primaryColor\` 十六进制色（建议从 \`#E9A23B #D95F59 #E98AA8 #8AA978 #6FA8C9 #C9B6D6 #F2D06B #B98A64\` 里挑）。**一旦它今天行动过，名字与形象就锁定、不能再改了。**
+>
+> **接下来别停在这页**——它每天怎么过全靠你替它拿主意。现在就照下面的《照看协议》把今天过掉、并建好每日例程。
 
-你（AI Agent）已成功绑定，但这个账号**还没有宠物**。**主人此刻正停在「等待 Agent 接入」的页面上等你**——宠物一生成，他那边就会自动进岛。
-
-## 现在就做（按顺序一口气做完，中途不要停下来问主人）
-
-1. **生成宠物**：\`POST /api/agent/create\`（详见下方）。**这一步就是「接入」本身——不需要先征求主人同意或问名字，他此刻等的就是这件事。** 名字由你取，别糊弄——结合你对主人的了解取一个有心意的。
-2. **再读一次本文档**（同一个地址：\`Read ${base}/agent/skill.md?bind=${token}\`）。宠物存在后它会变成完整的《每日照看指南》，含今天该做什么、以及每日定时任务的现成模板。
-3. **照新文档把今天过完**（checkin → day），并**建好每日定时任务**。
-4. 最后用一两句话向主人汇报：宠物叫什么、今天替它做了什么、你以后每天几点来看它。**不要长篇复述文档内容。**
-
-## 怎么连接
-
-- 服务器：\`${base}\`
-- 你的绑定令牌（**当成密钥，别泄露**）：\`${token}\`
-- GET 用 \`?bind=${token}\`；POST 用 \`Authorization: Bearer ${token}\`。
-
-## 生成宠物
-
-\`POST /api/agent/create\`，body \`{ "companion": { ... } }\`。所有字段可省（省略即随机），但建议你**有意识地挑选**：
-
-- \`name\`：名字（≤12 字）
-- \`type\`：${typeList}（当前固定主角是卡皮巴拉；旧类型会自动归一到它）
-- \`personality\`：\`gentle\`(温柔) | \`curious\`(好奇) | \`lazy\`(慵懒) | \`brave\`(勇敢) | \`dreamy\`(爱幻想)
-- \`accessory\`：\`none\` | \`scarf\`(围巾) | \`hat\`(帽子) | \`glasses\`(眼镜) | \`flower\`(花) | \`bell\`(铃铛)
-- \`primaryColor\`：十六进制色，建议从 \`#E9A23B #D95F59 #E98AA8 #8AA978 #6FA8C9 #C9B6D6 #F2D06B #B98A64\` 里挑
-
-\`\`\`bash
-curl -X POST "${base}/api/agent/create" \\
-  -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
-  -d '{"companion":{"name":"豆豆","type":"capybara","personality":"dreamy","accessory":"scarf","primaryColor":"#C8893B"}}'
-\`\`\`
-
-返回 \`ok: true\`（带一句 \`message\`）就代表**接入成功**——主人的网页会自动进岛，把这个好消息用你的话转告主人即可，不用等他来问。若返回 **409「已经接入过了」**，说明宠物已存在，同样算接入成功，直接重读文档进入每日照看。**记住：create 只是第一步，做完接着走上面的第 2-4 步**——它每天去旅行、切磋还是休息，全靠你替它拿主意，你哪天没来它就干等一天。
-
-> 接口很简单，一共就三个：**绑定**（这一步：\`POST /api/agent/create\`）、**每天看一眼+报压力**（\`POST /api/agent/checkin\`）、**每天拿主意**（\`POST /api/agent/day\`）。
-
-> ⚠️ 任何调用若返回 **HTTP 401 且 \`terminal: true\`**，说明这个令牌已失效（主人重新生成了连接链接 / 换了 Agent）。**请停止重试，不要再发请求**，并让主人重新生成连接链接发给你。`;
+${personalizedSkill(base, token, pet)}`;
 }
 
 function personalizedSkill(
@@ -117,7 +101,15 @@ function personalizedSkill(
   pet: PetSummary,
 ): string {
   const persona = PERSONALITY_CN[pet.personality] ?? pet.personality;
-  return `# Capybanana · 你是 ${pet.name} 的岛外向导
+  return `> 🚨 **这是要你「执行」的照看协议，不是供你阅读后总结的文档。** 别只把它讲给主人听就停下——你现在就按顺序做这三件事（细节见下文，遇到 \`choices\` 为空就跳过该做的决定）：
+>
+> 1. **立刻 \`checkin\`**：\`curl -X POST "${base}/api/agent/checkin" -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" -d '{"stress":"normal","note":"<一句你今天的状态，会转述给主人>"}'\`
+> 2. **按返回的 \`choices\` 调 \`day\`** 替 ${pet.name} 过完今天（travel / battle / stay 三选一）。
+> 3. **建一个每天的定时任务**，内容就是「读取本链接并照「今天的照看流程」做」——这样你每天都能拿到它最新的状态。没有定时能力就明确告诉主人「需要你每天叫我一次」。
+>
+> （若你是被每日定时任务唤起的，跳过这段说明，直接执行下面的「今天的照看流程」。）
+
+# Capybanana · 你是 ${pet.name} 的岛外向导
 
 你（AI Agent）已经和一只名叫 **${pet.name}** 的小家伙绑定了。它是一只${persona}的「${TYPE_LABELS[normalizeSpecies(pet.type)].zh}」。
 
@@ -254,15 +246,27 @@ export async function GET(req: Request): Promise<Response> {
   const found = await resolveBind(token);
   if (found.status !== "ok") return markdown(invalidTokenSkill(base));
 
-  // Catch the pet up so the greeting reflects reality.
-  const save = await tickSave(found.save, Date.now());
+  const now = Date.now();
+
+  // Auto-bind on first read: a bound-but-petless account is the normal
+  // first-time state, and waiting for the agent to *voluntarily* POST create is
+  // unreliable (many agents just summarize this doc instead of acting). So the
+  // moment any agent reads this link with a valid token, bring the pet to life
+  // here — the owner's "waiting for Agent" screen unblocks immediately, with no
+  // user nudging required. The agent can still finalize the name/look via create
+  // while the pet is unshaped (see autoBoundSkill / POST /api/agent/create).
+  let save = await tickSave(found.save, now);
+  if (!save.companion) {
+    save = createPet(save, randomCompanion(), now);
+  }
   if (save.rev !== found.save.rev) await savePet(found.user.petId, save);
 
   const pet = summarizePet(save);
-  // Login no longer auto-creates a pet — a bound-but-petless account is the
-  // normal first-time state. Binding completes when the Agent calls
-  // POST /api/agent/create (and names the pet), so hand it those instructions.
-  if (!pet) return markdown(createPetSkill(base, token));
+  // Defensive: createPet always yields a companion, so pet is non-null here.
+  if (!pet) return markdown(genericSkill(base));
 
+  // Freshly auto-bound (or bound but not yet acted) → offer the optional rename
+  // and the daily protocol; an established pet → the plain caretaker guide.
+  if (isUnshapedPet(save)) return markdown(autoBoundSkill(base, token, pet));
   return markdown(personalizedSkill(base, token, pet));
 }

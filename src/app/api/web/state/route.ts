@@ -15,9 +15,14 @@ export async function GET(req: Request): Promise<Response> {
   // Persist only when the tick actually resolved something (avoids a DB write on
   // every 5s idle poll).
   if (save.rev !== a.save.rev) await savePet(a.user.petId, save);
-  // While the account is petless, the connect gate wants the sub-signal "has
-  // the Agent at least touched the API (read skill.md)?" — token use doesn't
-  // bump rev, so it rides alongside the save instead of inside it.
-  const seenAt = save.companion ? null : await agentSeenAt(a.user.id);
+  // "Has the (current) Agent token touched the API at all (e.g. read skill.md)?"
+  // — token use doesn't bump rev, so it rides alongside the save. Surfaced in
+  // ALL states, not just petless: it's the universal "binding handshake landed"
+  // signal. New user → confirms the auto-bind read; re-bind (owner regenerated
+  // the link / swapped Agents) → confirms the *new* Agent connected, since
+  // regenerate mints a fresh agent token whose last_used_at starts null and only
+  // flips once the new Agent reads its link. Drives the connect screen's live
+  // "Agent 已接入" status and clears the home "失联" nudge.
+  const seenAt = await agentSeenAt(a.user.id);
   return Response.json({ ok: true, rev: save.rev, save, agentSeenAt: seenAt });
 }

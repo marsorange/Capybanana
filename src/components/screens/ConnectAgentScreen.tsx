@@ -25,6 +25,8 @@ const S = dom(
     gateBody: "把下面这句话交给你的 Agent。它会替我取个名字，也会听见我每天的小心思。",
     agentSeen: "你的 Agent 来过啦，正在给我取名字…",
     agentWaiting: "我在岛上，等你的 Agent…",
+    reconnectWaiting: "等新的 Agent 读到这句口令…",
+    reconnectDone: "Agent 已接入 ✓ 正在照看我",
     readyLead: (name: string) => `你的 Agent 给我取名「${name}」`,
     readyBody: "我在这座岛上住下啦。往后每天，来看看我就好。",
     revisitLead: (name: string) => `我是${name}，还在岛上。`,
@@ -64,6 +66,8 @@ const S = dom(
       "Hand the line below to your Agent. It'll give me a name, and it'll hear what's on my mind each day.",
     agentSeen: "Your Agent stopped by — it's picking out my name…",
     agentWaiting: "I'm on the island, waiting for your Agent…",
+    reconnectWaiting: "Waiting for the new Agent to read this pass…",
+    reconnectDone: "Agent connected ✓ — looking after me",
     readyLead: (name: string) => `Your Agent named me "${name}"`,
     readyBody: "I've settled in on this island. From now on, just come see me each day.",
     revisitLead: (name: string) => `I'm ${name}, still here on the island.`,
@@ -123,6 +127,7 @@ export default function ConnectAgentScreen() {
   const hasOnboarded = useGameStore((s) => s.hasOnboarded);
   const completeOnboarding = useGameStore((s) => s.completeOnboarding);
   const regenerateConnectLink = useGameStore((s) => s.regenerateConnectLink);
+  const cloudPull = useGameStore((s) => s.cloudPull);
   const goTo = useGameStore((s) => s.goTo);
   const t = useTr(S);
   const [copied, setCopied] = useState(false);
@@ -145,6 +150,18 @@ export default function ConnectAgentScreen() {
     if (!hasOnboarded) completeOnboarding();
     else goTo("home");
   };
+
+  // Revisit = a pet already exists, so GameRoot stops its connect-gate polling.
+  // But this is exactly the re-bind flow (owner regenerated the link / is
+  // swapping Agents), and we want a LIVE "新 Agent 已接入" confirmation — so poll
+  // here while the screen is open. agentSeenAt flips from null (fresh token,
+  // unused) to a timestamp the moment the new Agent reads its link.
+  useEffect(() => {
+    if (mode !== "revisit") return;
+    cloudPull();
+    const id = setInterval(() => cloudPull(), 5000);
+    return () => clearInterval(id);
+  }, [mode, cloudPull]);
 
   // The gate flips to "ready" live (GameRoot polls every 5s until the Agent
   // registers a pet). Hold the name reveal for a beat, then walk the owner
@@ -230,6 +247,21 @@ export default function ConnectAgentScreen() {
               </p>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
                 {t.revisitBody}
+              </p>
+              {/* Live re-bind confirmation: agentSeenAt is null right after the
+                  owner regenerates (fresh, unused agent token) and flips to a
+                  timestamp the moment the new Agent reads its link. */}
+              <p
+                className={`mt-2.5 inline-flex items-center gap-1.5 text-xs ${
+                  agentSeenAt ? "text-[#5c8a4e]" : "text-accent"
+                }`}
+              >
+                <span
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${
+                    agentSeenAt ? "bg-[#5c8a4e]" : "animate-pulse bg-accent"
+                  }`}
+                />
+                {agentSeenAt ? t.reconnectDone : t.reconnectWaiting}
               </p>
             </>
           )}
